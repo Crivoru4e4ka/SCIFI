@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scifi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f6f7fb;
+            color: #172b4d;
+        }
+        .navbar {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e4e7eb;
+        }
+        .navbar-logo {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+        }
+        .nav-sidebar-badge {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            margin-right: 8px;
+        }
+        .navbar-grid {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+        }
+        .nav-center-actions {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: min(940px, 78vw);
+        }
+        .nav-center-actions .search-wrap {
+            width: 780px;
+            max-width: 100%;
+        }
+        .search-bar .form-control {
+            border-left: 0;
+        }
+        .search-bar .input-group-text {
+            border-right: 0;
+            background-color: #ffffff;
+        }
+        .sidebar {
+            min-height: 100vh;
+            border-right: 1px solid #e4e7eb;
+            background-color: #ffffff;
+        }
+        .sidebar .nav-link {
+            color: #172b4d;
+            border-radius: 0.75rem;
+            padding: 12px 16px;
+            margin-bottom: 4px;
+        }
+        .sidebar .nav-link.active {
+            background-color: #e8f0fe;
+            color: #0b4aa7;
+        }
+        .sidebar .nav-link:hover {
+            background-color: #f6f8fb;
+        }
+        .hero-card {
+            background: linear-gradient(135deg, #eef4ff 0%, #ffffff 100%);
+            border: 1px solid #dde5ee;
+        }
+        .app-card {
+            border: 1px solid #e7eef7;
+            background-color: #ffffff;
+        }
+        .kanban-column {
+            background-color: #f8fafc;
+            border: 1px solid #e5ecf2;
+            border-radius: 1rem;
+            min-height: 260px;
+        }
+        .avatar-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50% !important;
+            overflow: hidden;
+        }
+        .sidebar .section-title {
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.06em;
+            color: #6b778c;
+            margin-bottom: 0.75rem;
+        }
+        .top-actions .btn {
+            min-width: 120px;
+        }
+        .card-light {
+            background-color: #ffffff;
+            border: 1px solid #e4e7eb;
+        }
+        .template-card {
+            border: 1px solid #dfe1e6;
+            border-radius: 0.75rem;
+            background-color: #fff;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+            cursor: pointer;
+            height: 100%;
+        }
+        .template-card:hover {
+            box-shadow: 0 8px 20px rgba(9, 30, 66, 0.12);
+            transform: translateY(-2px);
+        }
+        .template-preview {
+            border-radius: 0.6rem;
+            height: 150px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #dfe1e6;
+            margin-bottom: 1rem;
+        }
+        .template-preview-kanban {
+            background: linear-gradient(135deg, #e9f2ff 0%, #f8fbff 100%);
+        }
+        .template-preview-scrum {
+            background: linear-gradient(135deg, #fff4e5 0%, #fff9f0 100%);
+        }
+        .template-preview-empty {
+            background: linear-gradient(135deg, #f1f2f4 0%, #f7f8f9 100%);
+        }
+        .template-lines {
+            position: absolute;
+            inset: 16px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .template-lines span {
+            background: rgba(9, 30, 66, 0.12);
+            border-radius: 8px;
+            min-height: 18px;
+        }
+        .template-lines-empty {
+            position: absolute;
+            inset: 22px;
+            border: 2px dashed #9fadbc;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #5e6c84;
+            font-weight: 600;
+        }
+        .modal-content {
+            border-radius: 1rem;
+        }
+        .modal-header {
+            border-bottom: none;
+        }
+        .profile-dropdown .dropdown-menu {
+            min-width: 300px;
+            border-radius: 1rem;
+            padding: 1rem;
+        }
+        .profile-dropdown .dropdown-toggle::after {
+            display: none;
+        }
+        .profile-dropdown .dropdown-item {
+            border-radius: 0.75rem;
+            padding: 0.85rem 1rem;
+        }
+        .profile-dropdown .dropdown-item:hover {
+            background-color: #f4f7fb;
+        }
+        .profile-dropdown .profile-header {
+            border-bottom: 1px solid #e9eef4;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+        .profile-dropdown .profile-header .avatar-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 52px !important;
+            min-width: 52px !important;
+            height: 52px !important;
+            min-height: 52px !important;
+            flex-shrink: 0;
+            font-size: 1.1rem;
+            border-radius: 50% !important;
+            overflow: hidden;
+        }
+        .top-icons .btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .top-icons .btn i {
+            font-size: 0.95rem;
+        }
+        @media (max-width: 992px) {
+            .nav-center-actions {
+                width: min(420px, 100%);
+            }
+            .nav-center-actions .search-wrap {
+                width: 280px;
+            }
+        }
+        .section-tab-btn {
+            color: #6b778c;
+            border-bottom: 2px solid transparent !important;
+            transition: all 0.2s ease;
+            padding: 0.5rem 0.75rem !important;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+        }
+        .section-tab-btn:hover {
+            color: #0b4aa7;
+        }
+        .section-tab-btn.active {
+            color: #0d6efd !important;
+            border-bottom-color: #0d6efd !important;
+            font-weight: 600;
+        }
+        body.dark-theme {
+            background-color: #121212;
+            color: #e3e3e3;
+        }
+        body.dark-theme .navbar,
+        body.dark-theme .sidebar,
+        body.dark-theme .card,
+        body.dark-theme .card-light,
+        body.dark-theme .profile-dropdown .dropdown-menu,
+        body.dark-theme .offcanvas {
+            background-color: #1e1e1e;
+            border-color: #333;
+            color: #e3e3e3;
+        }
+        body.dark-theme .search-bar .form-control,
+        body.dark-theme .search-bar .input-group-text,
+        body.dark-theme .sidebar .nav-link,
+        body.dark-theme .profile-dropdown .dropdown-item,
+        body.dark-theme .card-body,
+        body.dark-theme .offcanvas-body {
+            background-color: #1e1e1e;
+            color: #e3e3e3;
+        }
+        body.dark-theme .sidebar .nav-link.active {
+            background-color: #2a2a2a;
+            color: #88b7ff;
+        }
+        body.dark-theme .sidebar .nav-link:hover {
+            background-color: #292929;
+        }
+        body.dark-theme .btn-outline-secondary {
+            color: #e3e3e3;
+            border-color: #444;
+        }
+        body.dark-theme .btn-outline-secondary:hover {
+            background-color: #2a2a2a;
+        }
+        body.dark-theme .btn-primary {
+            background-color: #4f7ef6;
+            border-color: #4f7ef6;
+        }
+        body.dark-theme .text-muted {
+            color: #9aa0ac !important;
+        }
+        .wizard-shell {
+            background: #fff;
+            border: 1px solid #dfe1e6;
+            border-radius: 1rem;
+            overflow: hidden;
+            max-width: 600px;
+        }
+        .wizard-layout {
+            display: grid;
+          /*grid-template-columns: 1.2fr 1fr;*/
+            min-height: 540px;
+        }
+        .wizard-left {
+            padding: 2rem;
+            border-right: 1px solid #ebecf0;
+        }
+        .wizard-right {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #eef4ff 0%, #f7fbff 100%);
+        }
+        .wizard-step-label {
+            font-size: 0.8rem;
+            color: #6b778c;
+        }
+        .preview-board {
+            border: 1px solid #dfe1e6;
+            border-radius: 0.75rem;
+            background: #fff;
+            min-height: 420px;
+            padding: 1rem;
+        }
+        .preview-columns {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 1rem;
+        }
+        .preview-column {
+            border: 1px solid #ebecf0;
+            border-radius: 0.6rem;
+            min-height: 160px;
+            padding: 0.6rem;
+            background: #f8fafc;
+        }
+        .preview-task {
+            border: 1px solid #dfe1e6;
+            border-radius: 0.4rem;
+            background: #fff;
+            padding: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .wizard-footer {
+            border-top: 1px solid #ebecf0;
+            padding: 1rem 1.5rem;
+            background: #fff;
+        }
+        .invite-pill {
+            border: 1px solid #dfe1e6;
+            border-radius: 999px;
+            padding: 0.2rem 0.65rem;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        @media (max-width: 992px) {
+            .wizard-layout {
+                grid-template-columns: 1fr;
+            }
+            .wizard-left {
+                border-right: 0;
+                border-bottom: 1px solid #ebecf0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+    <nav class="navbar navbar-expand-lg px-4 py-3">
+        <div class="container-fluid navbar-grid">
+            <a class="navbar-brand fw-semibold" href="#">
+                <img src="/static/logo.png" alt="Scifi Logo" class="navbar-logo me-2">
+                Scifi
+            </a>
+            <div class="nav-center-actions">
+                <div class="search-wrap">
+                    <div class="input-group search-bar shadow-sm">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="search" class="form-control" placeholder="Поиск" aria-label="Поиск">
+                    </div>
+                </div>
+                <button class="btn btn-primary" type="button" id="createProjectButton" @click="createTaskModal.show()">
+                    <i class="fas fa-plus me-2"></i>Создать
+                </button>
+            </div>
+            <div class="d-flex align-items-center gap-2 top-icons">
+                <button class="btn btn-light border" type="button" title="Уведомления">
+                    <i class="fas fa-bell"></i>
+                </button>
+                <button class="btn btn-light border" type="button" title="Помощь">
+                    <i class="fas fa-question"></i>
+                </button>
+                <button class="btn btn-light border" type="button" title="Настройки">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <div class="dropdown profile-dropdown">
+                    <button class="btn bg-primary text-white rounded-circle dropdown-toggle" type="button" id="profileMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span id="profileMenuButtonText" v-text="profile.initials"></span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="profileMenuButton">
+                        <div class="profile-header d-flex align-items-center gap-3">
+                            <div class="avatar-circle bg-primary text-white d-flex align-items-center justify-content-center" id="profileMenuAvatarText" v-text="profile.initials"></div>
+                            <div>
+                                <div class="fw-semibold" id="profileMenuName" v-text="profile.full_name"></div>
+                                <div class="text-muted small" id="profileMenuEmail" v-text="profile.email"></div>
+                            </div>
+                        </div>
+                        <a class="dropdown-item d-flex align-items-center gap-2" href="#">
+                            <i class="fas fa-user"></i>Профиль
+                        </a>
+                        <a class="dropdown-item d-flex align-items-center gap-2" href="#">
+                            <i class="fas fa-cog"></i>Настройки аккаунта
+                        </a>
+                        <a class="dropdown-item d-flex align-items-center gap-2" href="#" data-bs-toggle="offcanvas" data-bs-target="#themeDrawer" aria-controls="themeDrawer">
+                            <i class="fas fa-adjust"></i>Тема
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item d-flex align-items-center gap-2" href="/logout">
+                            <i class="fas fa-sign-out-alt"></i>Выйти
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-0">
+        <div class="row gx-0">
+<aside class="col-auto sidebar px-3 py-4">
+    <div class="sidebar-section mb-4">
+        <div class="section-title">Для Вас</div>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="#">
+                <img src="/static/recentbadge.png" alt="Recent badge" class="nav-sidebar-badge">
+                <span class="nav-link-text">Недавние</span>
+            </a>
+            <a class="nav-link" href="#">
+                <img src="/static/flaggedbadge.png" alt="Flagged badge" class="nav-sidebar-badge">
+                <span class="nav-link-text">Отмеченные</span>
+            </a>
+            <a class="nav-link" href="#">
+                <img src="/static/projectsbadge.png" alt="Projects badge" class="nav-sidebar-badge">
+                <span class="nav-link-text">Разделы</span>
+            </a>
+        </nav>
+    </div>
+    <div class="sidebar-section">
+        <div class="section-title">Рекомендуется</div>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="#">
+                <img src="/static/filtersbadge.png" alt="Filters badge" class="nav-sidebar-badge">
+                <span class="nav-link-text">Фильтры</span>
+            </a>
+            <a class="nav-link" href="#">
+                <img src="/static/dashboardsbadge.png" alt="Dashboards badge" class="nav-sidebar-badge">
+                <span class="nav-link-text">Дашборды</span>
+            </a>
+            <a class="nav-link" href="#">
+                <img src="/static/teamsbadge.png" alt="Teams badge" class="nav-sidebar-badge">
+                <span class="nav-link-text">Команды</span>
+            </a>
+        </nav>
+    </div>
+</aside>
+
+            <main class="col px-4 py-4">
+                <template v-if="currentPage === 'sections'">
+  <!-- Список проектов -->
+  <template v-if="!currentProject">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+      <div>
+        <h2 class="mb-1">Разделы</h2>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-primary" type="button" id="createSectionButton" @click="openTemplatesPage">
+          <i class="fas fa-plus me-2"></i>Создать раздел
+        </button>
+      </div>
+    </div>
+    
+    <!-- Отображаем проекты, если они есть -->
+    <div v-if="projects && projects.length > 0" class="row g-3">
+      <div class="col-md-6 col-lg-4" v-for="project in projects" :key="project.id">
+        <div class="card card-light mb-3 shadow-sm cursor-pointer" @click="openProject(project)" style="cursor: pointer;">
+          <div class="card-body">
+            <div class="d-flex align-items-center gap-3 mb-3">
+              <div class="avatar-circle bg-primary text-white d-flex align-items-center justify-content-center">
+                {{ project.name.charAt(0) }}
+              </div>
+              <div class="flex-grow-1">
+                <div class="fw-semibold">{{ project.name }}</div>
+                <div class="text-muted small">{{ project.description }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div v-else class="card card-light shadow-sm text-center py-5">
+      <div class="card-body">
+        <div class="mb-4">
+          <div class="display-4 text-primary"><i class="fas fa-columns"></i></div>
+        </div>
+        <h5 class="mb-2">Создайте первый раздел</h5>
+        <p class="text-muted mb-4">Получите быстрый старт с помощью шаблонов или создайте раздел с нуля.</p>
+        <button class="btn btn-primary" type="button" @click="openTemplatesPage">
+          <i class="fas fa-th-large me-2"></i>Открыть шаблоны
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <!-- Вид проекта (Доска и Backlog) -->
+  <template v-else>
+    <div class="d-flex align-items-center gap-2 mb-4">
+      <button class="btn btn-link text-decoration-none p-0" type="button" @click="goBackToProjects">
+        <i class="fas fa-arrow-left me-2"></i>Назад к разделам
+      </button>
+    </div>
+    
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="avatar-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+        {{ currentProject.name.charAt(0) }}
+      </div>
+      <div>
+        <h2 class="mb-0">{{ currentProject.name }}</h2>
+        <div class="text-muted small">{{ currentProject.description }}</div>
+      </div>
+    </div>
+
+    <!-- Вкладки: Доска и Backlog -->
+    <div class="mb-3 border-bottom">
+      <button class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'board' }" @click="currentProjectView = 'board'">
+        <i class="fas fa-columns me-2"></i>Доска
+      </button>
+      <button class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'backlog' }" @click="currentProjectView = 'backlog'">
+        <i class="fas fa-list me-2"></i>Backlog
+      </button>
+    </div>
+
+    <!-- Содержимое Доски (Kanban) -->
+    <div v-if="currentProjectView === 'board'" class="mt-4">
+      <div class="row g-3">
+        <div class="col-12 col-lg-4">
+          <div class="kanban-column p-3">
+            <div class="small text-muted mb-2 fw-semibold">К выполнению ({{ projectBoardTasks.todo.length }})</div>
+            <div class="card p-2 mb-2" v-for="task in projectBoardTasks.todo" :key="task.id">
+              <div class="fw-semibold small">{{ task.title }}</div>
+              <div class="small text-muted">{{ task.description }}</div>
+            </div>
+            <div v-if="!projectBoardTasks.todo.length" class="text-muted small text-center py-3">Нет задач</div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="kanban-column p-3">
+            <div class="small text-muted mb-2 fw-semibold">В работе ({{ projectBoardTasks.inProgress.length }})</div>
+            <div class="card p-2 mb-2" v-for="task in projectBoardTasks.inProgress" :key="task.id">
+              <div class="fw-semibold small">{{ task.title }}</div>
+              <div class="small text-muted">{{ task.description }}</div>
+            </div>
+            <div v-if="!projectBoardTasks.inProgress.length" class="text-muted small text-center py-3">Нет задач</div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-4">
+          <div class="kanban-column p-3">
+            <div class="small text-muted mb-2 fw-semibold">Готово ({{ projectBoardTasks.done.length }})</div>
+            <div class="card p-2 mb-2" v-for="task in projectBoardTasks.done" :key="task.id">
+              <div class="fw-semibold small">{{ task.title }}</div>
+              <div class="small text-muted">{{ task.description }}</div>
+            </div>
+            <div v-if="!projectBoardTasks.done.length" class="text-muted small text-center py-3">Нет задач</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Содержимое Backlog (Scrum) -->
+    <div v-if="currentProjectView === 'backlog'" class="mt-4">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Backlog</h5>
+          <div v-if="projectTasks && projectTasks.length > 0" class="list-group">
+            <div class="list-group-item" v-for="task in projectTasks" :key="task.id">
+              <div class="d-flex w-100 align-items-start">
+                <div class="flex-grow-1">
+                  <h6 class="mb-1">{{ task.title }}</h6>
+                  <p class="mb-1 small text-muted">{{ task.description }}</p>
+                  <small class="text-muted">Статус: <span class="badge bg-secondary">{{ task.status }}</span></small>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-center py-5">
+            <p class="text-muted">Backlog пуст</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+</template>
+                <template v-else-if="currentPage === 'templates'">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+                        <div>
+                            <h2 class="mb-1">Шаблоны разделов</h2>
+                            <p class="text-muted mb-0">Выберите шаблон для быстрого старта работы команды.</p>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" type="button" @click="goBackToSections">
+                            <i class="fas fa-arrow-left me-2"></i>Назад к разделам
+                        </button>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6 col-xl-4" v-for="templateItem in templates" :key="templateItem.id">
+                            <div class="template-card p-3 shadow-sm">
+                                <div class="template-preview" :class="templateItem.previewClass">
+                                    <div v-if="templateItem.id !== 'empty'" class="template-lines">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                    <div v-else class="template-lines-empty">
+                                        + Новый раздел
+                                    </div>
+                                </div>
+                                <h5 class="mb-1">{{ templateItem.title }}</h5>
+                                <p class="text-muted small mb-3">{{ templateItem.description }}</p>
+                                <button class="btn btn-primary btn-sm" type="button" @click="selectTemplate(templateItem)">Использовать шаблон</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <template v-else-if="currentPage === 'kanbanSetup'">
+                    <div class="d-flex align-items-center mb-3">
+                        <button class="btn btn-link text-decoration-none p-0" type="button" @click="goBackToTemplates">
+                            <i class="fas fa-arrow-left me-2"></i>Назад к шаблонам
+                        </button>
+                    </div>
+                    <div class="wizard-shell shadow-sm mx-auto">
+                        <div class="wizard-layout">
+                            <div class="wizard-left">
+                                <div class="wizard-step-label mb-2">Шаг {{ kanbanWizard.step }} из 2</div>
+                                <h3 class="h4 mb-3" v-if="kanbanWizard.step === 1">Дайте имя разделу</h3>
+                                <h3 class="h4 mb-3" v-else>Пригласите команду</h3>
+
+                                <template v-if="kanbanWizard.step === 1">
+                                    <p class="text-muted small mb-4">Обязательные поля отмечены звездочкой *</p>
+                                    <div class="mb-3">
+                                        <label class="form-label">Название *</label>
+                                        <input class="form-control" type="text" v-model="kanbanWizard.name" @input="updateKanbanKey" placeholder="Введите название раздела">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Способ управления разделом *</label>
+                                        <select class="form-select" v-model="kanbanWizard.managementType">
+                                            <option value="team">Управляется командой</option>
+                                            <option value="company">Управляется компанией</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Доступ *</label>
+                                        <select class="form-select" v-model="kanbanWizard.access">
+                                            <option value="closed">Закрытый</option>
+                                            <option value="limited">Ограничено</option>
+                                            <option value="open">Открытый</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Ключ *</label>
+                                        <input class="form-control" type="text" v-model="kanbanWizard.key" maxlength="10">
+                                    </div>
+                                    <div class="p-3 border rounded bg-light">
+                                        <div class="small text-muted mb-1">Шаблон</div>
+                                        <div class="fw-semibold">{{ selectedTemplate.title }}</div>
+                                        <div class="small text-muted">{{ selectedTemplate.description }}</div>
+                                    </div>
+                                </template>
+
+                                <template v-else>
+                                    <p class="text-muted small mb-4">Добавьте пользователей, с которыми вы уже работаете, или пригласите новых.</p>
+                                    <div class="mb-3">
+                                        <label class="form-label">Имена или email</label>
+                                        <input class="form-control" type="text" v-model="kanbanWizard.inviteInput" @keyup.enter="addInvite" placeholder="Например: ira-users, user@example.com">
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2 mb-3">
+                                        <span class="invite-pill" v-for="member in kanbanWizard.members" :key="member">
+                                            {{ member }}
+                                            <button class="btn btn-sm p-0 border-0 bg-transparent" @click="removeInvite(member)" type="button">
+                                                <i class="fas fa-times text-muted"></i>
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Роль</label>
+                                        <select class="form-select" v-model="kanbanWizard.role">
+                                            <option value="member">Участник</option>
+                                            <option value="admin">Администратор</option>
+                                        </select>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="wizard-footer d-flex justify-content-between align-items-center">
+                            <div class="small text-muted">Шаг {{ kanbanWizard.step }} из 2</div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-secondary" v-if="kanbanWizard.step === 2" @click="kanbanWizard.step = 1" type="button">Назад</button>
+                                <button class="btn btn-primary" v-if="kanbanWizard.step === 1" @click="nextKanbanStep" type="button">Далее</button>
+                                <button class="btn btn-primary" v-else @click="finishKanbanSetup" type="button">Завершить создание</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <template v-else-if="currentPage === 'kanbanBoard'">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h2 class="mb-1">{{ createdKanban.name }}</h2>
+                            <div class="text-muted small">Kanban-доска раздела</div>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" type="button" @click="openTemplatesPage">
+                            <i class="fas fa-th-large me-2"></i>Шаблоны
+                        </button>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12 col-lg-4">
+                            <div class="kanban-column p-3">
+                                <div class="small text-muted mb-2">К выполнению</div>
+                                <div class="card p-2 mb-2">
+                                    <div class="small fw-semibold">{{ createdKanban.key }}-1</div>
+                                    <div class="small text-muted">Что нужно сделать?</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-4">
+                            <div class="kanban-column p-3">
+                                <div class="small text-muted mb-2">В работе</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-4">
+                            <div class="kanban-column p-3">
+                                <div class="small text-muted mb-2">Готово</div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <div class="modal fade" id="createProjectModal" tabindex="-1" aria-labelledby="createProjectModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createProjectModalLabel">Создание проекта</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createProjectForm" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="projectNameInput" class="form-label">Название проекта *</label>
+                            <input type="text" class="form-control" id="projectNameInput" required maxlength="120" placeholder="Введите название проекта" v-model="project.name">
+                            <div class="invalid-feedback">Введите название проекта</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="projectDescriptionInput" class="form-label">Описание</label>
+                            <textarea class="form-control" id="projectDescriptionInput" rows="3" placeholder="Кратко опишите проект" v-model="project.description"></textarea>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="projectStatusInput" class="form-label">Статус</label>
+                                <select id="projectStatusInput" class="form-select" v-model="project.status">
+                                    <option value="active">Active</option>
+                                    <option value="planning">Planning</option>
+                                    <option value="paused">Paused</option>
+                                    <option value="done">Done</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="projectStartDateInput" class="form-label">Дата начала</label>
+                                <input type="date" class="form-control" id="projectStartDateInput" v-model="project.start_date">
+                            </div>
+                        </div>
+                        <div class="alert alert-danger mt-3" id="createProjectError" :class="{ 'd-none': !projectError }" v-text="projectError"></div>
+                        <div class="alert alert-success mt-3" id="createProjectSuccess" :class="{ 'd-none': !projectSuccess }" v-text="projectSuccess"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="submitCreateProjectButton" :disabled="isSubmitting" @click="createProjectFromModal">{{ submitButtonText }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="themeDrawer" aria-labelledby="themeDrawerLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="themeDrawerLabel">Тема оформления</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Закрыть"></button>
+        </div>
+        <div class="offcanvas-body">
+            <p class="mb-3">Выберите тему приложения:</p>
+            <div class="list-group">
+                <button type="button" class="list-group-item list-group-item-action" id="themeLight" @click="applyTheme('light')">Светлая</button>
+                <button type="button" class="list-group-item list-group-item-action" id="themeDark" @click="applyTheme('dark')">Тёмная</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for User Projects -->
+    <!-- Modal for Creating Task -->
+    <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createTaskModalLabel">Создание задачи типа «Задача»</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <p class="mb-0"><small>Обязательные поля отмечены звездочкой <span class="text-danger">*</span></small></p>
+                    </div>
+                    <form id="createTaskForm" class="needs-validation" novalidate>
+                        <!-- Раздел -->
+                        <div class="mb-3">
+                            <label for="taskProject" class="form-label">Раздел <span class="text-danger">*</span></label>
+                            <select class="form-select" id="taskProject" v-model="newTask.projectId" required>
+                                <option value="">Выберите раздел...</option>
+                                <option v-for="project in projects" :key="project.id" :value="project.id">
+                                    {{ project.name }}
+                                </option>
+                            </select>
+                            <div class="invalid-feedback">Выберите раздел</div>
+                        </div>
+
+                        <!-- Тип задачи -->
+                        <div class="mb-3">
+                            <label for="taskType" class="form-label">Тип задачи <span class="text-danger">*</span></label>
+                            <select class="form-select" id="taskType" v-model="newTask.type" required>
+                                <option value="task">Задача</option>
+                                <option value="bug">Баг</option>
+                                <option value="feature">Функция</option>
+                                <option value="epic">Эпик</option>
+                            </select>
+                            <div class="invalid-feedback">Выберите тип задачи</div>
+                        </div>
+
+                        <!-- Статус -->
+                        <div class="mb-3">
+                            <label for="taskStatus" class="form-label">Статус <span class="text-danger">*</span></label>
+                            <select class="form-select" id="taskStatus" v-model="newTask.status" required>
+                                <option value="К выполнению">К выполнению</option>
+                                <option value="В РАБОТЕ">В РАБОТЕ</option>
+                                <option value="ГОТОВО">ГОТОВО</option>
+                            </select>
+                            <div class="invalid-feedback">Выберите статус</div>
+                        </div>
+
+                        <!-- Резюме (заголовок) -->
+                        <div class="mb-3">
+                            <label for="taskTitle" class="form-label">Резюме <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="taskTitle" v-model="newTask.title" 
+                                   placeholder="Кратко опишите задачу" maxlength="150" required>
+                            <div class="invalid-feedback">Введите резюме задачи</div>
+                        </div>
+
+                        <!-- Описание -->
+                        <div class="mb-3">
+                            <label for="taskDescription" class="form-label">Описание</label>
+                            <textarea class="form-control" id="taskDescription" v-model="newTask.description" 
+                                      rows="5" placeholder="Введите описание задачи"></textarea>
+                        </div>
+
+                        <!-- Исполнитель -->
+                        <div class="mb-3">
+                            <label for="taskAssignee" class="form-label">Исполнитель</label>
+                            <div class="input-group">
+                                <select class="form-select" id="taskAssignee" v-model="newTask.assigneeId">
+                                    <option :value="null">Выберите исполнителя...</option>
+                                    <option v-for="user in users" :key="user.id" :value="user.id">
+                                        {{ user.full_name }}
+                                    </option>
+                                </select>
+                                <button class="btn btn-outline-secondary" type="button" @click="assignToCurrentUser">
+                                    Назначить себе
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Приоритет -->
+                        <div class="mb-3">
+                            <label for="taskPriority" class="form-label">Приоритет</label>
+                            <select class="form-select" id="taskPriority" v-model="newTask.priority">
+                                <option value="Lowest">Lowest</option>
+                                <option value="Low">Low</option>
+                                <option value="Medium" selected>Medium</option>
+                                <option value="High">High</option>
+                                <option value="Highest">Highest</option>
+                            </select>
+                        </div>
+
+                        <!-- Срок выполнения -->
+                        <div class="mb-3">
+                            <label for="taskDueDate" class="form-label">Срок выполнения</label>
+                            <input type="date" class="form-control" id="taskDueDate" v-model="newTask.dueDate">
+                        </div>
+
+                        <!-- Ошибка и успех -->
+                        <div class="alert alert-danger mt-3" id="createTaskError" :class="{ 'd-none': !taskError }" v-text="taskError"></div>
+                        <div class="alert alert-success mt-3" id="createTaskSuccess" :class="{ 'd-none': !taskSuccess }" v-text="taskSuccess"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="submitCreateTaskButton" :disabled="isTaskSubmitting" @click="createTaskFromModal">
+                        {{ taskSubmitButtonText }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    profile: {
+                        full_name: "",
+                        email: "",
+                        initials: ""
+                    },
+                    project: {
+                        name: "",
+                        description: "",
+                        status: "active",
+                        start_date: ""
+                    },
+                    projectError: "",
+                    projectSuccess: "",
+                    isSubmitting: false,
+                    createProjectModal: null,
+                    createTaskModal: null,
+                    newTask: {
+                        projectId: "",
+                        type: "task",
+                        status: "К выполнению",
+                        title: "",
+                        description: "",
+                        assigneeId: null,
+                        priority: "Medium",
+                        dueDate: ""
+                    },
+                    taskError: "",
+                    taskSuccess: "",
+                    isTaskSubmitting: false,
+                    projects: [],
+                    users: [],
+                    currentPage: "sections",
+                    sections: [],
+                    selectedTemplate: {
+                        id: "kanban",
+                        title: "Kanban",
+                        description: "Работайте эффективно с задачами в формате доски."
+                    },
+                    kanbanWizard: {
+                        step: 1,
+                        name: "",
+                        managementType: "team",
+                        access: "closed",
+                        key: "",
+                        inviteInput: "",
+                        members: [],
+                        role: "member"
+                    },
+                    createdKanban: {
+                        id: null,
+                        name: "",
+                        key: "",
+                        description: "",
+                        viewMode: "board",
+                        boardTasks: {
+                            todo: [],
+                            inProgress: [],
+                            done: []
+                        }
+                    },
+                    sectionViewModes: {},
+                    currentProject: null,
+                    currentProjectView: "board",
+                    projectTasks: [],
+                    projectBoardTasks: {
+                        todo: [],
+                        inProgress: [],
+                        done: []
+                    },
+                    templates: [
+                        {
+                            id: "kanban",
+                            title: "Kanban",
+                            description: "Работайте эффективно с задачами в формате доски.",
+                            previewClass: "template-preview-kanban"
+                        },
+                        {
+                            id: "scrum",
+                            title: "Scrum",
+                            description: "Планируйте спринты и отслеживайте прогресс команды.",
+                            previewClass: "template-preview-scrum"
+                        },
+                        {
+                            id: "empty",
+                            title: "Пустой раздел",
+                            description: "Начните с чистого листа и настройте всё под себя.",
+                            previewClass: "template-preview-empty"
+                        }
+                    ]
+                };
+            },
+            computed: {
+                submitButtonText() {
+                    return this.isSubmitting ? "Создание..." : "Создать";
+                },
+                taskSubmitButtonText() {
+                    return this.isTaskSubmitting ? "Создание..." : "Создать";
+                }
+            },
+            methods: {
+                openTemplatesPage() {
+                    this.currentPage = "templates";
+                },
+                goBackToSections() {
+                    this.currentPage = "sections";
+                },
+                goBackToTemplates() {
+                    this.currentPage = "templates";
+                    this.kanbanWizard.step = 1;
+                },
+                openProject(project) {
+                    this.currentProject = project;
+                    this.currentProjectView = "board";
+                    this.loadProjectTasks(project.id);
+                },
+                goBackToProjects() {
+                    this.currentProject = null;
+                    this.projectTasks = [];
+                    this.projectBoardTasks = {
+                        todo: [],
+                        inProgress: [],
+                        done: []
+                    };
+                },
+                async loadProjectTasks(projectId) {
+                    try {
+                        const response = await fetch(`/projects/${projectId}/tasks`, {
+                            credentials: 'include'
+                        });
+                        if (response.ok) {
+                            const tasks = await response.json();
+                            this.projectTasks = tasks || [];
+                            this.organizeTasksByStatus();
+                        }
+                    } catch (err) {
+                        console.error('Failed to load project tasks:', err);
+                    }
+                },
+                organizeTasksByStatus() {
+                    this.projectBoardTasks = {
+                        todo: this.projectTasks.filter(t => t.status === 'todo' || t.status === 'новая'),
+                        inProgress: this.projectTasks.filter(t => t.status === 'in_progress' || t.status === 'в работе'),
+                        done: this.projectTasks.filter(t => t.status === 'done' || t.status === 'завершена')
+                    };
+                },
+                selectTemplate(templateItem) {
+                    this.selectedTemplate = templateItem;
+                    this.kanbanWizard.step = 1;
+                    this.kanbanWizard.name = '';
+                    this.kanbanWizard.key = '';
+                    this.kanbanWizard.inviteInput = "";
+                    this.kanbanWizard.members = [];
+                    this.kanbanWizard.role = "member";
+                    this.currentPage = "kanbanSetup";
+                },
+updateKanbanKey() {
+    // 1. Проверяем, что имя вообще введено
+    if (!this.kanbanWizard.name) {
+        this.kanbanWizard.key = "";
+        return;
+    }
+    
+    const name = this.kanbanWizard.name.trim();
+    if (!name) {
+        this.kanbanWizard.key = "";
+        return;
+    }
+    
+    // 2. Генерируем ключ из первых букв каждого слова
+    const words = name.split(/\s+/).filter(w => w.length > 0);
+    let key = '';
+    
+    for (const word of words) {
+        if (key.length >= 10) break;
+        key += word[0]; // Берем первую букву слова
+    }
+    
+    // 3. ПРАВКА ТУТ: Оставляем заглавную латиницу (A-Z), кириллицу (А-Я) и цифры
+    key = key.toUpperCase().replace(/[^A-ZА-Я0-9]/g, "").slice(0, 10);
+    
+    // 4. Проверяем, что ключ начинается с буквы (любой: русской или английской)
+    if (!key || !/^[A-ZА-Я]/.test(key)) {
+        this.kanbanWizard.key = ""; 
+        return;
+    }
+    
+    this.kanbanWizard.key = key;
+},
+nextKanbanStep() {
+    const name = this.kanbanWizard.name ? this.kanbanWizard.name.trim() : "";
+    if (!name || name.length < 2) {
+        alert("Пожалуйста, введите название раздела (минимум 2 символа).");
+        return;
+    }
+    
+    if (!this.kanbanWizard.key || this.kanbanWizard.key.length < 1) { // Уменьшил до 1 для гибкости
+        alert("Не удалось сгенерировать ключ. Попробуйте ввести название латиницей или введите ключ вручную.");
+        return;
+    }
+    
+    this.kanbanWizard.step = 2;
+},
+                addInvite() {
+                    const value = this.kanbanWizard.inviteInput.trim();
+                    if (!value || this.kanbanWizard.members.includes(value)) {
+                        return;
+                    }
+                    this.kanbanWizard.members.push(value);
+                    this.kanbanWizard.inviteInput = "";
+                },
+                removeInvite(member) {
+                    this.kanbanWizard.members = this.kanbanWizard.members.filter((item) => item !== member);
+                },
+                async finishKanbanSetup() {
+                    this.isSubmitting = true;
+                    
+                    // Финальная валидация ключа
+                    if (!this.kanbanWizard.key || this.kanbanWizard.key.length < 2 || this.kanbanWizard.key.length > 10) {
+                        alert("Ошибка: Ключ должен содержать от 2 до 10 символов.");
+                        this.isSubmitting = false;
+                        return;
+                    }
+                    
+                    if (!/^[A-Z]/.test(this.kanbanWizard.key)) {
+                        alert("Ошибка: Ключ должен начинаться с заглавной буквы.");
+                        this.isSubmitting = false;
+                        return;
+                    }
+
+                    const projectPayload = {
+                        name: this.kanbanWizard.name.trim(),
+                        key: this.kanbanWizard.key,
+                        description: `Научный раздел: ${this.kanbanWizard.managementType}. Доступ: ${this.kanbanWizard.access}. Ключ: ${this.kanbanWizard.key}`,
+                        status: "active",
+                        start_date: new Date().toISOString(),
+                        created_by: Number(localStorage.getItem('currentUserId') || 1)
+                    };
+
+                    try {
+                        const response = await fetch('/projects', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(projectPayload)
+                        });
+
+                        if (!response.ok) {
+                            const errorMsg = await response.text();
+                            throw new Error(errorMsg || 'Ошибка при создании раздела');
+                        }
+
+                        const newProject = await response.json();
+
+                        const boardTasks = {
+                            todo: [
+                                {
+                                    id: `${this.kanbanWizard.key}-1`,
+                                    title: 'Первая задача',
+                                    description: 'Начните с этой задачи и переместите её по колонкам.',
+                                    priority: 'medium'
+                                }
+                            ],
+                            inProgress: [],
+                            done: []
+                        };
+
+                        const newSection = {
+                            id: newProject.id,
+                            name: newProject.name,
+                            description: projectPayload.description,
+                            key: this.kanbanWizard.key,
+                            boardTasks
+                        };
+
+                        this.sections.unshift(newSection);
+                        this.sectionViewModes[newSection.id] = 'board';
+                        this.createdKanban = {
+                            id: newSection.id,
+                            name: newSection.name,
+                            key: newSection.key,
+                            description: newSection.description,
+                            viewMode: 'board',
+                            boardTasks
+                        };
+
+                        this.kanbanWizard.step = 1;
+                        this.kanbanWizard.name = "";
+                        this.kanbanWizard.key = "";
+                        this.kanbanWizard.inviteInput = "";
+                        this.kanbanWizard.members = [];
+                        this.kanbanWizard.role = "member";
+                        this.currentPage = "sections";
+                        this.projectSuccess = 'Раздел успешно создан';
+                    } catch (error) {
+                        alert("Ошибка: " + error.message);
+                    } finally {
+                        this.isSubmitting = false;
+                    }
+            },
+                openKanbanPage() {
+                    window.location.href = '/kanban.html';
+                },
+                applyTheme(theme) {
+                    if (theme === 'dark') {
+                        document.body.classList.add('dark-theme');
+                    } else {
+                        document.body.classList.remove('dark-theme');
+                    }
+                    localStorage.setItem('appTheme', theme);
+                    document.getElementById('themeLight').classList.toggle('active', theme === 'light');
+                    document.getElementById('themeDark').classList.toggle('active', theme === 'dark');
+                },
+                formatDateForApi(dateValue) {
+                    if (!dateValue) {
+                        return null;
+                    }
+                    return new Date(dateValue + 'T00:00:00').toISOString();
+                },
+                async createProjectFromModal() {
+                    const form = document.getElementById('createProjectForm');
+                    this.projectError = "";
+                    this.projectSuccess = "";
+
+                    if (!form.checkValidity()) {
+                        form.classList.add('was-validated');
+                        return;
+                    }
+
+                    const payload = {
+                        name: this.project.name.trim(),
+                        description: this.project.description.trim(),
+                        status: this.project.status,
+                        start_date: this.formatDateForApi(this.project.start_date),
+                        created_by: Number(localStorage.getItem('currentUserId') || 1)
+                    };
+
+                    this.isSubmitting = true;
+                    try {
+                        const response = await fetch('/projects', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(errorText || 'Не удалось создать проект');
+                        }
+
+                        this.projectSuccess = 'Проект успешно создан';
+                        this.project = { name: "", description: "", status: "active", start_date: "" };
+                        form.classList.remove('was-validated');
+
+                        setTimeout(() => {
+                            if (this.createProjectModal) {
+                                this.createProjectModal.hide();
+                            }
+                        }, 700);
+                    } catch (error) {
+                        this.projectError = error.message || 'Ошибка при создании проекта';
+                    } finally {
+                        this.isSubmitting = false;
+                    }
+                },
+                async loadCurrentUser() {
+                    try {
+                        const response = await fetch('/me');
+                        if (response.ok) {
+                            const user = await response.json();
+                            const names = (user.full_name || "").trim().split(' ').filter(Boolean);
+                            let initials = '';
+                            if (names.length >= 2) {
+                                initials = (names[0][0] + names[1][0]).toUpperCase();
+                            } else if (names.length === 1) {
+                                initials = names[0].substring(0, 2).toUpperCase();
+                            }
+                            this.profile = {
+                                full_name: user.full_name,
+                                email: user.email,
+                                initials
+                            };
+                            localStorage.setItem('currentUserId', String(user.id));
+                        }
+                    } catch (err) {
+                        console.error('Failed to load user profile:', err);
+                    }
+                },
+                async loadProjects() {
+                    try {
+                        const response = await fetch('/user/projects', {
+                            credentials: 'include'
+                        });
+                        if (response.ok) {
+                            this.projects = await response.json();
+                        } else {
+                            console.error('Failed to load projects:', response.status, response.statusText);
+                        }
+                    } catch (err) {
+                        console.error('Failed to load projects:', err);
+                    }
+                },
+                async loadUsers() {
+                    try {
+                        const response = await fetch('/users');
+                        if (response.ok) {
+                            this.users = await response.json();
+                        }
+                    } catch (err) {
+                        console.error('Failed to load users:', err);
+                    }
+                },
+
+                formatDate(dateString) {
+                    if (!dateString) return '';
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+                },
+                assignToCurrentUser() {
+                    const userId = Number(localStorage.getItem('currentUserId'));
+                    if (userId) {
+                        this.newTask.assigneeId = userId;
+                    }
+                },
+                resetTaskForm() {
+                    this.newTask = {
+                        projectId: "",
+                        type: "task",
+                        status: "К выполнению",
+                        title: "",
+                        description: "",
+                        assigneeId: null,
+                        priority: "Medium",
+                        dueDate: ""
+                    };
+                    this.taskError = "";
+                    this.taskSuccess = "";
+                },
+                async createTaskFromModal() {
+                    const form = document.getElementById('createTaskForm');
+                    this.taskError = "";
+                    this.taskSuccess = "";
+
+                    if (!form.checkValidity()) {
+                        form.classList.add('was-validated');
+                        return;
+                    }
+
+                    const currentUserId = Number(localStorage.getItem('currentUserId') || 1);
+
+                    const taskPayload = {
+                        project_id: Number(this.newTask.projectId),
+                        title: this.newTask.title.trim(),
+                        description: this.newTask.description.trim(),
+                        status: this.newTask.status,
+                        priority: this.newTask.priority,
+                        assignee_id: this.newTask.assigneeId || null,
+                        created_by: currentUserId,
+                        due_date: this.newTask.dueDate ? new Date(this.newTask.dueDate + 'T00:00:00').toISOString() : null
+                    };
+
+                    this.isTaskSubmitting = true;
+                    try {
+                        const response = await fetch('/tasks', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(taskPayload)
+                        });
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(errorText || 'Не удалось создать задачу');
+                        }
+
+                        this.taskSuccess = 'Задача успешно создана';
+                        this.resetTaskForm();
+                        form.classList.remove('was-validated');
+
+                        setTimeout(() => {
+                            if (this.createTaskModal) {
+                                this.createTaskModal.hide();
+                            }
+                        }, 700);
+                    } catch (error) {
+                        this.taskError = error.message || 'Ошибка при создании задачи';
+                    } finally {
+                        this.isTaskSubmitting = false;
+                    }
+                }
+            },
+            mounted() {
+                const savedTheme = localStorage.getItem('appTheme') || 'light';
+                this.applyTheme(savedTheme);
+
+                this.loadCurrentUser();
+                this.loadProjects();
+                this.loadUsers();
+
+                const modalElement = document.getElementById('createProjectModal');
+                this.createProjectModal = new bootstrap.Modal(modalElement);
+
+                const taskModalElement = document.getElementById('createTaskModal');
+                this.createTaskModal = new bootstrap.Modal(taskModalElement);
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

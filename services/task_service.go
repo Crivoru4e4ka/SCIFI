@@ -236,3 +236,10 @@ func GetTaskByID(id int) (models.Task, error) {
 
 	return t, nil
 }
+
+func UpdateTaskSprint(taskId int, sprintId *int) error {
+	// Если sprintId == nil, в базе запишется NULL (задача вернется в бэклог)
+	query := `UPDATE tasks SET sprint_id = $1, updated_at = NOW() WHERE id = $2`
+	_, err := db.DB.Exec(query, sprintId, taskId)
+	return err
+}

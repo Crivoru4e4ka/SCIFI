@@ -710,9 +710,19 @@
                     <button class="btn btn-outline-secondary btn-sm" v-else>Завершить</button>
                 </div>
             </div>
-            <div class="card-body p-0">
-                <div class="list-group list-group-flush">
-                    <div v-for="task in getSprintTasks(sprint.id)" :key="task.id" class="list-group-item list-group-item-action d-flex align-items-center py-2 border-start-0 border-end-0">
+<div class="card-body p-0">
+    <!-- Добавили события @dragover и @drop на весь список спринта -->
+<div class="list-group list-group-flush" 
+     style="min-height: 50px;" 
+     @dragover.prevent 
+     @drop="onDropToSprint($event, sprint.id)">
+        
+<div v-for="task in getSprintTasks(sprint.id)" 
+     :key="task.id" 
+     class="list-group-item list-group-item-action d-flex align-items-center py-2 border-start-0 border-end-0"
+             draggable="true" 
+             @dragstart="startDrag($event, task)"
+             style="cursor: grab;">
                          <span class="text-muted small me-3" style="width: 90px; display: inline-block;">
                             {{ (currentProject && currentProject.key ? currentProject.key : 'TASK').toUpperCase() }}-{{ task.task_num }}
                          </span>
@@ -736,9 +746,19 @@
             <h5 class="mb-0">Бэклог</h5>
             <span class="badge bg-secondary ms-2">{{ getBacklogTasks().length }} задач</span>
         </div>
-        <div class="card shadow-sm">
-            <div class="list-group list-group-flush">
-                <div v-for="task in getBacklogTasks()" :key="task.id" class="list-group-item list-group-item-action d-flex align-items-center py-2 border-start-0 border-end-0">
+<div class="card shadow-sm">
+    <!-- Добавили события @dragover и @drop (с параметром null, так как это бэклог) -->
+<div class="list-group list-group-flush" 
+     style="min-height: 100px;" 
+     @dragover.prevent 
+     @drop="onDropToSprint($event, null)">
+        
+<div v-for="task in getBacklogTasks()" 
+     :key="task.id" 
+     class="list-group-item list-group-item-action d-flex align-items-center py-2 border-start-0 border-end-0"
+             draggable="true" 
+             @dragstart="startDrag($event, task)"
+             style="cursor: grab;">
                     <i class="fas fa-grip-vertical me-3 text-muted small"></i>
                     <span class="text-muted small me-3" style="width: 90px; display: inline-block;">
                         {{ (currentProject && currentProject.key ? currentProject.key : 'TASK').toUpperCase() }}-{{ task.task_num }}
@@ -1199,6 +1219,7 @@
                     isTaskSubmitting: false,
                     projects: [],
                     sprints: [],
+                    draggedTask: null,
                     projectTasks: [],
                     projectAttachments: [],
                     selectedFile: null, 
@@ -1421,6 +1442,42 @@ handleTaskFileSelect(event) {
     } catch (err) {
         console.error("Ошибка сети:", err);
         alert("Не удалось связаться с сервером");
+    }
+},
+// 1. Когда начинаем тянуть задачу
+startDrag(event, task) {
+    this.draggedTask = task;
+    event.dataTransfer.effectAllowed = 'move';
+},
+
+// 2. Когда отпускаем задачу над спринтом или бэклогом
+async onDropToSprint(event, sprintId) {
+    if (!this.draggedTask) return;
+
+    const taskId = this.draggedTask.id;
+    
+    // Оптимистичное обновление UI (сразу переносим задачу в списке)
+    this.draggedTask.sprint_id = sprintId;
+
+    try {
+        const response = await fetch(`/tasks/${taskId}/sprint`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sprint_id: sprintId })
+        });
+
+        if (!response.ok) {
+            throw new Error("Ошибка сервера");
+        }
+        
+        console.log(`Задача ${taskId} успешно перенесена в спринт ${sprintId}`);
+    } catch (err) {
+        console.error(err);
+        alert("Не удалось сохранить перемещение. Обновите страницу.");
+        // В случае ошибки можно перезагрузить задачи
+        this.loadProjectTasks(this.currentProject.id);
+    } finally {
+        this.draggedTask = null;
     }
 },
                 organizeTasksByStatus() {

@@ -10,6 +10,8 @@ import (
 func InitRoutes() *mux.Router {
 	r := mux.NewRouter()
 
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+
 	// --- Auth ---
 	r.HandleFunc("/auth/register", handlers.Register).Methods("POST")
 	r.HandleFunc("/auth/login", handlers.Login).Methods("POST")

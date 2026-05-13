@@ -766,44 +766,58 @@
 </div> 
 <!-- Содержимое вкладки Файлы -->
 <div v-if="currentProjectView === 'attachments'" class="mt-4">
-    <div class="card shadow-sm">
+    <div class="card shadow-sm border-0">
         <div class="card-body">
             <h5 class="card-title mb-4">Вложения проекта</h5>
             
-            <div class="mb-4 p-3 bg-light rounded border">
-                <label class="btn btn-primary mb-0">
-                    <i class="fas fa-upload me-2"></i>Загрузить новый файл
-                    <input type="file" @change="uploadFile" hidden>
-                </label>
-                <small class="text-muted ms-3">Файл будет привязан к текущему разделу</small>
-            </div>
-
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
-                    <thead>
+                    <thead class="table-light">
                         <tr>
+                            <th style="width: 120px;">Предпросмотр</th>
                             <th>Имя файла</th>
-                            <th>ID Задачи</th>
-                            <th>Кем загружено</th>
-                            <th>Дата</th>
-                            <th>Действие</th>
+                            <th>Задача</th>
+                            <th>Дата загрузки</th>
+                            <th class="text-end">Действие</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="file in projectAttachments" :key="file.id">
-                            <td><i class="far fa-file me-2 text-primary"></i>{{ file.file_name }}</td>
-                            <td><span class="badge bg-light text-dark">{{ file.task_id }}</span></td>
-                            <td>{{ getUserName(file.user_id) }}</td>
-                            <td class="small text-muted">{{ formatDate(file.created_at) }}</td>
+                            <!-- Колонка с картинкой -->
                             <td>
-                                <a :href="file.file_url" target="_blank" class="btn btn-sm btn-outline-secondary">
-                                    <i class="fas fa-download"></i>
+                                <div v-if="isImage(file.file_name)" class="rounded border bg-light d-flex align-items-center justify-content-center" style="width: 80px; height: 60px; overflow: hidden;">
+                                    <img :src="file.file_url" class="img-fluid" style="object-fit: cover; min-height: 100%;">
+                                </div>
+                                <div v-else class="rounded border bg-light d-flex align-items-center justify-content-center text-muted" style="width: 80px; height: 60px;">
+                                    <i class="fas fa-file-alt fa-lg"></i>
+                                </div>
+                            </td>
+                            
+                            <td>
+                                <div class="fw-bold">{{ file.file_name }}</div>
+                                <div class="small text-muted">Загрузил: {{ getUserName(file.user_id) }}</div>
+                            </td>
+                            
+                            <td>
+                                <span class="badge bg-info text-dark">
+                                    ID Задачи: {{ file.task_id }}
+                                </span>
+                            </td>
+                            
+                            <td class="small text-muted">{{ formatDate(file.created_at) }}</td>
+                            
+                            <td class="text-end">
+                                <a :href="file.file_url" :download="file.file_name" target="_blank" class="btn btn-primary btn-sm rounded-pill px-3">
+                                    <i class="fas fa-download me-1"></i>Скачать
                                 </a>
                             </td>
                         </tr>
-                        <!-- Проверяем, что массив существует И он пустой -->
-                        <tr v-if="projectAttachments && projectAttachments.length === 0">
-                            <td colspan="5" class="text-center py-5 text-muted">В этом проекте пока нет загруженных файлов.</td>
+                        
+                        <tr v-if="!projectAttachments || projectAttachments.length === 0">
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fas fa-folder-open fa-3x mb-3 opacity-25"></i>
+                                <p>В этом проекте пока нет загруженных файлов.</p>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -1123,6 +1137,13 @@
                             <input type="date" class="form-control" id="taskDueDate" v-model="newTask.dueDate">
                         </div>
 
+                        <!-- Вложение -->
+                        <div class="mb-3">
+                            <label for="taskFile" class="form-label">Прикрепить файл</label>
+                            <input type="file" class="form-control" id="taskFile" @change="handleTaskFileSelect">
+                            <div class="form-text text-muted">Вы можете прикрепить документ или изображение к этой задаче</div>
+                        </div>
+
                         <!-- Ошибка и успех -->
                         <div class="alert alert-danger mt-3" id="createTaskError" :class="{ 'd-none': !taskError }" v-text="taskError"></div>
                         <div class="alert alert-success mt-3" id="createTaskSuccess" :class="{ 'd-none': !taskSuccess }" v-text="taskSuccess"></div>
@@ -1180,6 +1201,7 @@
                     sprints: [],
                     projectTasks: [],
                     projectAttachments: [],
+                    selectedFile: null, 
                     users: [],
                     currentPage: "sections",
                     sections: [],
@@ -1322,48 +1344,27 @@ async loadProjectAttachments(projectId) {
         const response = await fetch(`/projects/${projectId}/attachments`);
         if (response.ok) {
             const data = await response.json();
-            // Если сервер прислал null вместо списка, ставим пустой массив
+            // Если сервер прислал null, ставим пустой массив, чтобы .length не ломался
             this.projectAttachments = data || [];
         } else {
             this.projectAttachments = [];
         }
     } catch (err) {
         console.error('Ошибка загрузки файлов:', err);
-        this.projectAttachments = []; // Важно сбросить в массив при ошибке сети
+        this.projectAttachments = [];
     }
 },
-async uploadFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Проверяем наличие задач ПЕРЕД обращением к [0]
-    if (!this.projectTasks || this.projectTasks.length === 0) {
-        alert("В проекте нет задач, к которым можно прикрепить файл.");
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('file', file);
-
-    // Привязываем к ID первой попавшейся задачи проекта
-    const taskId = this.projectTasks[0].id;
-
-    try {
-        const response = await fetch(`/tasks/${taskId}/attachments`, {
-            method: 'POST',
-            body: formData
-        });
-
-        if (response.ok) {
-            alert("Файл успешно загружен!");
-            this.loadProjectAttachments(this.currentProject.id); 
-        } else {
-            alert("Ошибка при сохранении файла на сервере.");
-        }
-    } catch (err) {
-        console.error("Ошибка загрузки:", err);
-        alert("Не удалось отправить файл.");
-    }
+handleTaskFileSelect(event) {
+    this.selectedFile = event.target.files[0];
+    console.log("Файл выбран и готов к загрузке:", this.selectedFile);
+},
+isImage(fileName) {
+    if (!fileName) return false;
+    const ext = fileName.toLowerCase().split('.').pop();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+},
+handleTaskFileSelect(event) {
+    this.selectedFile = event.target.files[0];
 },
                 goBackToProjects() {
                     this.currentProject = null;
@@ -1792,56 +1793,86 @@ nextKanbanStep() {
                     this.taskError = "";
                     this.taskSuccess = "";
                 },
-                async createTaskFromModal() {
-                    const form = document.getElementById('createTaskForm');
-                    this.taskError = "";
-                    this.taskSuccess = "";
+async createTaskFromModal() {
+    const form = document.getElementById('createTaskForm');
+    this.taskError = "";
+    this.taskSuccess = "";
 
-                    if (!form.checkValidity()) {
-                        form.classList.add('was-validated');
-                        return;
-                    }
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
+    }
 
-                    const currentUserId = Number(localStorage.getItem('currentUserId') || 1);
+    const currentUserId = Number(localStorage.getItem('currentUserId') || 1);
 
-                    const taskPayload = {
-                        project_id: Number(this.newTask.projectId),
-                        title: this.newTask.title.trim(),
-                        description: this.newTask.description.trim(),
-                        status: this.newTask.status,
-                        priority: this.newTask.priority,
-                        assignee_id: this.newTask.assigneeId || null,
-                        created_by: currentUserId,
-                        due_date: this.newTask.dueDate ? new Date(this.newTask.dueDate + 'T00:00:00').toISOString() : null
-                    };
+    const taskPayload = {
+        project_id: Number(this.newTask.projectId),
+        title: this.newTask.title.trim(),
+        description: this.newTask.description.trim(),
+        status: this.newTask.status,
+        priority: this.newTask.priority,
+        assignee_id: this.newTask.assigneeId || null,
+        created_by: currentUserId
+    };
 
-                    this.isTaskSubmitting = true;
-                    try {
-                        const response = await fetch('/tasks', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(taskPayload)
-                        });
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(errorText || 'Не удалось создать задачу');
-                        }
+    this.isTaskSubmitting = true;
 
-                        this.taskSuccess = 'Задача успешно создана';
-                        this.resetTaskForm();
-                        form.classList.remove('was-validated');
+    try {
+        // ШАГ 1: Создаем задачу
+        const response = await fetch('/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(taskPayload)
+        });
 
-                        setTimeout(() => {
-                            if (this.createTaskModal) {
-                                this.createTaskModal.hide();
-                            }
-                        }, 700);
-                    } catch (error) {
-                        this.taskError = error.message || 'Ошибка при создании задачи';
-                    } finally {
-                        this.isTaskSubmitting = false;
-                    }
-                }
+        if (!response.ok) throw new Error('Не удалось создать задачу');
+        
+        const createdTask = await response.json(); // Получаем созданную задачу с её ID
+        console.log("Задача создана успешно, ID:", createdTask.id);
+
+        // ШАГ 2: Если пользователь выбрал файл, загружаем его СРАЗУ
+        if (this.selectedFile) {
+            const formData = new FormData();
+            formData.append('file', this.selectedFile);
+
+            // Используем ID только что созданной задачи!
+            const uploadResponse = await fetch(`/tasks/${createdTask.id}/attachments`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!uploadResponse.ok) {
+                console.error("Задача создана, но файл не загрузился");
+            } else {
+                console.log("Файл успешно привязан к задаче", createdTask.id);
+            }
+        }
+
+        this.taskSuccess = 'Задача создана успешно';
+        
+        // Очищаем форму
+        this.resetTaskForm();
+        this.selectedFile = null; 
+        const fileInput = document.getElementById('taskFile');
+        if (fileInput) fileInput.value = ''; 
+
+        // Обновляем списки на главной
+        if (this.currentProject) {
+            this.loadProjectTasks(this.currentProject.id);
+            this.loadProjectAttachments(this.currentProject.id);
+        }
+
+        setTimeout(() => {
+            this.createTaskModal.hide();
+            form.classList.remove('was-validated');
+        }, 1000);
+
+    } catch (error) {
+        this.taskError = error.message;
+    } finally {
+        this.isTaskSubmitting = false;
+    }
+},
             },
             mounted() {
                 const savedTheme = localStorage.getItem('appTheme') || 'light';

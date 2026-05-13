@@ -697,23 +697,39 @@
 
         <!-- Пример активного или планируемого спринта -->
         <div v-for="sprint in sprints" :key="sprint.id" class="card mb-3 border-secondary shadow-sm">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
-                <div>
-                    <i class="fas fa-chevron-down me-2 small text-muted"></i>
-                    <span class="fw-bold">{{ sprint.name }}</span>
-                    <span class="badge bg-primary ms-2" v-if="sprint.status === 'active'">Активен</span>
-                    <span class="text-muted small ms-3">{{ sprint.startDate }} — {{ sprint.endDate }}</span>
-                </div>
-                <div class="d-flex align-items-center gap-3">
-                    <div class="small text-muted">Задач: {{ getSprintTasks(sprint.id).length }}</div>
-                    <button class="btn btn-primary btn-sm" 
-        v-if="sprint.status === 'planned'" 
-        @click="openStartSprintModal(sprint)">
-    Запустить спринт
-</button>
-                    <button class="btn btn-outline-secondary btn-sm" v-else>Завершить</button>
-                </div>
-            </div>
+<!-- Шапка спринта (Вкладка Бэклог, строки 455-470) -->
+<div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+    <div>
+        <i class="fas fa-chevron-down me-2 small text-muted"></i>
+        <span class="fw-bold">{{ sprint.name }}</span>
+        
+        <!-- ВСТАВКА №1: Таймер (вместо обычной плашки "Активен") -->
+        <span class="badge bg-primary ms-2" v-if="sprint.status === 'active'">
+            Активен (до {{ formatDateShort(sprint.end_date) }})
+        </span>
+        
+        <span class="text-muted small ms-3" v-if="sprint.start_date">{{ formatDateShort(sprint.start_date) }} — {{ formatDateShort(sprint.end_date) }}</span>
+    </div>
+    
+    <!-- ВСТАВКА №2: Кнопки Начать / Завершить -->
+    <div class="d-flex align-items-center gap-3">
+        <div class="small text-muted">Задач: {{ getSprintTasks(sprint.id).length }}</div>
+        
+        <!-- Если спринт запланирован — кнопка Запустить -->
+        <button class="btn btn-primary btn-sm" 
+                v-if="sprint.status === 'planned'" 
+                @click="openStartSprintModal(sprint)">
+            Запустить спринт
+        </button>
+        
+        <!-- Если спринт активен — кнопка Завершить -->
+        <button class="btn btn-success btn-sm" 
+                v-if="sprint.status === 'active'" 
+                @click="completeSprint(sprint)">
+            <i class="fas fa-check me-1"></i>Завершить спринт
+        </button>
+    </div>
+</div>
 <div class="card-body p-0">
     <!-- Добавили события @dragover и @drop на весь список спринта -->
 <div class="list-group list-group-flush" 
@@ -1444,6 +1460,7 @@ async confirmStartSprint() {
                 goal: this.sprintForm.goal
             })
         });
+        
 
         if (response.ok) {
             this.startSprintModal.hide();
@@ -1455,6 +1472,39 @@ async confirmStartSprint() {
         }
     } catch (err) {
         console.error("Ошибка сети:", err);
+    }
+},
+// 1. Красивое форматирование даты для шапки (например, "27 мая")
+formatDateShort(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+},
+
+// 2. Метод завершения спринта
+async completeSprint(sprint) {
+    const confirmMsg = `Вы уверены, что хотите завершить спринт "${sprint.name}"?\nНезавершенные задачи будут возвращены в бэклог.`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        const response = await fetch(`/sprints/${sprint.id}/complete`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.ok) {
+            alert("Спринт успешно завершен!");
+            // Перезагружаем данные проекта
+            if (this.currentProject) {
+                await this.loadProjectSprints(this.currentProject.id);
+                await this.loadProjectTasks(this.currentProject.id);
+            }
+        } else {
+            alert("Не удалось завершить спринт на сервере.");
+        }
+    } catch (err) {
+        console.error("Ошибка сети:", err);
+        alert("Ошибка связи с сервером.");
     }
 },
                 getBacklogTasks() {
@@ -1605,13 +1655,22 @@ async onDropToSprint(event, sprintId) {
         this.draggedTask = null;
     }
 },
-                organizeTasksByStatus() {
-                    this.projectBoardTasks = {
-                        todo: this.projectTasks.filter(t => t.status === 'todo'),
-                        inProgress: this.projectTasks.filter(t => t.status === 'in_progress'),
-                        done: this.projectTasks.filter(t => t.status === 'done')
-                    };
-                },
+organizeTasksByStatus() {
+    // 1. Находим, какой спринт сейчас активен
+    const activeSprint = this.sprints.find(s => s.status === 'active');
+
+    // 2. Если есть активный спринт — фильтруем задачи по его ID
+    // Если активного спринта нет — доска пустая (как в Jira)
+    const filteredTasks = activeSprint 
+        ? this.projectTasks.filter(t => t.sprint_id === activeSprint.id)
+        : [];
+
+    this.projectBoardTasks = {
+        todo: filteredTasks.filter(t => t.status === 'todo' || t.status === 'к выполнению'),
+        inProgress: filteredTasks.filter(t => t.status === 'in_progress' || t.status === 'в работе'),
+        done: filteredTasks.filter(t => t.status === 'done' || t.status === 'готово')
+    };
+},
                 startDrag(event, task, status) {
                     this.draggedTask = task;
                     this.draggedFromStatus = status;

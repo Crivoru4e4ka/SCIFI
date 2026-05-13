@@ -72,3 +72,27 @@ func StartSprint(id int, s models.Sprint) error {
 	_, err := db.DB.Exec(query, s.Name, s.StartDate, s.EndDate, s.Goal, id)
 	return err
 }
+
+func CompleteSprint(sprintID int) error {
+	// Начинаем транзакцию
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Закрываем сам спринт
+	_, err = tx.Exec(`UPDATE sprints SET status = 'closed', end_date = NOW() WHERE id = $1`, sprintID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Jira-логика: Все задачи, которые НЕ в статусе 'done', возвращаем в бэклог (sprint_id = NULL)
+	_, err = tx.Exec(`UPDATE tasks SET sprint_id = NULL WHERE sprint_id = $1 AND status != 'done'`, sprintID)
+	if err != nil {
+		return err
+	}
+
+	// Фиксируем изменения в базе
+	return tx.Commit()
+}

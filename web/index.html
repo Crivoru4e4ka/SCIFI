@@ -12,9 +12,82 @@
             background-color: #f6f7fb;
             color: #172b4d;
         }
+/* Контейнер поиска */
+.search-wrap {
+    position: relative;
+    width: 780px;
+    /* Убеждаемся, что сам контейнер имеет приоритет над другими элементами навигации */
+    z-index: 1060; 
+}
+
+/* Выпадающее окно поиска */
+.search-dropdown {
+    position: absolute;
+    top: calc(100% + 5px); /* Небольшой отступ от строки поиска */
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    /* Увеличиваем тень, чтобы окно "парило" над страницей */
+    box-shadow: 0 12px 32px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
+    /* Ставим z-index выше, чем у сайдбара и других элементов (обычно 1000-1050) */
+    z-index: 2000 !important; 
+    display: none;
+    max-height: 80vh;
+    overflow-y: auto;
+    border: 1px solid #dfe1e6;
+}
+
+.search-dropdown.show {
+    display: block;
+}
+
+/* Левая и правая части */
+.search-results-left {
+    padding: 16px;
+    border-right: 1px solid #ebecf0;
+}
+
+.search-filters-right {
+    padding: 16px;
+    background-color: #fafbfc;
+    width: 280px;
+}
+
+/* Элементы списка */
+.search-item {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+.search-item:hover {
+    background-color: #f4f5f7;
+}
+
+.search-section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #6b778c;
+    text-transform: uppercase;
+    margin: 16px 0 8px 8px;
+}
+
+.filter-group-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #42526e;
+    margin-bottom: 12px;
+}
         .navbar {
             background-color: #ffffff;
             border-bottom: 1px solid #e4e7eb;
+            overflow: visible !important;
+            z-index: 1050;
         }
         .navbar-logo {
             width: 64px;
@@ -402,12 +475,65 @@ body.dark-theme .jira-tag {
                 Scifi
             </a>
             <div class="nav-center-actions">
-                <div class="search-wrap">
-                    <div class="input-group search-bar shadow-sm">
-                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        <input type="search" class="form-control" placeholder="Поиск" aria-label="Поиск">
-                    </div>
+<div class="search-wrap" v-click-outside="closeSearch">
+    <div class="input-group search-bar shadow-sm">
+        <span class="input-group-text border-end-0 bg-white"><i class="fas fa-search"></i></span>
+        <input type="search" class="form-control border-start-0" 
+               placeholder="Поиск" 
+               v-model="searchQuery"
+               @focus="isSearchOpen = true"
+               @input="organizeTasksByStatus">
+    </div>
+
+    <!-- ВЫПАДАЮЩЕЕ ОКНО (Появляется при фокусе) -->
+    <div class="search-dropdown shadow-lg" :class="{'show': isSearchOpen}">
+        <div class="d-flex">
+            <!-- ЛЕВАЯ ЧАСТЬ: Результаты -->
+            <div class="search-results-left flex-grow-1">
+                <div class="search-section-title">Задачи (результаты поиска)</div>
+                <div v-for="task in displayedTasks.slice(0, 5)" :key="task.id" class="search-item" @click="openTaskDetails(task); isSearchOpen = false">
+                    <i class="fas fa-check-square text-primary me-2"></i>
+                    <span class="text-muted small me-2">{{ (currentProject?.key || 'TASK') }}-{{ task.task_num }}</span>
+                    <span class="small">{{ task.title }}</span>
                 </div>
+                <div v-if="displayedTasks.length === 0" class="p-3 text-muted small">Ничего не найдено</div>
+
+                <div class="search-section-title">Разделы</div>
+                <div v-for="proj in projects.slice(0, 3)" :key="proj.id" class="search-item" @click="openProject(proj); isSearchOpen = false">
+                    <div class="avatar-circle bg-primary text-white me-2" style="width: 24px; height: 24px; font-size: 0.7rem;">
+                        {{ proj.name[0] }}
+                    </div>
+                    <span class="small">{{ proj.name }}</span>
+                </div>
+                
+                <hr>
+                <a href="#" class="search-item text-primary small" @click.prevent="currentProjectView = 'list'; isSearchOpen = false">
+                    <i class="fas fa-list me-2"></i>Просмотреть все задачи
+                </a>
+            </div>
+
+            <!-- ПРАВАЯ ЧАСТЬ: Быстрые фильтры -->
+            <div class="search-filters-right">
+                <div class="filter-group-title">ФИЛЬТР ПО ПРИОРИТЕТУ</div>
+                <div class="d-flex flex-wrap gap-1 mb-4">
+                    <button class="btn btn-sm btn-light border py-0 px-2" @click="filterPriority = 'high'; organizeTasksByStatus()">High</button>
+                    <button class="btn btn-sm btn-light border py-0 px-2" @click="filterPriority = 'medium'; organizeTasksByStatus()">Medium</button>
+                    <button class="btn btn-sm btn-light border py-0 px-2" @click="filterPriority = 'all'; organizeTasksByStatus()">Все</button>
+                </div>
+
+                <div class="filter-group-title">БЫСТРЫЕ ДЕЙСТВИЯ</div>
+                <div class="form-check small mb-1">
+                    <input class="form-check-input" type="checkbox" id="fMeSearch" v-model="filterMyTasks" @change="organizeTasksByStatus">
+                    <label class="form-check-label" for="fMeSearch">Назначено мне</label>
+                </div>
+                
+                <div class="mt-4 pt-4 border-top">
+                    <button class="btn btn-outline-danger btn-sm w-100" @click="resetFilters">Сбросить фильтры</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
                 <button class="btn btn-primary" type="button" id="createProjectButton" @click="createTaskModal.show()">
                     <i class="fas fa-plus me-2"></i>Создать
                 </button>
@@ -526,15 +652,22 @@ body.dark-theme .jira-tag {
       </div>
     </div>
     
-    <div v-else class="card card-light shadow-sm text-center py-5">
+<!-- Состояние, когда разделов еще нет -->
+    <div v-else class="card card-light shadow-sm text-center py-5 border-0">
       <div class="card-body">
         <div class="mb-4">
-          <div class="display-4 text-primary"><i class="fas fa-columns"></i></div>
+          <!-- Заменим иконку на более подходящую для старта проекта -->
+          <div class="display-1 text-primary opacity-25">
+            <i class="fas fa-rocket"></i>
+          </div>
         </div>
-        <h5 class="mb-2">Создайте первый раздел</h5>
-        <p class="text-muted mb-4">Получите быстрый старт с помощью шаблонов или создайте раздел с нуля.</p>
-        <button class="btn btn-primary" type="button" @click="startProjectCreation">
-          <i class="fas fa-th-large me-2"></i>Открыть шаблоны
+        <h3 class="fw-bold mb-3">Добро пожаловать в Scifi</h3>
+        <p class="text-muted mb-4 mx-auto" style="max-width: 500px;">
+          Начните работу над вашим научным исследованием. Создайте свой первый рабочий раздел, 
+          чтобы планировать задачи, управлять спринтами и систематизировать вложения.
+        </p>
+        <button class="btn btn-primary btn-lg shadow-sm px-5" type="button" @click="startProjectCreation">
+          <i class="fas fa-plus me-2"></i>Создать первый раздел
         </button>
       </div>
     </div>
@@ -557,6 +690,34 @@ body.dark-theme .jira-tag {
         <div class="text-muted small">{{ currentProject.description }}</div>
       </div>
     </div>
+
+<!-- 
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <span class="small text-muted me-2">Фильтры:</span>
+    
+    <button class="btn btn-sm rounded-pill" 
+            :class="filterMyTasks ? 'btn-primary' : 'btn-outline-secondary'"
+            @click="filterMyTasks = !filterMyTasks; organizeTasksByStatus()">
+        Только мои
+    </button>
+
+    <select class="form-select form-select-sm w-auto rounded-pill" 
+            v-model="filterPriority" 
+            @change="organizeTasksByStatus">
+        <option value="all">Все приоритеты</option>
+        <option value="highest">Highest</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+    </select>
+
+    <button class="btn btn-link btn-sm text-decoration-none" 
+            v-if="searchQuery || filterMyTasks || filterPriority !== 'all'"
+            @click="resetFilters">
+        Очистить всё
+    </button>
+</div> 
+-->
 
     <!-- Вкладки: Доска и Backlog -->
     <div class="mb-3 border-bottom">
@@ -589,7 +750,7 @@ body.dark-theme .jira-tag {
                     </tr>
                 </thead>
 <tbody>
-    <template v-for="task in projectTasks" :key="task.id">
+    <template v-for="task in displayedTasks" :key="task.id">
         <!-- Основная строка -->
         <tr @click="toggleTask(task.id)" style="cursor: pointer;" :class="{'table-active': expandedTaskId === task.id}">
             <td class="ps-3 text-muted small fw-bold">
@@ -1351,9 +1512,26 @@ body.dark-theme .jira-tag {
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script>
-        const { createApp } = Vue;
+const { createApp } = Vue;
 
-        createApp({
+// 1. Создаем логику "Клик вне элемента"
+const clickOutside = {
+  beforeMount: (el, binding) => {
+    el.clickOutsideEvent = event => {
+      // Если клик был НЕ по самому элементу (el) и НЕ по его внутренностям
+      if (!(el == event.target || el.contains(event.target))) {
+        // Вызываем функцию, которую передали (в нашем случае closeSearch)
+        binding.value();
+      }
+    };
+    document.addEventListener("click", el.clickOutsideEvent);
+  },
+  unmounted: el => {
+    document.removeEventListener("click", el.clickOutsideEvent);
+  },
+};
+
+const app = createApp({
             data() {
                 return {
                     profile: {
@@ -1401,6 +1579,12 @@ startSprintModal: null,
                     draggedTask: null,
                     projectTasks: [],
                     projectAttachments: [],
+                    searchQuery: '',           // Текст поиска
+                    filterMyTasks: false,      // Флаг "Только мои задачи"
+                    filterPriority: 'all',
+                    isSearchOpen: false,
+                    displayedTasks: [],     // Фильтр по приоритету
+                    activeTags: [],            // Выбранные теги для фильтрации
                     expandedTaskId: null, 
                     selectedFile: null, 
                     users: [],
@@ -1475,6 +1659,9 @@ startSprintModal: null,
                 }
             },
             methods: {
+closeSearch() {
+    this.isSearchOpen = false;
+},
 startProjectCreation() {
     // Находим основной шаблон (теперь он может называться "Базовый" или "Стандартный")
     const mainTemplate = this.templates.find(t => t.id === 'kanban');
@@ -1769,31 +1956,63 @@ async onDropToSprint(event, sprintId) {
     }
 },
 organizeTasksByStatus() {
-    // 1. Пытаемся найти активный спринт
+    if (!this.projectTasks) return;
+
+    const currentUserId = Number(localStorage.getItem('currentUserId'));
+
+    // 1. Сначала применяем фильтры ко всему массиву задач
+    const filtered = this.projectTasks.filter(task => {
+        // Фильтр по тексту (поиск в названии, описании и тегах)
+        const searchLower = this.searchQuery.toLowerCase();
+        const matchesSearch = !this.searchQuery || 
+            task.title.toLowerCase().includes(searchLower) || 
+            (task.description && task.description.toLowerCase().includes(searchLower)) ||
+            (task.tags && task.tags.toLowerCase().includes(searchLower));
+
+        // Фильтр "Только мои"
+        const matchesAssignee = !this.filterMyTasks || task.assignee_id === currentUserId;
+
+        // Фильтр по приоритету
+        const matchesPriority = this.filterPriority === 'all' || task.priority.toLowerCase() === this.filterPriority;
+
+        return matchesSearch && matchesAssignee && matchesPriority;
+    });
+
+    // 2. Затем смотрим, какой спринт активен (как мы делали раньше)
     const activeSprint = this.sprints.find(s => s.status === 'active');
 
-    // 2. Умная фильтрация:
-    // Если есть активный спринт — показываем только задачи этого спринта.
-    // Если активного спринта НЕТ — показываем вообще все задачи проекта (режим Kanban).
-    const filteredTasks = activeSprint 
-        ? this.projectTasks.filter(t => t.sprint_id === activeSprint.id)
-        : this.projectTasks;
+    // 3. Если мы на "Доске", показываем только задачи активного спринта (если он есть)
+    // Но для Списка и Бэклога нам нужны все отфильтрованные задачи
+    const boardTasksSource = activeSprint 
+        ? filtered.filter(t => t.sprint_id === activeSprint.id)
+        : filtered;
 
-    // 3. Распределяем задачи по колонкам (с учетом регистра и возможных русских названий)
+    // 4. Распределяем по колонкам для Доски
     this.projectBoardTasks = {
-        todo: filteredTasks.filter(t => {
+        todo: boardTasksSource.filter(t => {
             const s = (t.status || '').toLowerCase();
             return s === 'todo' || s === 'к выполнению';
         }),
-        inProgress: filteredTasks.filter(t => {
+        inProgress: boardTasksSource.filter(t => {
             const s = (t.status || '').toLowerCase();
             return s === 'in_progress' || s === 'в работе';
         }),
-        done: filteredTasks.filter(t => {
+        done: boardTasksSource.filter(t => {
             const s = (t.status || '').toLowerCase();
             return s === 'done' || s === 'готово';
         })
     };
+    
+    // Сохраняем отфильтрованный список для табличного вида (Список)
+    this.displayedTasks = filtered; 
+},
+
+// Добавь также метод сброса:
+resetFilters() {
+    this.searchQuery = '';
+    this.filterMyTasks = false;
+    this.filterPriority = 'all';
+    this.organizeTasksByStatus();
 },
                 startDrag(event, task, status) {
                     this.draggedTask = task;
@@ -2268,7 +2487,9 @@ async createTaskFromModal() {
                 const taskModalElement = document.getElementById('createTaskModal');
                 this.createTaskModal = new bootstrap.Modal(taskModalElement);
             }
-        }).mount('#app');
+        });
+        app.directive("click-outside", clickOutside);
+        app.mount('#app');
     </script>
 </body>
 </html>

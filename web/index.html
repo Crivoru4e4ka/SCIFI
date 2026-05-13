@@ -355,6 +355,42 @@
                 border-bottom: 1px solid #ebecf0;
             }
         }
+        .jira-tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background-color: #ebecf0; /* Светло-серый как в Jira */
+    color: #42526e;
+    border: 1px solid #dfe1e6;
+    text-transform: uppercase;
+    display: inline-block;
+    margin-right: 4px;
+    margin-bottom: 4px;
+}
+/* Компактные теги для списка */
+.jira-tag-mini {
+    font-size: 0.55rem;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 2px;
+    background-color: #f4f5f7;
+    color: #42526e;
+    border: 1px solid #dfe1e6;
+    text-transform: uppercase;
+    line-height: 1;
+    display: inline-block;
+}
+
+/* Принудительное выравнивание всех ячеек таблицы по центру по вертикали */
+.table td {
+    vertical-align: middle !important;
+}
+body.dark-theme .jira-tag {
+    background-color: #2c3e50;
+    color: #bdc3c7;
+    border-color: #444;
+}
     </style>
 </head>
 <body>
@@ -552,43 +588,76 @@
                         <th>Срок</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr v-for="task in projectTasks" :key="task.id" style="cursor: pointer;">
-                        <td class="ps-3 text-muted small fw-bold">
-                            {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
-                        </td>
-                        <td>
-                            <div class="fw-semibold">{{ task.title }}</div>
-                        </td>
-                        <td>
-                            <span :class="getStatusBadgeClass(task.status)">
-                                {{ task.status.toUpperCase() }}
-                            </span>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center gap-2">
-                                <div v-if="task.assignee_id" class="avatar-circle bg-secondary text-white" style="width: 24px; height: 24px; font-size: 0.7rem;">
-                                    {{ getUserName(task.assignee_id).charAt(0) }}
+<tbody>
+    <template v-for="task in projectTasks" :key="task.id">
+        <!-- Основная строка -->
+        <tr @click="toggleTask(task.id)" style="cursor: pointer;" :class="{'table-active': expandedTaskId === task.id}">
+            <td class="ps-3 text-muted small fw-bold">
+                <i class="fas" :class="expandedTaskId === task.id ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
+            </td>
+<td>
+    <!-- Используем flex-column, чтобы название и теги были строго друг под другом -->
+    <div class="d-flex flex-column justify-content-center" style="min-height: 40px;">
+        <div class="fw-semibold text-dark text-truncate" style="max-width: 300px;" :title="task.title">
+            {{ task.title }}
+        </div>
+        
+        <!-- Блок тегов: делаем их еще компактнее -->
+        <div v-if="task.tags" class="d-flex flex-wrap gap-1 mt-1">
+            <span v-for="tag in splitTags(task.tags)" 
+                  :key="tag" 
+                  class="jira-tag-mini">
+                {{ tag }}
+            </span>
+        </div>
+    </div>
+</td>
+            <td><span :class="getStatusBadgeClass(task.status)">{{ task.status.toUpperCase() }}</span></td>
+            <td>{{ task.assignee_id ? getUserName(task.assignee_id) : '—' }}</td>
+            <td>{{ task.priority }}</td>
+            <td class="small text-muted">{{ task.due_date ? formatDate(task.due_date) : '—' }}</td>
+        </tr>
+
+        <!-- РАЗВЕРНУТАЯ СТРОКА (выпадет при клике) -->
+        <tr v-if="expandedTaskId === task.id" class="bg-light shadow-inner">
+            <td colspan="6" class="p-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6 class="text-muted small text-uppercase fw-bold">Описание</h6>
+                                <p class="mb-4 text-secondary">{{ task.description || 'Описание отсутствует' }}</p>
+                                
+                                <h6 class="text-muted small text-uppercase fw-bold">Теги</h6>
+                                <div class="mb-4">
+                                    <template v-if="task.tags">
+                                        <span v-for="tag in splitTags(task.tags)" :key="tag" class="jira-tag">{{ tag }}</span>
+                                    </template>
+                                    <span v-else class="text-muted italic small">Тегов нет</span>
                                 </div>
-                                <span class="small">{{ task.assignee_id ? getUserName(task.assignee_id) : 'Не назначено' }}</span>
                             </div>
-                        </td>
-                        <td>
-                            <span class="small">
-                                <i class="fas fa-arrow-up text-danger" v-if="task.priority === 'High' || task.priority === 'Highest'"></i>
-                                <i class="fas fa-arrow-down text-info" v-else-if="task.priority === 'Low' || task.priority === 'Lowest'"></i>
-                                <i class="fas fa-minus text-warning" v-else></i>
-                                {{ task.priority }}
-                            </span>
-                        </td>
-                        <td class="small text-muted">
-                            {{ task.due_date ? formatDate(task.due_date) : '—' }}
-                        </td>
-                    </tr>
-                    <tr v-if="projectTasks.length === 0">
-                        <td colspan="6" class="text-center py-4 text-muted">В этом разделе пока нет задач</td>
-                    </tr>
-                </tbody>
+                            <div class="col-md-4 border-start">
+                                <div class="mb-3">
+                                    <span class="text-muted small d-block">Создана:</span>
+                                    <span class="small">{{ formatDate(task.created_at) }}</span>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary" @click.stop="openTaskDetails(task)">
+                                        <i class="fas fa-external-link-alt me-1"></i> Полный вид
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </template>
+    <tr v-if="projectTasks.length === 0">
+        <td colspan="6" class="text-center py-4 text-muted">В этом разделе пока нет задач</td>
+    </tr>
+</tbody>
             </table>
         </div>
     </div>
@@ -616,6 +685,11 @@
               </div>
               <div class="fw-semibold small">{{ task.title }}</div>
               <div class="small text-muted">{{ task.description }}</div>
+              <div v-if="task.tags" class="d-flex flex-wrap mt-1">
+    <span v-for="tag in splitTags(task.tags)" :key="tag" class="jira-tag">
+        {{ tag }}
+    </span>
+</div>
               <div v-if="task.assignee_id" class="small mt-2">
                 <span class="badge bg-light text-dark">{{ getUserName(task.assignee_id) }}</span>
               </div>
@@ -644,6 +718,11 @@
               </div>
               <div class="fw-semibold small">{{ task.title }}</div>
               <div class="small text-muted">{{ task.description }}</div>
+              <div v-if="task.tags" class="d-flex flex-wrap mt-1">
+    <span v-for="tag in splitTags(task.tags)" :key="tag" class="jira-tag">
+        {{ tag }}
+    </span>
+</div>
               <div v-if="task.assignee_id" class="small mt-2">
                 <span class="badge bg-light text-dark">{{ getUserName(task.assignee_id) }}</span>
               </div>
@@ -672,6 +751,11 @@
               </div>
               <div class="fw-semibold small">{{ task.title }}</div>
               <div class="small text-muted">{{ task.description }}</div>
+              <div v-if="task.tags" class="d-flex flex-wrap mt-1">
+    <span v-for="tag in splitTags(task.tags)" :key="tag" class="jira-tag">
+        {{ tag }}
+    </span>
+</div>
               <div v-if="task.assignee_id" class="small mt-2">
                 <span class="badge bg-light text-dark">{{ getUserName(task.assignee_id) }}</span>
               </div>
@@ -783,7 +867,13 @@
                     <span class="text-muted small me-3" style="width: 90px; display: inline-block;">
                         {{ (currentProject && currentProject.key ? currentProject.key : 'TASK').toUpperCase() }}-{{ task.task_num }}
                     </span>
-                    <span class="flex-grow-1 small">{{ task.title }}</span>
+                    <span class="flex-grow-1 small">{{ task.title }}
+                            <span v-if="task.tags" class="ms-2">
+        <span v-for="tag in splitTags(task.tags)" :key="tag" class="jira-tag" style="font-size: 0.6rem;">
+            {{ tag }}
+        </span>
+    </span>
+                    </span>
                     <div class="d-flex align-items-center gap-2">
                         <span class="small text-muted me-2">{{ task.priority }}</span>
                         <div class="avatar-circle bg-light border text-muted" style="width: 24px; height: 24px; font-size: 0.7rem;">
@@ -1176,7 +1266,13 @@
                             <label for="taskDueDate" class="form-label">Срок выполнения</label>
                             <input type="date" class="form-control" id="taskDueDate" v-model="newTask.dueDate">
                         </div>
-
+                        <!-- Теги -->
+<div class="mb-3">
+    <label for="taskTags" class="form-label">Теги (через запятую)</label>
+    <input type="text" class="form-control" id="taskTags" 
+           v-model="newTask.tags" placeholder="например: дизайн, фронтенд, баг">
+    <div class="form-text">Введите теги, разделяя их запятыми</div>
+</div>
                         <!-- Вложение -->
                         <div class="mb-3">
                             <label for="taskFile" class="form-label">Прикрепить файл</label>
@@ -1283,7 +1379,8 @@
                         description: "",
                         assigneeId: null,
                         priority: "Medium",
-                        dueDate: ""
+                        dueDate: "",
+                        tags: ""
                     },
                     taskError: "",
                     taskSuccess: "",
@@ -1303,6 +1400,7 @@ startSprintModal: null,
                     draggedTask: null,
                     projectTasks: [],
                     projectAttachments: [],
+                    expandedTaskId: null, 
                     selectedFile: null, 
                     users: [],
                     currentPage: "sections",
@@ -1578,6 +1676,7 @@ handleTaskFileSelect(event) {
                         });
                         if (response.ok) {
                             const tasks = await response.json();
+                            console.log("Задачи из базы:", tasks);
                             this.projectTasks = tasks || [];
                             this.organizeTasksByStatus();
                         }
@@ -1656,19 +1755,30 @@ async onDropToSprint(event, sprintId) {
     }
 },
 organizeTasksByStatus() {
-    // 1. Находим, какой спринт сейчас активен
+    // 1. Пытаемся найти активный спринт
     const activeSprint = this.sprints.find(s => s.status === 'active');
 
-    // 2. Если есть активный спринт — фильтруем задачи по его ID
-    // Если активного спринта нет — доска пустая (как в Jira)
+    // 2. Умная фильтрация:
+    // Если есть активный спринт — показываем только задачи этого спринта.
+    // Если активного спринта НЕТ — показываем вообще все задачи проекта (режим Kanban).
     const filteredTasks = activeSprint 
         ? this.projectTasks.filter(t => t.sprint_id === activeSprint.id)
-        : [];
+        : this.projectTasks;
 
+    // 3. Распределяем задачи по колонкам (с учетом регистра и возможных русских названий)
     this.projectBoardTasks = {
-        todo: filteredTasks.filter(t => t.status === 'todo' || t.status === 'к выполнению'),
-        inProgress: filteredTasks.filter(t => t.status === 'in_progress' || t.status === 'в работе'),
-        done: filteredTasks.filter(t => t.status === 'done' || t.status === 'готово')
+        todo: filteredTasks.filter(t => {
+            const s = (t.status || '').toLowerCase();
+            return s === 'todo' || s === 'к выполнению';
+        }),
+        inProgress: filteredTasks.filter(t => {
+            const s = (t.status || '').toLowerCase();
+            return s === 'in_progress' || s === 'в работе';
+        }),
+        done: filteredTasks.filter(t => {
+            const s = (t.status || '').toLowerCase();
+            return s === 'done' || s === 'готово';
+        })
     };
 },
                 startDrag(event, task, status) {
@@ -2029,11 +2139,25 @@ nextKanbanStep() {
                         description: "",
                         assigneeId: null,
                         priority: "Medium",
-                        dueDate: ""
+                        dueDate: "",
+                        tags: ""
                     };
                     this.taskError = "";
                     this.taskSuccess = "";
                 },
+                splitTags(tags) {
+    if (!tags) return [];
+    if (Array.isArray(tags)) return tags;
+    return tags.split(',').map(t => t.trim()).filter(t => t !== "");
+},
+openTaskDetails(task) {
+    console.log("Открываем детали задачи:", task);
+    // Пока просто выводим в консоль
+},
+toggleTask(taskId) {
+    // Если кликнули на уже открытую задачу — закрываем (null), иначе открываем новую
+    this.expandedTaskId = this.expandedTaskId === taskId ? null : taskId;
+},
 async createTaskFromModal() {
     const form = document.getElementById('createTaskForm');
     this.taskError = "";
@@ -2053,7 +2177,8 @@ async createTaskFromModal() {
         status: this.newTask.status,
         priority: this.newTask.priority,
         assignee_id: this.newTask.assigneeId || null,
-        created_by: currentUserId
+        created_by: currentUserId,
+        tags: this.newTask.tags
     };
 
     this.isTaskSubmitting = true;

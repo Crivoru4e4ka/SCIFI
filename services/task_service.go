@@ -80,8 +80,23 @@ func CreateTask(task models.Task) (models.Task, error) {
 	}
 
 	task.Id = newId
-	task.TaskNum = newTaskNum // Теперь здесь будет 1 для первой задачи проекта
+	task.TaskNum = newTaskNum
 	task.CreatedAt = time.Now()
+
+	// СОХРАНЕНИЕ ТЕГОВ
+	if strings.TrimSpace(task.Tags) != "" {
+		tagNames := strings.Split(task.Tags, ",")
+		for _, name := range tagNames {
+			name = strings.TrimSpace(name)
+			if name != "" {
+				// ВАЖНО: проверяем ошибку!
+				_, err := AddTagToTask(task.Id, models.Tag{Name: name})
+				if err != nil {
+					log.Printf("Ошибка при добавлении тега [%s]: %v", name, err)
+				}
+			}
+		}
+	}
 	return task, nil
 }
 
@@ -116,14 +131,16 @@ func UpdateTaskStatus(taskId int, userId int, newStatus string) error {
 }
 
 func GetTasksByProject(projectId int) ([]models.Task, error) {
+	// Используем STRING_AGG, чтобы собрать все теги в одну строку "тег1,тег2"
 	query := `
 		SELECT 
-			id, project_id, title, description, status, priority, 
-			assignee_id, created_by, due_date, created_at, updated_at, 
-			type, hypothesis_id, resource_id, conclusion, task_num, sprint_id 
-		FROM tasks 
-		WHERE project_id=$1 
-		ORDER BY task_num ASC`
+			t.id, t.project_id, t.title, t.description, t.status, t.priority, 
+			t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, 
+			t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id,
+			COALESCE((SELECT STRING_AGG(tg.name, ', ') FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id), '') as tags
+		FROM tasks t
+		WHERE t.project_id = $1
+		ORDER BY t.task_num ASC`
 
 	rows, err := db.DB.Query(query, projectId)
 	if err != nil {
@@ -137,11 +154,12 @@ func GetTasksByProject(projectId int) ([]models.Task, error) {
 		var assignee, sprint, hypothesis, resource sql.NullInt64
 		var dueDate, updatedAt, taskType sql.NullString
 
-		// Сканируем все 17 полей
+		// Scan теперь на 18 полей (17 старых + 1 теги)
 		err := rows.Scan(
 			&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
 			&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
 			&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
+			&t.Tags, // ВОТ ТУТ МЫ ЧИТАЕМ ТЕГИ
 		)
 		if err != nil {
 			log.Printf("Scan error: %v", err)
@@ -184,30 +202,29 @@ func GetTaskByID(id int) (models.Task, error) {
 	var assignee, sprint, hypothesis, resource sql.NullInt64
 	var dueDate, updatedAt, taskType sql.NullString
 
-	// ПРОВЕРЬ ТУТ: Кавычка должна закрыться сразу после $1
+	// Добавляем получение тегов и в эту функцию тоже!
 	query := `
 		SELECT 
-			id, project_id, title, description, status, priority, 
-			assignee_id, created_by, due_date, created_at, updated_at, 
-			type, hypothesis_id, resource_id, conclusion, task_num, sprint_id 
-		FROM tasks 
-		WHERE id=$1`
+			t.id, t.project_id, t.title, t.description, t.status, t.priority, 
+			t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, 
+			t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id,
+			COALESCE((SELECT STRING_AGG(tg.name, ', ') FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id), '') as tags
+		FROM tasks t WHERE t.id=$1`
 
-	row := db.DB.QueryRow(query, id)
-	err := row.Scan(
+	err := db.DB.QueryRow(query, id).Scan(
 		&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
 		&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
 		&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
+		&t.Tags,
 	)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return t, ErrNotFound
+			return t, errors.New("not found")
 		}
 		return t, err
 	}
 
-	// Раскладываем значения
 	if assignee.Valid {
 		val := int(assignee.Int64)
 		t.AssigneeId = &val

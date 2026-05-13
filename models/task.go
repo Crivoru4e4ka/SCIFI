@@ -21,4 +21,5 @@ type Task struct {
 	ResourceId   *int      `json:"resource_id"`
 	Conclusion   string    `json:"conclusion"`
 	TaskNum      int       `json:"task_num"`
+	Tags         string    `json:"tags"`
 }

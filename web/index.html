@@ -524,43 +524,154 @@
 
     <!-- Вкладки: Доска и Backlog -->
     <div class="mb-3 border-bottom">
+      <button class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'list' }" @click="currentProjectView = 'list'">
+        <i class="fas fa-list-ul me-2"></i>Список
+      </button>
       <button class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'board' }" @click="currentProjectView = 'board'">
         <i class="fas fa-columns me-2"></i>Доска
       </button>
       <button class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'backlog' }" @click="currentProjectView = 'backlog'">
-        <i class="fas fa-list me-2"></i>Backlog
+        <i class="fas fa-list me-2"></i>Бэклог
       </button>
     </div>
-
+    <!-- Содержимое Списка (Таблица задач) -->
+<div v-if="currentProjectView === 'list'" class="mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-3" style="width: 100px;">Ключ</th>
+                        <th>Резюме</th>
+                        <th>Статус</th>
+                        <th>Исполнитель</th>
+                        <th>Приоритет</th>
+                        <th>Срок</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="task in projectTasks" :key="task.id" style="cursor: pointer;">
+                        <td class="ps-3 text-muted small fw-bold">
+                            {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ task.title }}</div>
+                        </td>
+                        <td>
+                            <span :class="getStatusBadgeClass(task.status)">
+                                {{ task.status.toUpperCase() }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div v-if="task.assignee_id" class="avatar-circle bg-secondary text-white" style="width: 24px; height: 24px; font-size: 0.7rem;">
+                                    {{ getUserName(task.assignee_id).charAt(0) }}
+                                </div>
+                                <span class="small">{{ task.assignee_id ? getUserName(task.assignee_id) : 'Не назначено' }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="small">
+                                <i class="fas fa-arrow-up text-danger" v-if="task.priority === 'High' || task.priority === 'Highest'"></i>
+                                <i class="fas fa-arrow-down text-info" v-else-if="task.priority === 'Low' || task.priority === 'Lowest'"></i>
+                                <i class="fas fa-minus text-warning" v-else></i>
+                                {{ task.priority }}
+                            </span>
+                        </td>
+                        <td class="small text-muted">
+                            {{ task.due_date ? formatDate(task.due_date) : '—' }}
+                        </td>
+                    </tr>
+                    <tr v-if="projectTasks.length === 0">
+                        <td colspan="6" class="text-center py-4 text-muted">В этом разделе пока нет задач</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
     <!-- Содержимое Доски (Kanban) -->
     <div v-if="currentProjectView === 'board'" class="mt-4">
       <div class="row g-3">
+        <!-- Колонка: К выполнению -->
         <div class="col-12 col-lg-4">
-          <div class="kanban-column p-3">
+          <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'todo')" data-status="todo">
             <div class="small text-muted mb-2 fw-semibold">К выполнению ({{ projectBoardTasks.todo.length }})</div>
-            <div class="card p-2 mb-2" v-for="task in projectBoardTasks.todo" :key="task.id">
+            <div 
+              v-for="task in projectBoardTasks.todo" 
+              :key="task.id"
+              class="kanban-task card p-2 mb-2"
+              draggable="true"
+              @dragstart="startDrag($event, task, 'todo')"
+              @dragend="endDrag"
+              @dragenter.prevent
+              @dragover.prevent
+              style="cursor: grab; border-left: 3px solid #0d6efd;"
+            >
+              <div class="text-muted mb-1" style="font-size: 0.7rem; font-weight: bold;">
+                {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
+              </div>
               <div class="fw-semibold small">{{ task.title }}</div>
               <div class="small text-muted">{{ task.description }}</div>
+              <div v-if="task.assignee_id" class="small mt-2">
+                <span class="badge bg-light text-dark">{{ getUserName(task.assignee_id) }}</span>
+              </div>
             </div>
             <div v-if="!projectBoardTasks.todo.length" class="text-muted small text-center py-3">Нет задач</div>
           </div>
         </div>
+
+        <!-- Колонка: В работе -->
         <div class="col-12 col-lg-4">
-          <div class="kanban-column p-3">
+          <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'in_progress')" data-status="in_progress" style="background-color: #fff8e5;">
             <div class="small text-muted mb-2 fw-semibold">В работе ({{ projectBoardTasks.inProgress.length }})</div>
-            <div class="card p-2 mb-2" v-for="task in projectBoardTasks.inProgress" :key="task.id">
+            <div 
+              v-for="task in projectBoardTasks.inProgress" 
+              :key="task.id"
+              class="kanban-task card p-2 mb-2"
+              draggable="true"
+              @dragstart="startDrag($event, task, 'in_progress')"
+              @dragend="endDrag"
+              @dragenter.prevent
+              @dragover.prevent
+              style="cursor: grab; border-left: 3px solid #ffc107;"
+            >
+              <div class="text-muted mb-1" style="font-size: 0.7rem; font-weight: bold;">
+                {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
+              </div>
               <div class="fw-semibold small">{{ task.title }}</div>
               <div class="small text-muted">{{ task.description }}</div>
+              <div v-if="task.assignee_id" class="small mt-2">
+                <span class="badge bg-light text-dark">{{ getUserName(task.assignee_id) }}</span>
+              </div>
             </div>
             <div v-if="!projectBoardTasks.inProgress.length" class="text-muted small text-center py-3">Нет задач</div>
           </div>
         </div>
+
+        <!-- Колонка: Готово -->
         <div class="col-12 col-lg-4">
-          <div class="kanban-column p-3">
+          <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'done')" data-status="done" style="background-color: #f0f7f0;">
             <div class="small text-muted mb-2 fw-semibold">Готово ({{ projectBoardTasks.done.length }})</div>
-            <div class="card p-2 mb-2" v-for="task in projectBoardTasks.done" :key="task.id">
+            <div 
+              v-for="task in projectBoardTasks.done" 
+              :key="task.id"
+              class="kanban-task card p-2 mb-2"
+              draggable="true"
+              @dragstart="startDrag($event, task, 'done')"
+              @dragend="endDrag"
+              @dragenter.prevent
+              @dragover.prevent
+              style="cursor: grab; border-left: 3px solid #28a745; opacity: 0.8;"
+            >
+              <div class="text-muted mb-1" style="font-size: 0.7rem; font-weight: bold;">
+                {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
+              </div>
               <div class="fw-semibold small">{{ task.title }}</div>
               <div class="small text-muted">{{ task.description }}</div>
+              <div v-if="task.assignee_id" class="small mt-2">
+                <span class="badge bg-light text-dark">{{ getUserName(task.assignee_id) }}</span>
+              </div>
             </div>
             <div v-if="!projectBoardTasks.done.length" class="text-muted small text-center py-3">Нет задач</div>
           </div>
@@ -995,6 +1106,8 @@
                         inProgress: [],
                         done: []
                     },
+                    draggedTask: null,
+                    draggedFromStatus: null,
                     templates: [
                         {
                             id: "kanban",
@@ -1026,6 +1139,13 @@
                 }
             },
             methods: {
+                getStatusBadgeClass(status) {
+                    const s = status.toLowerCase();
+                    if (s === 'todo' || s === 'к выполнению') return 'badge bg-primary text-white';
+                    if (s === 'in_progress' || s === 'в работе') return 'badge bg-warning text-dark';
+                    if (s === 'done' || s === 'готово') return 'badge bg-success text-white';
+                    return 'badge bg-secondary';
+                },
                 openTemplatesPage() {
                     this.currentPage = "templates";
                 },
@@ -1037,6 +1157,7 @@
                     this.kanbanWizard.step = 1;
                 },
                 openProject(project) {
+                    console.log("Данные открытого проекта:", project);
                     this.currentProject = project;
                     this.currentProjectView = "board";
                     this.loadProjectTasks(project.id);
@@ -1066,10 +1187,83 @@
                 },
                 organizeTasksByStatus() {
                     this.projectBoardTasks = {
-                        todo: this.projectTasks.filter(t => t.status === 'todo' || t.status === 'новая'),
-                        inProgress: this.projectTasks.filter(t => t.status === 'in_progress' || t.status === 'в работе'),
-                        done: this.projectTasks.filter(t => t.status === 'done' || t.status === 'завершена')
+                        todo: this.projectTasks.filter(t => t.status === 'todo'),
+                        inProgress: this.projectTasks.filter(t => t.status === 'in_progress'),
+                        done: this.projectTasks.filter(t => t.status === 'done')
                     };
+                },
+                startDrag(event, task, status) {
+                    this.draggedTask = task;
+                    this.draggedFromStatus = status;
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.target.style.opacity = '0.5';
+                },
+                endDrag(event) {
+                    event.target.style.opacity = '1';
+                },
+                async moveTask(event, newStatus) {
+                    event.preventDefault();
+                    
+                    if (!this.draggedTask) return;
+                    
+                    // Если задача перемещена в тот же статус, ничего не делаем
+                    if (this.draggedFromStatus === newStatus) {
+                        this.draggedTask = null;
+                        this.draggedFromStatus = null;
+                        return;
+                    }
+                    
+                    // Оптимистичное обновление UI
+                    const task = this.draggedTask;
+                    const oldStatus = this.draggedFromStatus;
+                    
+                    // Удаляем задачу из старого статуса
+                    if (oldStatus === 'todo') {
+                        this.projectBoardTasks.todo = this.projectBoardTasks.todo.filter(t => t.id !== task.id);
+                    } else if (oldStatus === 'in_progress') {
+                        this.projectBoardTasks.inProgress = this.projectBoardTasks.inProgress.filter(t => t.id !== task.id);
+                    } else if (oldStatus === 'done') {
+                        this.projectBoardTasks.done = this.projectBoardTasks.done.filter(t => t.id !== task.id);
+                    }
+                    
+                    // Обновляем статус задачи
+                    task.status = newStatus;
+                    
+                    // Добавляем задачу в новый статус
+                    if (newStatus === 'todo') {
+                        this.projectBoardTasks.todo.push(task);
+                    } else if (newStatus === 'in_progress') {
+                        this.projectBoardTasks.inProgress.push(task);
+                    } else if (newStatus === 'done') {
+                        this.projectBoardTasks.done.push(task);
+                    }
+                    
+                    // Отправляем обновление на сервер
+                    try {
+                        const response = await fetch(`/tasks/${task.id}/status`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: newStatus }),
+                            credentials: 'include'
+                        });
+                        
+                        if (!response.ok) {
+                            console.error('Ошибка при обновлении статуса задачи');
+                            // Откатываем изменение UI при ошибке
+                            this.loadProjectTasks(this.currentProject.id);
+                        }
+                    } catch (error) {
+                        console.error('Ошибка сети:', error);
+                        // Откатываем изменение UI при ошибке
+                        this.loadProjectTasks(this.currentProject.id);
+                    }
+                    
+                    this.draggedTask = null;
+                    this.draggedFromStatus = null;
+                },
+                getUserName(userId) {
+                    const user = this.users.find(u => u.id === userId);
+                    return user ? user.full_name : 'Unknown';
                 },
                 selectTemplate(templateItem) {
                     this.selectedTemplate = templateItem;

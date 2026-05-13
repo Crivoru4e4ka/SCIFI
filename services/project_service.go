@@ -133,7 +133,7 @@ func GetProjectProgress(projectId int) (float64, error) {
 
 	var doneCount, totalCount int
 	query := `SELECT
-		COUNT(*) FILTER (WHERE status = 'done') AS done_count,
+		COUNT(CASE WHEN status = 'done' THEN 1 END) AS done_count,
 		COUNT(*) AS total_count
 		FROM tasks WHERE project_id=$1`
 	row := db.DB.QueryRow(query, projectId)

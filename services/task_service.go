@@ -3,6 +3,7 @@ package services
 import (
 	"database/sql"
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -102,8 +103,11 @@ func UpdateTaskStatus(taskId int, userId int, newStatus string) error {
 	}
 
 	// 3. АВТОМАТИЧЕСКАЯ ЗАПИСЬ В ИСТОРИЮ (Важно для диплома!)
-	queryHistory := `INSERT INTO task_history (task_id, user_id, old_status, new_status) VALUES ($1, $2, $3, $4)`
-	_, _ = db.DB.Exec(queryHistory, taskId, userId, oldStatus, newStatus)
+	queryHistory := `INSERT INTO task_history (task_id, changed_by, field_name, old_value, new_value) VALUES ($1, $2, $3, $4, $5)`
+	if _, err := db.DB.Exec(queryHistory, taskId, userId, "status", oldStatus, newStatus); err != nil {
+		// Логируем ошибку, но не блокируем обновление статуса
+		log.Printf("Error writing to task_history: %v\n", err)
+	}
 
 	return nil
 }

@@ -5,6 +5,7 @@ import "time"
 type Task struct {
 	Id          int        `json:"id"`
 	ProjectId   int        `json:"project_id"`
+	TaskNum     int        `json:"task_num"`
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
 	Status      string     `json:"status"`

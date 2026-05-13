@@ -69,15 +69,18 @@ func CreateTask(task models.Task) (models.Task, error) {
 	}
 
 	query := `INSERT INTO tasks (project_id, title, description, status, priority, assignee_id, created_by, due_date, created_at, updated_at)
-	          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW()) RETURNING id`
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW()) RETURNING id, task_num`
+
 	var newId int
+	var newTaskNum int
 	if err := db.DB.QueryRow(query,
 		task.ProjectId, task.Title, task.Description, task.Status, task.Priority,
-		task.AssigneeId, task.CreatedBy, task.DueDate).Scan(&newId); err != nil {
+		task.AssigneeId, task.CreatedBy, task.DueDate).Scan(&newId, &newTaskNum); err != nil {
 		return models.Task{}, err
 	}
 
 	task.Id = newId
+	task.TaskNum = newTaskNum // Теперь здесь будет 1 для первой задачи проекта
 	task.CreatedAt = time.Now()
 	return task, nil
 }
@@ -113,11 +116,16 @@ func UpdateTaskStatus(taskId int, userId int, newStatus string) error {
 }
 
 func GetTasksByProject(projectId int) ([]models.Task, error) {
-	if _, err := GetProjectByID(projectId); err != nil {
-		return nil, err
-	}
+	query := `
+		SELECT 
+			id, project_id, title, description, status, priority, 
+			assignee_id, created_by, due_date, created_at, updated_at, 
+			type, hypothesis_id, resource_id, conclusion, task_num, sprint_id 
+		FROM tasks 
+		WHERE project_id=$1 
+		ORDER BY task_num ASC`
 
-	rows, err := db.DB.Query(`SELECT id, project_id, title, description, status, priority, assignee_id, created_by, due_date, created_at, updated_at FROM tasks WHERE project_id=$1`, projectId)
+	rows, err := db.DB.Query(query, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -126,33 +134,105 @@ func GetTasksByProject(projectId int) ([]models.Task, error) {
 	var tasks []models.Task
 	for rows.Next() {
 		var t models.Task
-		var assignee sql.NullInt64
-		if err := rows.Scan(&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority, &assignee, &t.CreatedBy, &t.DueDate, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		var assignee, sprint, hypothesis, resource sql.NullInt64
+		var dueDate, updatedAt, taskType sql.NullString
+
+		// Сканируем все 17 полей
+		err := rows.Scan(
+			&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
+			&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
+			&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
+		)
+		if err != nil {
+			log.Printf("Scan error: %v", err)
 			return nil, err
 		}
+
 		if assignee.Valid {
 			val := int(assignee.Int64)
 			t.AssigneeId = &val
 		}
+		if sprint.Valid {
+			val := int(sprint.Int64)
+			t.SprintId = &val
+		}
+		if hypothesis.Valid {
+			val := int(hypothesis.Int64)
+			t.HypothesisId = &val
+		}
+		if resource.Valid {
+			val := int(resource.Int64)
+			t.ResourceId = &val
+		}
+		if dueDate.Valid {
+			t.DueDate = &dueDate.String
+		}
+		if updatedAt.Valid {
+			t.UpdatedAt = &updatedAt.String
+		}
+		if taskType.Valid {
+			t.Type = &taskType.String
+		}
+
 		tasks = append(tasks, t)
 	}
-
 	return tasks, nil
 }
 
 func GetTaskByID(id int) (models.Task, error) {
 	var t models.Task
-	var assignee sql.NullInt64
-	row := db.DB.QueryRow(`SELECT id, project_id, title, description, status, priority, assignee_id, created_by, due_date, created_at, updated_at FROM tasks WHERE id=$1`, id)
-	if err := row.Scan(&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority, &assignee, &t.CreatedBy, &t.DueDate, &t.CreatedAt, &t.UpdatedAt); err != nil {
+	var assignee, sprint, hypothesis, resource sql.NullInt64
+	var dueDate, updatedAt, taskType sql.NullString
+
+	// ПРОВЕРЬ ТУТ: Кавычка должна закрыться сразу после $1
+	query := `
+		SELECT 
+			id, project_id, title, description, status, priority, 
+			assignee_id, created_by, due_date, created_at, updated_at, 
+			type, hypothesis_id, resource_id, conclusion, task_num, sprint_id 
+		FROM tasks 
+		WHERE id=$1`
+
+	row := db.DB.QueryRow(query, id)
+	err := row.Scan(
+		&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
+		&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
+		&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
+	)
+
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return t, ErrNotFound
 		}
 		return t, err
 	}
+
+	// Раскладываем значения
 	if assignee.Valid {
 		val := int(assignee.Int64)
 		t.AssigneeId = &val
 	}
+	if sprint.Valid {
+		val := int(sprint.Int64)
+		t.SprintId = &val
+	}
+	if hypothesis.Valid {
+		val := int(hypothesis.Int64)
+		t.HypothesisId = &val
+	}
+	if resource.Valid {
+		val := int(resource.Int64)
+		t.ResourceId = &val
+	}
+	if dueDate.Valid {
+		t.DueDate = &dueDate.String
+	}
+	if updatedAt.Valid {
+		t.UpdatedAt = &updatedAt.String
+	}
+	if taskType.Valid {
+		t.Type = &taskType.String
+	}
+
 	return t, nil
 }

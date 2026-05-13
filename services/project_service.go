@@ -64,7 +64,7 @@ func CreateProject(project models.Project) (models.Project, error) {
 }
 
 func GetProjects() ([]models.Project, error) {
-	rows, err := db.DB.Query(`SELECT id, name, description, start_date, end_date, status, created_by, created_at FROM projects`)
+	rows, err := db.DB.Query(`SELECT id, name, key, description, start_date, end_date, status, created_by, created_at FROM projects`)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func GetProjects() ([]models.Project, error) {
 	var list []models.Project
 	for rows.Next() {
 		var p models.Project
-		if err := rows.Scan(&p.Id, &p.Name, &p.Description, &p.StartDate, &p.EndDate, &p.Status, &p.CreatedBy, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.Id, &p.Name, &p.Key, &p.Description, &p.StartDate, &p.EndDate, &p.Status, &p.CreatedBy, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		list = append(list, p)
@@ -84,7 +84,7 @@ func GetProjects() ([]models.Project, error) {
 
 // GetUserProjects получает только проекты, созданные конкретным пользователем
 func GetUserProjects(userId int) ([]models.Project, error) {
-	rows, err := db.DB.Query(`SELECT id, name, description, start_date, end_date, status, created_by, created_at FROM projects WHERE created_by=$1 ORDER BY created_at DESC`, userId)
+	rows, err := db.DB.Query(`SELECT id, name, key, description, start_date, end_date, status, created_by, created_at FROM projects WHERE created_by=$1 ORDER BY created_at DESC`, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func GetUserProjects(userId int) ([]models.Project, error) {
 	var list []models.Project
 	for rows.Next() {
 		var p models.Project
-		if err := rows.Scan(&p.Id, &p.Name, &p.Description, &p.StartDate, &p.EndDate, &p.Status, &p.CreatedBy, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.Id, &p.Name, &p.Key, &p.Description, &p.StartDate, &p.EndDate, &p.Status, &p.CreatedBy, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		list = append(list, p)
@@ -104,8 +104,8 @@ func GetUserProjects(userId int) ([]models.Project, error) {
 
 func GetProjectByID(id int) (models.Project, error) {
 	var p models.Project
-	row := db.DB.QueryRow(`SELECT id, name, description, start_date, end_date, status, created_by, created_at FROM projects WHERE id=$1`, id)
-	if err := row.Scan(&p.Id, &p.Name, &p.Description, &p.StartDate, &p.EndDate, &p.Status, &p.CreatedBy, &p.CreatedAt); err != nil {
+	row := db.DB.QueryRow(`SELECT id, name, key, description, start_date, end_date, status, created_by, created_at FROM projects WHERE id=$1`, id)
+	if err := row.Scan(&p.Id, &p.Name, &p.Key, &p.Description, &p.StartDate, &p.EndDate, &p.Status, &p.CreatedBy, &p.CreatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return p, ErrNotFound
 		}
@@ -116,8 +116,8 @@ func GetProjectByID(id int) (models.Project, error) {
 
 func GetProjectByName(name string) (models.Project, error) {
 	var p models.Project
-	row := db.DB.QueryRow(`SELECT id, name, description, start_date, end_date, status, created_by, created_at FROM projects WHERE name=$1`, name)
-	if err := row.Scan(&p.Id, &p.Name, &p.Description, &p.StartDate, &p.EndDate, &p.Status, &p.CreatedBy, &p.CreatedAt); err != nil {
+	row := db.DB.QueryRow(`SELECT id, name, key, description, start_date, end_date, status, created_by, created_at FROM projects WHERE name=$1`, name)
+	if err := row.Scan(&p.Id, &p.Name, &p.Key, &p.Description, &p.StartDate, &p.EndDate, &p.Status, &p.CreatedBy, &p.CreatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return p, ErrNotFound
 		}

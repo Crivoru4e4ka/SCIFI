@@ -501,7 +501,7 @@ body.dark-theme .jira-tag {
         <h2 class="mb-1">Разделы</h2>
       </div>
       <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-primary" type="button" id="createSectionButton" @click="openTemplatesPage">
+        <button class="btn btn-primary" type="button" id="createSectionButton" @click="startProjectCreation">
           <i class="fas fa-plus me-2"></i>Создать раздел
         </button>
       </div>
@@ -533,7 +533,7 @@ body.dark-theme .jira-tag {
         </div>
         <h5 class="mb-2">Создайте первый раздел</h5>
         <p class="text-muted mb-4">Получите быстрый старт с помощью шаблонов или создайте раздел с нуля.</p>
-        <button class="btn btn-primary" type="button" @click="openTemplatesPage">
+        <button class="btn btn-primary" type="button" @click="startProjectCreation">
           <i class="fas fa-th-large me-2"></i>Открыть шаблоны
         </button>
       </div>
@@ -995,9 +995,9 @@ body.dark-theme .jira-tag {
 
                 <template v-else-if="currentPage === 'kanbanSetup'">
                     <div class="d-flex align-items-center mb-3">
-                        <button class="btn btn-link text-decoration-none p-0" type="button" @click="goBackToTemplates">
-                            <i class="fas fa-arrow-left me-2"></i>Назад к шаблонам
-                        </button>
+<button class="btn btn-link text-decoration-none p-0" type="button" @click="goBackToSections">
+    <i class="fas fa-arrow-left me-2"></i>Назад к разделам
+</button>
                     </div>
                     <div class="wizard-shell shadow-sm mx-auto">
                         <div class="wizard-layout">
@@ -1031,11 +1031,11 @@ body.dark-theme .jira-tag {
                                         <label class="form-label">Ключ *</label>
                                         <input class="form-control" type="text" v-model="kanbanWizard.key" maxlength="10">
                                     </div>
-                                    <div class="p-3 border rounded bg-light">
-                                        <div class="small text-muted mb-1">Шаблон</div>
-                                        <div class="fw-semibold">{{ selectedTemplate.title }}</div>
-                                        <div class="small text-muted">{{ selectedTemplate.description }}</div>
-                                    </div>
+<!-- <div class="p-3 border rounded bg-light">
+    <div class="small text-muted mb-1">Шаблон</div>
+    <div class="fw-semibold">{{ selectedTemplate.title }}</div>
+    <div class="small text-muted">{{ selectedTemplate.description }}</div>
+</div> -->
                                 </template>
 
                                 <template v-else>
@@ -1079,9 +1079,9 @@ body.dark-theme .jira-tag {
                             <h2 class="mb-1">{{ createdKanban.name }}</h2>
                             <div class="text-muted small">Kanban-доска раздела</div>
                         </div>
-                        <button class="btn btn-outline-secondary btn-sm" type="button" @click="openTemplatesPage">
+                        <!--<button class="btn btn-outline-secondary btn-sm" type="button" @click="openTemplatesPage">
                             <i class="fas fa-th-large me-2"></i>Шаблоны
-                        </button>
+                        </button> -->
                     </div>
                     <div class="row g-3">
                         <div class="col-12 col-lg-4">
@@ -1475,6 +1475,19 @@ startSprintModal: null,
                 }
             },
             methods: {
+startProjectCreation() {
+    // Находим основной шаблон (теперь он может называться "Базовый" или "Стандартный")
+    const mainTemplate = this.templates.find(t => t.id === 'kanban');
+    
+    this.kanbanWizard.step = 1;
+    this.kanbanWizard.name = '';
+    this.kanbanWizard.key = '';
+    this.kanbanWizard.inviteInput = "";
+    this.kanbanWizard.members = [];
+    
+    this.selectedTemplate = mainTemplate;
+    this.currentPage = "kanbanSetup";
+},
                 getStatusBadgeClass(status) {
                     const s = status.toLowerCase();
                     if (s === 'todo' || s === 'к выполнению') return 'badge bg-primary text-white';

@@ -706,7 +706,11 @@
                 </div>
                 <div class="d-flex align-items-center gap-3">
                     <div class="small text-muted">Задач: {{ getSprintTasks(sprint.id).length }}</div>
-                    <button class="btn btn-primary btn-sm" v-if="sprint.status === 'planned'">Запустить спринт</button>
+                    <button class="btn btn-primary btn-sm" 
+        v-if="sprint.status === 'planned'" 
+        @click="openStartSprintModal(sprint)">
+    Запустить спринт
+</button>
                     <button class="btn btn-outline-secondary btn-sm" v-else>Завершить</button>
                 </div>
             </div>
@@ -1178,7 +1182,58 @@
             </div>
         </div>
     </div>
+<!-- Модальное окно запуска спринта -->
+<div class="modal fade" id="startSprintModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Запустить спринт</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3"><strong>{{ sprintTaskCount }}</strong> задача будет включена в этот спринт.</p>
+                <p class="small text-muted mb-4">Обязательные поля отмечены звездочкой <span class="text-danger">*</span></p>
 
+                <form id="startSprintForm">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Название спринта *</label>
+                        <input type="text" class="form-control" v-model="sprintForm.name">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Длительность *</label>
+                        <select class="form-select" v-model="sprintForm.duration" @change="calculateSprintEndDate">
+                            <option value="1">1 неделя</option>
+                            <option value="2">2 недели</option>
+                            <option value="3">3 недели</option>
+                            <option value="4">4 недели</option>
+                            <option value="custom">Пользовательская</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Дата начала *</label>
+                        <input type="datetime-local" class="form-control" v-model="sprintForm.startDate" @change="calculateSprintEndDate">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Дата окончания *</label>
+                        <input type="datetime-local" class="form-control bg-light" v-model="sprintForm.endDate" :disabled="sprintForm.duration !== 'custom'">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Цель спринта</label>
+                        <textarea class="form-control" rows="4" v-model="sprintForm.goal" placeholder="Чего команда хочет достичь в этом спринте?"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-link text-decoration-none text-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary px-4" @click="confirmStartSprint">Начать</button>
+            </div>
+        </div>
+    </div>
+</div>
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
@@ -1219,6 +1274,16 @@
                     isTaskSubmitting: false,
                     projects: [],
                     sprints: [],
+                    sprintForm: {
+    id: null,
+    name: '',
+    duration: '2', // По умолчанию 2 недели
+    startDate: '',
+    endDate: '',
+    goal: ''
+},
+sprintTaskCount: 0,
+startSprintModal: null,
                     draggedTask: null,
                     projectTasks: [],
                     projectAttachments: [],
@@ -1331,7 +1396,67 @@ openProject(project) {
                     if (!this.projectTasks) return [];
                     return this.projectTasks.filter(t => t.sprint_id === sprintId);
                 },
+                // Метод открытия модалки
+openStartSprintModal(sprint) {
+    this.sprintForm.id = sprint.id;
+    this.sprintForm.name = sprint.name;
+    this.sprintForm.goal = '';
+    
+    // Устанавливаем текущую дату и время для поля "Дата начала"
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    this.sprintForm.startDate = now.toISOString().slice(0, 16);
+    
+    // Считаем количество задач в этом спринте
+    this.sprintTaskCount = this.getSprintTasks(sprint.id).length;
+    
+    // Рассчитываем дату окончания
+    this.calculateSprintEndDate();
+    
+    if (!this.startSprintModal) {
+        this.startSprintModal = new bootstrap.Modal(document.getElementById('startSprintModal'));
+    }
+    this.startSprintModal.show();
+},
 
+// Метод расчета даты окончания (чистая логика)
+calculateSprintEndDate() {
+    if (this.sprintForm.duration === 'custom' || !this.sprintForm.startDate) return;
+    
+    let start = new Date(this.sprintForm.startDate);
+    let weeks = parseInt(this.sprintForm.duration);
+    start.setDate(start.getDate() + (weeks * 7));
+    
+    // Форматируем для input datetime-local
+    this.sprintForm.endDate = start.toISOString().slice(0, 16);
+},
+
+// РЕАЛЬНЫЙ запрос на сервер для старта спринта
+async confirmStartSprint() {
+    try {
+        const response = await fetch(`/sprints/${this.sprintForm.id}/start`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: this.sprintForm.name,
+                start_date: this.sprintForm.startDate,
+                end_date: this.sprintForm.endDate,
+                goal: this.sprintForm.goal
+            })
+        });
+
+        if (response.ok) {
+            this.startSprintModal.hide();
+            // Перезагружаем спринты, чтобы увидеть смену статуса на "Активен"
+            this.loadProjectSprints(this.currentProject.id);
+            alert("Спринт запущен!");
+        } else {
+            alert("Ошибка сервера при запуске спринта");
+        }
+    } catch (err) {
+        console.error("Ошибка сети:", err);
+    }
+},
                 getBacklogTasks() {
                     if (!this.projectTasks) return [];
     // В бэклог идут задачи, у которых нет sprint_id (null или 0)

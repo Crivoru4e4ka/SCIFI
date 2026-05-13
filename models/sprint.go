@@ -7,4 +7,5 @@ type Sprint struct {
 	Status    string  `json:"status"`
 	StartDate *string `json:"start_date"` // используем указатель, так как может быть null
 	EndDate   *string `json:"end_date"`
+	Goal      string  `json:"goal"`
 }

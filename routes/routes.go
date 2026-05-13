@@ -39,6 +39,7 @@ func InitRoutes() *mux.Router {
 	// --- Sprints ---
 	r.HandleFunc("/projects/{id}/sprints", handlers.GetProjectSprintsHandler).Methods("GET")
 	r.HandleFunc("/projects/{id}/sprints", handlers.CreateSprintHandler).Methods("POST")
+	r.HandleFunc("/sprints/{id}/start", handlers.StartSprintHandler).Methods("PATCH")
 
 	// --- Attachments ---
 	r.HandleFunc("/projects/{id}/attachments", handlers.GetProjectAttachmentsHandler).Methods("GET")

@@ -66,3 +66,9 @@ func CreateSprint(s *models.Sprint) error {
 
 	return err
 }
+
+func StartSprint(id int, s models.Sprint) error {
+	query := `UPDATE sprints SET name=$1, start_date=$2, end_date=$3, goal=$4, status='active' WHERE id=$5`
+	_, err := db.DB.Exec(query, s.Name, s.StartDate, s.EndDate, s.Goal, id)
+	return err
+}

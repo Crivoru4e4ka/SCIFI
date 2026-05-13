@@ -7,13 +7,14 @@ import (
 )
 
 func GetProjectAttachments(projectId int) ([]models.Attachment, error) {
-	// Выбираем вложения всех задач, которые принадлежат данному проекту
+	// Добавляем t.task_num в SELECT и делаем JOIN с таблицей tasks
 	query := `
-        SELECT a.id, a.task_id, a.user_id, a.file_name, a.file_url, a.created_at 
-        FROM attachments a
-        JOIN tasks t ON a.task_id = t.id
-        WHERE t.project_id = $1
-    `
+		SELECT a.id, a.task_id, a.user_id, a.file_name, a.file_url, a.created_at, t.task_num
+		FROM attachments a
+		JOIN tasks t ON a.task_id = t.id
+		WHERE t.project_id = $1
+		ORDER BY a.created_at DESC`
+
 	rows, err := db.DB.Query(query, projectId)
 	if err != nil {
 		return nil, err
@@ -23,7 +24,9 @@ func GetProjectAttachments(projectId int) ([]models.Attachment, error) {
 	var attachments []models.Attachment
 	for rows.Next() {
 		var a models.Attachment
-		if err := rows.Scan(&a.Id, &a.TaskId, &a.UserId, &a.FileName, &a.FileUrl, &a.CreatedAt); err != nil {
+		// В Scan добавляем &a.TaskNum последним аргументом
+		if err := rows.Scan(&a.Id, &a.TaskId, &a.UserId, &a.FileName, &a.FileUrl, &a.CreatedAt, &a.TaskNum); err != nil {
+			log.Printf("Ошибка Scan во вложениях: %v", err)
 			return nil, err
 		}
 		attachments = append(attachments, a)

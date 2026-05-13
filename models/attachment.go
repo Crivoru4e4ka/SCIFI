@@ -9,4 +9,5 @@ type Attachment struct {
 	FileName  string    `json:"file_name"`
 	FileUrl   string    `json:"file_url"`
 	CreatedAt time.Time `json:"created_at"`
+	TaskNum   int       `json:"task_num"`
 }

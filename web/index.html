@@ -928,11 +928,12 @@ body.dark-theme .jira-tag {
                                 <div class="small text-muted">Загрузил: {{ getUserName(file.user_id) }}</div>
                             </td>
                             
-                            <td>
-                                <span class="badge bg-info text-dark">
-                                    ID Задачи: {{ file.task_id }}
-                                </span>
-                            </td>
+<td>
+    <span class="badge bg-info text-dark">
+        <!-- Берем ключ текущего проекта и номер задачи из объекта файла -->
+        {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ file.task_num }}
+    </span>
+</td>
                             
                             <td class="small text-muted">{{ formatDate(file.created_at) }}</td>
                             

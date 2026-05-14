@@ -15,3 +15,19 @@ type TeamMemberInfo struct {
 	Email    string `json:"email"`
 	Role     string `json:"role"`
 }
+
+// Для обновления имени и описания
+type UpdateTeamRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// Для добавления участника
+type AddMemberRequest struct {
+	Email string `json:"email"`
+}
+
+// Для смены роли
+type UpdateRoleRequest struct {
+	Role string `json:"role"`
+}

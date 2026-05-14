@@ -89,3 +89,64 @@ func RemoveTeamMemberHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// PATCH /teams/{id}
+func UpdateTeamHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	teamID, _ := strconv.Atoi(vars["id"])
+
+	var req models.UpdateTeamRequest
+	json.NewDecoder(r.Body).Decode(&req)
+
+	if err := services.UpdateTeam(teamID, req.Name, req.Description); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// POST /teams/{id}/members
+func AddTeamMemberHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	teamID, _ := strconv.Atoi(vars["id"])
+
+	var req models.AddMemberRequest
+	json.NewDecoder(r.Body).Decode(&req)
+
+	member, err := services.AddMemberToTeam(teamID, req.Email)
+	if err != nil {
+		http.Error(w, "Пользователь не найден", 404)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(member)
+}
+
+// PATCH /teams/{id}/members/{userID}/role
+func UpdateMemberRoleHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	teamID, _ := strconv.Atoi(vars["id"])
+	userID, _ := strconv.Atoi(vars["userID"])
+
+	var req models.UpdateRoleRequest
+	json.NewDecoder(r.Body).Decode(&req)
+
+	if err := services.UpdateMemberRole(teamID, userID, req.Role); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// DELETE /teams/{id}
+func DeleteTeamHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	teamID, _ := strconv.Atoi(vars["id"])
+
+	if err := services.DeleteTeam(teamID); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

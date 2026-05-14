@@ -264,6 +264,21 @@
             color: #5e6c84;
             font-weight: 600;
         }
+.role-select {
+    font-size: 0.8rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #0052cc;
+    font-weight: 600;
+}
+.role-select:hover {
+    text-decoration: underline;
+}
+.delete-team-zone {
+    background-color: #fff5f5;
+    border-top: 1px solid #ffebeb;
+}
 /* Закругляем само модальное окно */
 .modal-content {
     border-radius: 16px !important;
@@ -657,9 +672,42 @@ body.dark-theme .jira-tag {
                 <template v-if="currentPage === 'sections'">
   <!-- Вид, когда никакой конкретный проект еще не открыт -->
   <template v-if="!currentProject">
+
+                <!-- 1. ВКЛАДКА: НЕДАВНИЕ (ВСТАВЛЯЕМ СЮДА) -->
+            <div v-if="activeSidebarTab === 'recent'">
+                <h2 class="mb-4">Недавние</h2>
+                
+                <div v-if="recentItems.length > 0" class="row g-3">
+                    <div class="col-12" v-for="item in recentItems" :key="item.id + item.type">
+                        <div class="card card-light shadow-sm border-0" @click="item.type === 'project' ? openProjectById(item.id) : openTaskById(item)" style="cursor: pointer;">
+                            <div class="card-body d-flex align-items-center py-2">
+                                <div class="me-3">
+                                    <i v-if="item.type === 'project'" class="fas fa-columns text-primary fa-lg"></i>
+                                    <i v-else class="fas fa-check-square text-success fa-lg"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold mb-0">
+                                        <span class="text-muted small me-1" v-if="item.type === 'task'">{{ item.key }}-{{ item.task_num }}:</span>
+                                        {{ item.title }}
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">
+                                        {{ item.type === 'project' ? 'Раздел' : 'Задача' }} 
+                                    </div>
+                                </div>
+                                <i class="fas fa-chevron-right text-light"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div v-else class="text-center py-5">
+                    <i class="fas fa-history fa-4x mb-3 text-muted opacity-25"></i>
+                    <h5>Здесь будет ваша история</h5>
+                    <p class="text-muted">Просматривайте разделы и задачи, и они появятся в этом списке.</p>
+                </div>
+            </div>
     
-    <!-- 1. ВКЛАДКА: РАЗДЕЛЫ (Твой стандартный список проектов) -->
-    <div v-if="activeSidebarTab === 'sections'">
+    <!-- 2. ВКЛАДКА: РАЗДЕЛЫ (Стандартный список проектов) -->
+    <div v-else-if="activeSidebarTab === 'sections'">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
           <div>
             <h2 class="mb-1">Разделы</h2>
@@ -1652,29 +1700,89 @@ body.dark-theme .jira-tag {
     </div>
 </div>
 
-<!-- ОДИН ЭКЗЕМПЛЯР: Управление командой -->
+<!-- Окно: Управление командой -->
 <div class="modal fade" id="manageTeamModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Участники: {{ selectedTeam?.name }}</h5>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" v-if="selectedTeam">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold">Настройки команды</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-0">
-                <div class="list-group list-group-flush">
-                    <div v-for="m in currentTeamMembers" :key="m.user_id" class="list-group-item d-flex justify-content-between align-items-center py-3">
-                        <div class="d-flex align-items-center">
-                            <div class="avatar-circle bg-secondary text-white me-3" style="width: 35px; height: 35px;">{{ m.full_name[0] }}</div>
-                            <div>
-                                <div class="fw-bold small">{{ m.full_name }}</div>
-                                <div class="text-muted small">{{ m.email }}</div>
-                            </div>
-                        </div>
-                        <button v-if="m.email !== profile.email" class="btn btn-outline-danger btn-sm border-0" @click="removeMember(m)">
-                            <i class="fas fa-trash"></i>
-                        </button>
+            
+            <div class="modal-body">
+                <!-- Секция 1: Основные данные -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted">ОБЩАЯ ИНФОРМАЦИЯ</label>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text bg-white"><i class="fas fa-users-cog"></i></span>
+                        <input type="text" class="form-control" v-model="selectedTeam.name" placeholder="Название команды">
+                    </div>
+                    <textarea class="form-control" v-model="selectedTeam.description" rows="2" placeholder="Описание группы"></textarea>
+                    <div class="text-end mt-2">
+                        <button class="btn btn-primary btn-sm px-3 rounded-pill" @click="updateTeamInfo">Сохранить изменения</button>
                     </div>
                 </div>
+
+                <hr class="opacity-5">
+
+                <!-- Секция 2: Добавление нового участника (Autocomplete) -->
+                <div class="mb-4 position-relative" v-click-outside="() => showManageSuggestions = false">
+                    <label class="form-label small fw-bold text-muted">ДОБАВИТЬ УЧАСТНИКА</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Введите имя или email..." 
+                               v-model="manageInviteEmail" @input="showManageSuggestions = true">
+                        <button class="btn btn-outline-primary" @click="addMemberToExistingTeam">Добавить</button>
+                    </div>
+                    <!-- Подсказки -->
+                    <div class="email-suggestions shadow-lg" v-if="showManageSuggestions && filteredManageUsers.length > 0">
+                        <div v-for="user in filteredManageUsers" :key="user.id" class="suggestion-item" @click="selectUserForExistingTeam(user)">
+                            <div class="avatar-circle bg-primary text-white me-2" style="width: 30px; height: 30px;">{{ user.full_name[0] }}</div>
+                            <div class="suggestion-info">
+                                <span class="fw-bold small">{{ user.full_name }}</span>
+                                <span class="text-muted" style="font-size: 0.7rem;">{{ user.email }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Секция 3: Список участников -->
+                <label class="form-label small fw-bold text-muted">УЧАСТНИКИ ({{ currentTeamMembers.length }})</label>
+                <div class="list-group list-group-flush border rounded overflow-hidden">
+                    <div v-for="m in currentTeamMembers" :key="m.user_id" class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle bg-secondary text-white me-3" style="width: 38px; height: 38px;">{{ m.full_name[0] }}</div>
+                            <div>
+                                <div class="fw-bold small">{{ m.full_name }}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">{{ m.email }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex align-items-center gap-3">
+                            <!-- Выбор роли -->
+                            <select class="role-select form-select-sm" 
+                                    :disabled="m.email === profile.email"
+                                    v-model="m.role" 
+                                    @change="changeMemberRole(m)">
+                                <option value="member">Member</option>
+                                <option value="admin">Admin</option>
+                            </select>
+
+                            <!-- Удаление -->
+                            <button v-if="m.email !== profile.email" class="btn btn-link text-danger p-0" @click="removeMember(m)">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
+                            <span v-else class="badge bg-light text-muted fw-normal">Вы</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Секция 4: Удаление команды -->
+            <div class="modal-footer delete-team-zone justify-content-between p-3">
+                <div class="small text-muted">Команда создана вами.</div>
+                <button class="btn btn-outline-danger btn-sm px-3" @click="deleteTeam">
+                    <i class="fas fa-trash-alt me-1"></i> Удалить команду
+                </button>
             </div>
         </div>
     </div>
@@ -1760,12 +1868,15 @@ startSprintModal: null,
                     users: [],
                     teams: [],
                     inviteEmail: '',
+                    manageInviteEmail: '',
+                    showManageSuggestions: false,
                     showSuggestions: false, // Список команд
                     newTeam: { name: '', description: '', member_emails: [] },
 createTeamModal: null,
-selectedTeam: null,
+selectedTeam: { name: '', description: '' },
 currentTeamMembers: [],
 manageTeamModal: null,
+recentItems: [],
                     currentPage: "sections",
                     activeSidebarTab: 'sections',
                     sections: [],
@@ -1836,6 +1947,14 @@ manageTeamModal: null,
                 taskSubmitButtonText() {
                     return this.isTaskSubmitting ? "Создание..." : "Создать";
                 },
+                filteredManageUsers() {
+    if (!this.manageInviteEmail || this.manageInviteEmail.length < 1) return [];
+    const search = this.manageInviteEmail.toLowerCase();
+    return this.users.filter(user => {
+        const alreadyIn = this.currentTeamMembers.some(m => m.email === user.email);
+        return !alreadyIn && (user.email.toLowerCase().includes(search) || user.full_name.toLowerCase().includes(search));
+    }).slice(0, 5);
+},
 filteredUsers() {
     if (!this.inviteEmail || this.inviteEmail.length < 1) return [];
     
@@ -1874,6 +1993,182 @@ filteredUsers() {
             this.manageTeamModal.show();
         }
     } catch (e) { console.error(e); }
+},
+openProjectById(id) {
+    const project = this.projects.find(p => p.id === id);
+    if (project) {
+        this.openProject(project);
+    } else {
+        alert("Загрузка раздела...");
+    }
+},
+
+async openTaskById(item) {
+    // 1. Находим проект, к которому относится задача
+    const project = this.projects.find(p => p.key === item.key);
+    if (project) {
+        await this.openProject(project); // Открываем проект
+        this.currentProjectView = 'list'; // Переключаемся на список
+        this.expandedTaskId = item.id;   // Разворачиваем задачу
+        
+        // Скроллим к задаче через небольшую паузу
+        setTimeout(() => {
+            const el = document.querySelector('.table-active');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+    }
+},
+// Сохранить элемент в список недавних
+addToRecent(item, type) {
+    let recent = JSON.parse(localStorage.getItem('scifi_recent') || '[]');
+    
+    // Создаем компактный объект для хранения
+    const entry = {
+        id: item.id,
+        title: item.title || item.name,
+        key: item.key || (this.currentProject ? this.currentProject.key : 'TASK'),
+        task_num: item.task_num || null,
+        type: type, // 'project' или 'task'
+        timestamp: new Date().getTime()
+    };
+
+    // Удаляем дубликат, если он уже был в списке (чтобы поднять его наверх)
+    recent = recent.filter(r => !(r.id === entry.id && r.type === entry.type));
+    
+    // Добавляем в начало
+    recent.unshift(entry);
+    
+    // Оставляем только последние 10
+    recent = recent.slice(0, 10);
+    
+    localStorage.setItem('scifi_recent', JSON.stringify(recent));
+    this.recentItems = recent;
+},
+
+// Загрузить список недавних из памяти
+loadRecentFromStorage() {
+    this.recentItems = JSON.parse(localStorage.getItem('scifi_recent') || '[]');
+},
+// Функция, которая срабатывает при клике на подсказку (исправляет вашу ошибку)
+selectUserForExistingTeam(user) {
+    this.manageInviteEmail = user.email;
+    this.showManageSuggestions = false;
+    this.addMemberToExistingTeam(); // Сразу пытаемся добавить
+},
+
+// Сама логика отправки запроса на сервер
+async addMemberToExistingTeam() {
+    const email = this.manageInviteEmail.trim();
+    if (!email) return;
+
+    try {
+        const response = await fetch(`/teams/${this.selectedTeam.id}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email })
+        });
+
+        if (response.ok) {
+            const newMember = await response.json();
+            // Добавляем нового участника в локальный список, чтобы он сразу появился в окне
+            this.currentTeamMembers.push(newMember);
+            this.manageInviteEmail = '';
+            this.showManageSuggestions = false;
+            
+            // Обновляем счетчик участников на главной карточке команды
+            if (this.selectedTeam) {
+                this.selectedTeam.members_count++;
+            }
+        } else {
+            const err = await response.text();
+            alert("Не удалось добавить: " + err);
+        }
+    } catch (e) {
+        console.error("Ошибка добавления участника:", e);
+    }
+},
+
+// Метод для изменения роли участника (если будете использовать)
+async changeMemberRole(member) {
+    try {
+        await fetch(`/teams/${this.selectedTeam.id}/members/${member.user_id}/role`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: member.role })
+        });
+    } catch (e) {
+        console.error("Ошибка смены роли:", e);
+    }
+},
+// 1. Метод удаления участника (исправляет вашу ошибку)
+async removeMember(member) {
+    if (!confirm(`Удалить участника ${member.full_name} из команды?`)) return;
+
+    try {
+        const response = await fetch(`/teams/${this.selectedTeam.id}/members/${member.user_id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            // Удаляем участника из списка в открытом окне
+            this.currentTeamMembers = this.currentTeamMembers.filter(m => m.user_id !== member.user_id);
+            
+            // Уменьшаем счетчик участников на карточке команды
+            if (this.selectedTeam) {
+                this.selectedTeam.members_count--;
+            }
+            console.log("Участник удален");
+        } else {
+            alert("Ошибка сервера при удалении участника");
+        }
+    } catch (e) {
+        console.error("Ошибка сети:", e);
+    }
+},
+
+// 2. Метод удаления всей команды (чтобы кнопка внизу тоже работала)
+async deleteTeam() {
+    if (!confirm(`ВНИМАНИЕ: Вы действительно хотите полностью удалить команду "${this.selectedTeam.name}"? Это действие необратимо.`)) return;
+
+    try {
+        const response = await fetch(`/teams/${this.selectedTeam.id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            // Удаляем команду из общего списка на странице
+            this.teams = this.teams.filter(t => t.id !== this.selectedTeam.id);
+            
+            // Закрываем модальное окно
+            this.manageTeamModal.hide();
+            alert("Команда успешно удалена");
+        } else {
+            alert("Не удалось удалить команду");
+        }
+    } catch (e) {
+        console.error("Ошибка при удалении команды:", e);
+    }
+},
+
+// 3. Метод обновления инфо о команде (для кнопки "Сохранить изменения")
+async updateTeamInfo() {
+    try {
+        const response = await fetch(`/teams/${this.selectedTeam.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: this.selectedTeam.name,
+                description: this.selectedTeam.description
+            })
+        });
+
+        if (response.ok) {
+            alert("Информация обновлена!");
+            this.loadUserTeams(); // Перезагружаем список, чтобы обновить имя на карточке
+        }
+    } catch (e) {
+        console.error(e);
+    }
 },
 selectUser(user) {
     // Добавляем почту пользователя, если её еще нет в списке
@@ -1978,6 +2273,7 @@ startProjectCreation() {
                     this.kanbanWizard.step = 1;
                 },
 openProject(project) {
+    this.addToRecent(project, 'project');
     console.log("Данные открытого проекта:", project);
     this.currentProject = project;
     this.currentProjectView = "board";
@@ -2524,16 +2820,25 @@ nextKanbanStep() {
                 openKanbanPage() {
                     window.location.href = '/kanban.html';
                 },
-                applyTheme(theme) {
-                    if (theme === 'dark') {
-                        document.body.classList.add('dark-theme');
-                    } else {
-                        document.body.classList.remove('dark-theme');
-                    }
-                    localStorage.setItem('appTheme', theme);
-                    document.getElementById('themeLight').classList.toggle('active', theme === 'light');
-                    document.getElementById('themeDark').classList.toggle('active', theme === 'dark');
-                },
+applyTheme(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark-theme');
+    } else {
+        document.body.classList.remove('dark-theme');
+    }
+    localStorage.setItem('appTheme', theme);
+
+    // ДОБАВЬТЕ ЭТИ ПРОВЕРКИ (if):
+    const lightBtn = document.getElementById('themeLight');
+    const darkBtn = document.getElementById('themeDark');
+    
+    if (lightBtn) {
+        lightBtn.classList.toggle('active', theme === 'light');
+    }
+    if (darkBtn) {
+        darkBtn.classList.toggle('active', theme === 'dark');
+    }
+},
                 formatDateForApi(dateValue) {
                     if (!dateValue) {
                         return null;
@@ -2669,8 +2974,11 @@ openTaskDetails(task) {
     // Пока просто выводим в консоль
 },
 toggleTask(taskId) {
-    // Если кликнули на уже открытую задачу — закрываем (null), иначе открываем новую
     this.expandedTaskId = this.expandedTaskId === taskId ? null : taskId;
+    if (this.expandedTaskId) {
+        const task = this.projectTasks.find(t => t.id === taskId);
+        if (task) this.addToRecent(task, 'task'); // ЗАПОМИНАЕМ ЗАДАЧУ
+    }
 },
 async createTaskFromModal() {
     const form = document.getElementById('createTaskForm');
@@ -2755,6 +3063,7 @@ async createTaskFromModal() {
 },
             },
 mounted() {
+    this.loadRecentFromStorage();
     const savedTheme = localStorage.getItem('appTheme') || 'light';
     this.applyTheme(savedTheme);
 

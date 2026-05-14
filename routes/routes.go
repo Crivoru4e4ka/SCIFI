@@ -53,8 +53,12 @@ func InitRoutes() *mux.Router {
 	// --- Команды ---
 	r.HandleFunc("/user/{id}/teams", handlers.GetUserTeamsHandler).Methods("GET")
 	r.HandleFunc("/teams", handlers.CreateTeamHandler).Methods("POST")
+	r.HandleFunc("/teams/{id}", handlers.UpdateTeamHandler).Methods("PATCH")
+	r.HandleFunc("/teams/{id}", handlers.DeleteTeamHandler).Methods("DELETE")
 	r.HandleFunc("/teams/{id}/members", handlers.GetTeamMembersHandler).Methods("GET")
+	r.HandleFunc("/teams/{id}/members", handlers.AddTeamMemberHandler).Methods("POST")
 	r.HandleFunc("/teams/{id}/members/{userID}", handlers.RemoveTeamMemberHandler).Methods("DELETE")
+	r.HandleFunc("/teams/{id}/members/{userID}/role", handlers.UpdateMemberRoleHandler).Methods("PATCH")
 
 	// --- UI ---
 	r.HandleFunc("/", handlers.ServeIndex).Methods("GET")

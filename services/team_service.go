@@ -101,3 +101,51 @@ func RemoveMemberFromTeam(teamID int, userID int) error {
 	_, err := db.DB.Exec("DELETE FROM team_members WHERE team_id = $1 AND user_id = $2", teamID, userID)
 	return err
 }
+
+// Обновить информацию о команде
+func UpdateTeam(teamID int, name, description string) error {
+	_, err := db.DB.Exec("UPDATE teams SET name = $1, description = $2 WHERE id = $3", name, description, teamID)
+	return err
+}
+
+// Добавить одного участника в существующую команду по Email
+func AddMemberToTeam(teamID int, email string) (models.TeamMemberInfo, error) {
+	var m models.TeamMemberInfo
+	var userID int
+
+	// 1. Ищем пользователя
+	err := db.DB.QueryRow("SELECT id, full_name, email FROM users WHERE email = $1", strings.TrimSpace(email)).
+		Scan(&userID, &m.FullName, &m.Email)
+	if err != nil {
+		return m, err
+	}
+
+	// 2. Добавляем в связку
+	_, err = db.DB.Exec("INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'member') ON CONFLICT DO NOTHING", teamID, userID)
+
+	m.UserID = userID
+	m.Role = "member"
+	return m, err
+}
+
+// Изменить роль участника
+func UpdateMemberRole(teamID, userID int, newRole string) error {
+	_, err := db.DB.Exec("UPDATE team_members SET role = $1 WHERE team_id = $2 AND user_id = $3", newRole, teamID, userID)
+	return err
+}
+
+// Удалить команду полностью (вместе с участниками)
+func DeleteTeam(teamID int) error {
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Сначала удаляем участников
+	tx.Exec("DELETE FROM team_members WHERE team_id = $1", teamID)
+	// Потом команду
+	tx.Exec("DELETE FROM teams WHERE id = $1", teamID)
+
+	return tx.Commit()
+}

@@ -123,3 +123,24 @@ func UpdateTaskSprintHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func GetAllUserTasksHandler(w http.ResponseWriter, r *http.Request) {
+	// 1. Получаем сессию пользователя (как в ваших прошлых хендлерах)
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		http.Error(w, "Не авторизован", http.StatusUnauthorized)
+		return
+	}
+	userID, _ := strconv.Atoi(cookie.Value)
+
+	// 2. Вызываем сервис
+	tasks, err := services.GetAllUserTasks(userID)
+	if err != nil {
+		http.Error(w, "Ошибка при получении всех задач: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Отправляем JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tasks)
+}

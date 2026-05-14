@@ -260,3 +260,81 @@ func UpdateTaskSprint(taskId int, sprintId *int) error {
 	_, err := db.DB.Exec(query, sprintId, taskId)
 	return err
 }
+
+func GetAllUserTasks(userID int) ([]models.Task, error) {
+	// 1. Мы выбираем данные из задач
+	// 2. С помощью вложенного SELECT и STRING_AGG собираем теги в одну строку "tag1,tag2"
+	// 3. Используем COALESCE для полей, которые могут быть NULL, чтобы Scan не выдал ошибку
+	query := `
+		SELECT 
+			t.id, 
+			t.project_id, 
+			COALESCE(t.task_num, 0) as local_id, 
+			t.sprint_id, 
+			t.title, 
+			COALESCE(t.description, ''), 
+			t.status, 
+			t.priority, 
+			t.assignee_id, 
+			t.created_by, 
+			t.due_date, 
+			t.created_at, 
+			t.updated_at, 
+			t.type, 
+			t.hypothesis_id, 
+			t.resource_id, 
+			COALESCE(t.conclusion, ''), 
+			COALESCE(t.task_num, 0) as task_num,
+			COALESCE((
+				SELECT STRING_AGG(tg.name, ',') 
+				FROM tags tg 
+				JOIN task_tags tt ON tg.id = tt.tag_id 
+				WHERE tt.task_id = t.id
+			), '') as tags
+		FROM tasks t
+		JOIN project_members pm ON t.project_id = pm.project_id
+		WHERE pm.user_id = $1
+		ORDER BY t.created_at DESC`
+
+	rows, err := db.DB.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tasks []models.Task
+	for rows.Next() {
+		var t models.Task
+		err := rows.Scan(
+			&t.Id,
+			&t.ProjectId,
+			&t.LocalId,
+			&t.SprintId,
+			&t.Title,
+			&t.Description,
+			&t.Status,
+			&t.Priority,
+			&t.AssigneeId,
+			&t.CreatedBy,
+			&t.DueDate,
+			&t.CreatedAt,
+			&t.UpdatedAt,
+			&t.Type,
+			&t.HypothesisId,
+			&t.ResourceId,
+			&t.Conclusion,
+			&t.TaskNum,
+			&t.Tags,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+
+	if tasks == nil {
+		tasks = []models.Task{}
+	}
+
+	return tasks, nil
+}

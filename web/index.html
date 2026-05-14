@@ -113,7 +113,6 @@
     color: #42526e;
     margin-bottom: 12px;
 }
-
 .star-toggle {
     cursor: pointer;
     color: #adbac7; /* Сделали базовый цвет темнее, чтобы его было видно */
@@ -122,20 +121,12 @@
     position: relative;
     z-index: 10; /* Чтобы клик точно срабатывал */
 }
-
 .star-toggle:hover {
     transform: scale(1.2);
-    color: #e3b000;
+    color: #ffab00;
 }
-
 .star-toggle.active {
-    color: #ffab00 !important; /* Насыщенный золотой */
-    text-shadow: 0 0 5px rgba(255, 171, 0, 0.3);
-}
-
-/* Специально для темной темы */
-body.dark-theme .star-toggle {
-    color: #444c56;
+    color: #ffab00; /* Желтый/Золотой для активной */
 }
         .navbar {
             background-color: #ffffff;
@@ -579,10 +570,10 @@ body.dark-theme .jira-tag {
                     <span class="small">{{ proj.name }}</span>
                 </div>
                 
-                <hr>
-                <a href="#" class="search-item text-primary small" @click.prevent="currentProjectView = 'list'; isSearchOpen = false">
-                    <i class="fas fa-list me-2"></i>Просмотреть все задачи
-                </a>
+<hr>
+<a href="#" class="search-item text-primary small" @click.prevent="openIssueNavigator">
+    <i class="fas fa-list me-2"></i>Просмотреть все задачи
+</a>
             </div>
 
             <!-- ПРАВАЯ ЧАСТЬ: Быстрые фильтры -->
@@ -815,30 +806,123 @@ body.dark-theme .jira-tag {
         </div>
     </div>
 
-    <!-- 2. ВКЛАДКА: ФИЛЬТРЫ -->
-    <div v-else-if="activeSidebarTab === 'filters'">
-        <h2 class="mb-4">Ваши сохраненные фильтры</h2>
-        <div class="row" v-if="userFilters && userFilters.length > 0">
-            <div class="col-md-12">
-                <div class="list-group shadow-sm">
-                    <a v-for="f in userFilters" :key="f.id" href="#" 
-                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3"
-                       @click.prevent="applySavedFilter(f)">
-                        <div>
-                            <div class="fw-bold text-primary"><i class="fas fa-filter me-2"></i>{{ f.name }}</div>
-                            <div class="small text-muted">Запрос: "{{ f.search_query }}" | Приоритет: {{ f.priority_filter }}</div>
-                        </div>
-                        <i class="fas fa-chevron-right text-muted"></i>
-                    </a>
+    <!-- РАЗДЕЛ: ФИЛЬТРЫ -->
+<div v-else-if="activeSidebarTab === 'filters'">
+    
+    <!-- Вид 1: Список сохраненных фильтров -->
+    <template v-if="filterSubPage === 'list'">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Фильтры</h2>
+            <button class="btn btn-primary btn-sm" @click="filterSubPage = 'search'; loadAllTasks()">
+                <i class="fas fa-search me-1"></i> Поиск задач
+            </button>
+        </div>
+        
+        <div v-if="userFilters && userFilters.length > 0" class="list-group shadow-sm">
+            <a v-for="f in userFilters" :key="f.id" href="#" 
+               class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3"
+               @click.prevent="applySavedFilter(f); filterSubPage = 'search'">
+                <div>
+                    <div class="fw-bold text-primary"><i class="fas fa-filter me-2"></i>{{ f.name }}</div>
                 </div>
-            </div>
+                <i class="fas fa-chevron-right text-muted"></i>
+            </a>
         </div>
         <div v-else class="text-center py-5 bg-white rounded border shadow-sm">
-            <i class="fas fa-search fa-3x mb-3 text-muted opacity-25"></i>
-            <h5>У вас пока нет сохраненных фильтров</h5>
-            <p class="text-muted">Используйте поиск, чтобы настроить фильтры и сохранить их для быстрого доступа.</p>
+            <div class="mb-4"><img src="https://img.icons8.com/color/96/empty-filter.png" alt="no filters" style="width: 64px; opacity: 0.6;"></div>
+            <h5>Нет фильтров</h5>
+            <p class="text-muted small mx-auto" style="max-width: 400px;">
+                Фильтр можно создать с помощью поиска. Выберите «Просмотреть все задачи» или нажмите кнопку выше, введите критерии и нажмите «Сохранить фильтр».
+            </p>
         </div>
-    </div>
+    </template>
+
+<!-- Вид 2: Поиск задач (Issue Navigator как на скриншоте) -->
+    <template v-else-if="filterSubPage === 'search'">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h4 mb-0">Все задачи</h2>
+            <div class="d-flex gap-2">
+                <button class="btn btn-light btn-sm border">Приложения <i class="fas fa-chevron-down ms-1"></i></button>
+                <button class="btn btn-light btn-sm border">Поделиться <i class="fas fa-share ms-1"></i></button>
+            </div>
+        </div>
+
+        <!-- Панель фильтров Jira Style (без JQL) -->
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            
+            <select class="jira-select-pill" v-model="navFilters.project">
+                <option value="all">Раздел: Все</option>
+                <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+
+            <select class="jira-select-pill" v-model="navFilters.assignee">
+                <option value="all">Исполнитель: Все</option>
+                <option v-for="u in users" :key="u.id" :value="u.id">{{ u.full_name }}</option>
+            </select>
+
+            <select class="jira-select-pill" v-model="navFilters.status">
+                <option value="all">Статус: Все</option>
+                <option value="todo">К выполнению</option>
+                <option value="in_progress">В работе</option>
+                <option value="done">Готово</option>
+            </select>
+
+            <button class="btn btn-light btn-sm border-0">Другие фильтры <i class="fas fa-chevron-down ms-1"></i></button>
+        </div>
+
+        <div class="d-flex gap-3 mb-4">
+            <a href="#" class="small text-decoration-none text-muted" @click.prevent="resetNavFilters">Сбросить фильтры</a>
+            <a href="#" class="small text-decoration-none fw-bold" @click.prevent="saveFilterFromNav">Сохранить фильтр</a>
+        </div>
+
+        <!-- Таблица задач -->
+        <div class="bg-white border rounded shadow-sm">
+            <div class="table-responsive">
+                <table class="jira-table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;"><input type="checkbox" class="form-check-input"></th>
+                            <th>Задачи</th>
+                            <th>Исполнитель</th>
+                            <th>Автор</th>
+                            <th>Приоритет</th>
+                            <th>Статус</th>
+                            <th>Создано</th>
+                            <th>Обновлено</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="task in navigatorFilteredTasks" :key="task.id">
+                            <td><input type="checkbox" class="form-check-input"></td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="far fa-check-square text-primary"></i>
+                                    <a href="#" class="issue-link" @click.prevent="openTaskFromNavigator(task)">
+                                        {{ getProjectKey(task.project_id) }}-{{ task.task_num }}
+                                    </a>
+                                    <span class="text-truncate" style="max-width: 250px;">{{ task.title }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar-circle bg-info text-white" style="width: 24px; height: 24px; font-size: 0.7rem;">{{ getUserName(task.assignee_id)[0] }}</div>
+                                    <span class="small">{{ task.assignee_id ? getUserName(task.assignee_id) : 'Не назначено' }}</span>
+                                </div>
+                            </td>
+                            <td>{{ getUserName(task.created_by) }}</td>
+                            <td>
+                                <span class="small text-muted"><i class="fas fa-equals text-warning me-1"></i> {{ task.priority }}</span>
+                            </td>
+                            <td><span :class="getStatusBadgeClass(task.status)">{{ task.status.toUpperCase() }}</span></td>
+                            <td class="small text-muted">{{ formatDate(task.created_at) }}</td>
+                            <td class="small text-muted">{{ formatDate(task.updated_at || task.created_at) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+</div>
 
     <!-- 3. ВКЛАДКА: КОМАНДЫ -->
     <div v-else-if="activeSidebarTab === 'teams'">
@@ -1945,6 +2029,15 @@ startSprintModal: null,
                     searchQuery: '',           // Текст поиска
                     filterMyTasks: false,      // Флаг "Только мои задачи"
                     filterPriority: 'all',
+                    filterSubPage: 'list', // 'list' — список фильтров, 'search' — поиск задач
+allTasks: [],          // Сюда загрузим задачи изо всех разделов
+navFilters: {
+    query: '',
+    project: 'all',
+    assignee: 'all',
+    status: 'all',
+    priority: 'all'
+},
                     isSearchOpen: false,
                     displayedTasks: [],     // Фильтр по приоритету
                     activeTags: [],            // Выбранные теги для фильтрации
@@ -2041,6 +2134,17 @@ flaggedItems: [],
         return !alreadyIn && (user.email.toLowerCase().includes(search) || user.full_name.toLowerCase().includes(search));
     }).slice(0, 5);
 },
+navigatorFilteredTasks() {
+    return this.allTasks.filter(t => {
+        const matchesSearch = !this.navFilters.query || t.title.toLowerCase().includes(this.navFilters.query.toLowerCase());
+        const matchesProj = this.navFilters.project === 'all' || t.project_id === Number(this.navFilters.project);
+        const matchesUser = this.navFilters.assignee === 'all' || t.assignee_id === Number(this.navFilters.assignee);
+        const matchesStatus = this.navFilters.status === 'all' || t.status.toLowerCase() === this.navFilters.status.toLowerCase();
+        const matchesPrio = this.navFilters.priority === 'all' || t.priority.toLowerCase() === this.navFilters.priority.toLowerCase();
+        
+        return matchesSearch && matchesProj && matchesUser && matchesStatus && matchesPrio;
+    });
+},
 filteredUsers() {
     if (!this.inviteEmail || this.inviteEmail.length < 1) return [];
     
@@ -2079,6 +2183,47 @@ filteredUsers() {
             this.manageTeamModal.show();
         }
     } catch (e) { console.error(e); }
+},
+// Метод для кнопки "Просмотреть все задачи" в поиске
+openIssueNavigator() {
+    this.activeSidebarTab = 'filters';
+    this.filterSubPage = 'search';
+    this.currentProject = null;
+    this.isSearchOpen = false;
+    this.loadAllTasks();
+},
+
+// Загрузка вообще всех задач для навигатора
+async loadAllTasks() {
+    try {
+        const response = await fetch('/user/tasks'); // Нужно создать такой эндпоинт в Go
+        if (response.ok) {
+            this.allTasks = await response.json();
+        }
+    } catch (e) { console.error(e); }
+},
+
+// Сброс фильтров навигатора
+resetNavFilters() {
+    this.navFilters = { query: '', project: 'all', assignee: 'all', status: 'all', priority: 'all' };
+},
+
+// Сохранение фильтра из навигатора
+saveFilterFromNav() {
+    const name = prompt("Назовите ваш фильтр:");
+    if (!name) return;
+    
+    const newFilter = {
+        id: Date.now(),
+        name: name,
+        ...this.navFilters
+    };
+    
+    let saved = JSON.parse(localStorage.getItem('scifi_saved_filters') || '[]');
+    saved.push(newFilter);
+    localStorage.setItem('scifi_saved_filters', JSON.stringify(saved));
+    this.userFilters = saved;
+    alert("Фильтр сохранен!");
 },
 // Переключить статус (добавить/удалить из избранного)
 toggleFlag(item, type) {
@@ -2343,8 +2488,11 @@ selectSidebarTab(tabName) {
     this.currentProject = null;
     this.currentPage = 'sections';
     
-    if (tabName === 'filters') this.loadUserFilters();
-    if (tabName === 'teams') this.loadUserTeams(); // <--- ДОБАВИТЬ ЭТО
+    if (tabName === 'filters') {
+        this.loadSavedFilters(); // Было loadUserFilters
+        this.loadAllTasks();    // Загружаем список всех задач
+    }
+    if (tabName === 'teams') this.loadUserTeams();
 },
 async loadUserTeams() {
     const currentUserId = Number(localStorage.getItem('currentUserId'));
@@ -3088,9 +3236,15 @@ applyTheme(theme) {
     if (Array.isArray(tags)) return tags;
     return tags.split(',').map(t => t.trim()).filter(t => t !== "");
 },
+
 openTaskDetails(task) {
     console.log("Открываем детали задачи:", task);
     // Пока просто выводим в консоль
+},
+getProjectKey(projectId) { 
+    if (!this.projects) return 'TASK';
+    const p = this.projects.find(proj => proj.id === projectId);
+    return p && p.key ? p.key.toUpperCase() : 'TASK';
 },
 toggleTask(taskId) {
     this.expandedTaskId = this.expandedTaskId === taskId ? null : taskId;

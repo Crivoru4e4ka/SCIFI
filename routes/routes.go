@@ -35,6 +35,7 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/tasks/{id}/comments", handlers.CreateComment).Methods("POST")
 	r.HandleFunc("/tasks/{id}/comments", handlers.GetCommentsByTask).Methods("GET")
 	r.HandleFunc("/tasks/{id}/sprint", handlers.UpdateTaskSprintHandler).Methods("PATCH")
+	r.HandleFunc("/user/tasks", handlers.GetAllUserTasksHandler).Methods("GET")
 
 	// --- Sprints ---
 	r.HandleFunc("/projects/{id}/sprints", handlers.GetProjectSprintsHandler).Methods("GET")

@@ -12,6 +12,7 @@
             background-color: #f6f7fb;
             color: #172b4d;
         }
+/* Подсказки в командах */
 .email-suggestions {
     position: absolute;
     top: 100%;
@@ -19,11 +20,11 @@
     right: 0;
     background: white;
     border: 1px solid #dfe1e6;
-    border-radius: 4px;
+    border-radius: 12px !important; 
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     z-index: 1070;
     max-height: 200px;
-    overflow-y: auto;
+    overflow: hidden !important;
 }
 
 .suggestion-item {
@@ -54,18 +55,16 @@
 /* Выпадающее окно поиска */
 .search-dropdown {
     position: absolute;
-    top: calc(100% + 5px); /* Небольшой отступ от строки поиска */
+    top: calc(100% + 5px);
     left: 0;
     right: 0;
     background: white;
-    border-radius: 8px;
-    /* Увеличиваем тень, чтобы окно "парило" над страницей */
-    box-shadow: 0 12px 32px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31);
-    /* Ставим z-index выше, чем у сайдбара и других элементов (обычно 1000-1050) */
-    z-index: 2000 !important; 
+    border-radius: 16px !important; 
+    box-shadow: 0 12px 32px rgba(9, 30, 66, 0.25);
+    z-index: 2000 !important;
     display: none;
     max-height: 80vh;
-    overflow-y: auto;
+    overflow: hidden !important; 
     border: 1px solid #dfe1e6;
 }
 
@@ -265,9 +264,13 @@
             color: #5e6c84;
             font-weight: 600;
         }
-        .modal-content {
-            border-radius: 1rem;
-        }
+/* Закругляем само модальное окно */
+.modal-content {
+    border-radius: 16px !important;
+    overflow: hidden !important; 
+    border: none !important;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+}
         .modal-header {
             border-bottom: none;
         }

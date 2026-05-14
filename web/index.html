@@ -113,6 +113,30 @@
     color: #42526e;
     margin-bottom: 12px;
 }
+
+.star-toggle {
+    cursor: pointer;
+    color: #adbac7; /* Сделали базовый цвет темнее, чтобы его было видно */
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    position: relative;
+    z-index: 10; /* Чтобы клик точно срабатывал */
+}
+
+.star-toggle:hover {
+    transform: scale(1.2);
+    color: #e3b000;
+}
+
+.star-toggle.active {
+    color: #ffab00 !important; /* Насыщенный золотой */
+    text-shadow: 0 0 5px rgba(255, 171, 0, 0.3);
+}
+
+/* Специально для темной темы */
+body.dark-theme .star-toggle {
+    color: #444c56;
+}
         .navbar {
             background-color: #ffffff;
             border-bottom: 1px solid #e4e7eb;
@@ -705,6 +729,44 @@ body.dark-theme .jira-tag {
                     <p class="text-muted">Просматривайте разделы и задачи, и они появятся в этом списке.</p>
                 </div>
             </div>
+            <!-- ВКЛАДКА: ОТМЕЧЕННЫЕ -->
+<div v-if="activeSidebarTab === 'flagged'">
+    <h2 class="mb-4">Отмеченные</h2>
+    
+    <div v-if="flaggedItems.length > 0" class="row g-3">
+        <div class="col-12" v-for="item in flaggedItems" :key="item.id + item.type">
+            <div class="card card-light shadow-sm border-0">
+                <div class="card-body d-flex align-items-center py-2">
+                    <div class="me-3" @click="item.type === 'project' ? openProjectById(item.id) : openTaskById(item)" style="cursor: pointer;">
+                        <i v-if="item.type === 'project'" class="fas fa-star text-warning fa-lg"></i>
+                        <i v-else class="fas fa-bookmark text-warning fa-lg"></i>
+                    </div>
+                    
+                    <div class="flex-grow-1" @click="item.type === 'project' ? openProjectById(item.id) : openTaskById(item)" style="cursor: pointer;">
+                        <div class="fw-bold mb-0">
+                            <span class="text-muted small me-1" v-if="item.type === 'task'">{{ item.key }}-{{ item.task_num }}:</span>
+                            {{ item.title }}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.75rem;">
+                            {{ item.type === 'project' ? 'Раздел добавлен в избранное' : 'Задача отмечена флажком' }}
+                        </div>
+                    </div>
+
+                    <!-- Кнопка удаления прямо из списка -->
+                    <button class="btn btn-link text-muted p-0" @click="toggleFlag(item, item.type)">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div v-else class="text-center py-5">
+        <i class="far fa-star fa-4x mb-3 text-muted opacity-25"></i>
+        <h5>У вас пока нет отмеченных элементов</h5>
+        <p class="text-muted">Нажимайте на звездочку у разделов или задач, чтобы они всегда были под рукой.</p>
+    </div>
+</div>
     
     <!-- 2. ВКЛАДКА: РАЗДЕЛЫ (Стандартный список проектов) -->
     <div v-else-if="activeSidebarTab === 'sections'">
@@ -727,10 +789,16 @@ body.dark-theme .jira-tag {
                   <div class="avatar-circle bg-primary text-white d-flex align-items-center justify-content-center">
                     {{ project.name.charAt(0) }}
                   </div>
-                  <div class="flex-grow-1">
-                    <div class="fw-semibold">{{ project.name }}</div>
-                    <div class="text-muted small">{{ project.key }}</div>
-                  </div>
+<div class="flex-grow-1">
+    <div class="d-flex align-items-center justify-content-between">
+        <div class="fw-semibold">{{ project.name }}</div>
+        <!-- Звездочка тут -->
+        <i class="fas fa-star star-toggle" 
+           :class="{active: isFlagged(project.id, 'project')}" 
+           @click.stop="toggleFlag(project, 'project')"></i>
+    </div>
+    <div class="text-muted small">{{ project.key }}</div>
+</div>
                 </div>
               </div>
             </div>
@@ -900,10 +968,15 @@ body.dark-theme .jira-tag {
     <template v-for="task in displayedTasks" :key="task.id">
         <!-- Основная строка -->
         <tr @click="toggleTask(task.id)" style="cursor: pointer;" :class="{'table-active': expandedTaskId === task.id}">
-            <td class="ps-3 text-muted small fw-bold">
-                <i class="fas" :class="expandedTaskId === task.id ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-                {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
-            </td>
+<td class="ps-3 text-muted small fw-bold d-flex align-items-center">
+    <!-- Звездочка перед ключом задачи -->
+    <i class="fas fa-star star-toggle me-2" 
+       :class="{active: isFlagged(task.id, 'task')}" 
+       @click.stop="toggleFlag(task, 'task')"></i>
+       
+    <i class="fas me-2" :class="expandedTaskId === task.id ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+    <span>{{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}</span>
+</td>
 <td>
     <!-- Используем flex-column, чтобы название и теги были строго друг под другом -->
     <div class="d-flex flex-column justify-content-center" style="min-height: 40px;">
@@ -989,8 +1062,12 @@ body.dark-theme .jira-tag {
               style="cursor: grab; border-left: 3px solid #0d6efd;"
             >
               <div class="text-muted mb-1" style="font-size: 0.7rem; font-weight: bold;">
-                {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
-              </div>
+          <!-- ЗВЕЗДОЧКА ТУТ -->
+          <i class="fas fa-star star-toggle me-1" 
+             :class="{active: isFlagged(task.id, 'task')}" 
+             @click.stop="toggleFlag(task, 'task')"></i>
+          {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
+      </div>
               <div class="fw-semibold small">{{ task.title }}</div>
               <div class="small text-muted">{{ task.description }}</div>
               <div v-if="task.tags" class="d-flex flex-wrap mt-1">
@@ -1022,6 +1099,10 @@ body.dark-theme .jira-tag {
               style="cursor: grab; border-left: 3px solid #ffc107;"
             >
               <div class="text-muted mb-1" style="font-size: 0.7rem; font-weight: bold;">
+                <!-- ЗВЕЗДОЧКА ТУТ -->
+                <i class="fas fa-star star-toggle me-1" 
+                   :class="{active: isFlagged(task.id, 'task')}" 
+                   @click.stop="toggleFlag(task, 'task')"></i>
                 {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
               </div>
               <div class="fw-semibold small">{{ task.title }}</div>
@@ -1055,8 +1136,12 @@ body.dark-theme .jira-tag {
               style="cursor: grab; border-left: 3px solid #28a745; opacity: 0.8;"
             >
               <div class="text-muted mb-1" style="font-size: 0.7rem; font-weight: bold;">
-                {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
-              </div>
+          <!-- ЗВЕЗДОЧКА ТУТ -->
+          <i class="fas fa-star star-toggle me-1" 
+             :class="{active: isFlagged(task.id, 'task')}" 
+             @click.stop="toggleFlag(task, 'task')"></i>
+          {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
+      </div>
               <div class="fw-semibold small">{{ task.title }}</div>
               <div class="small text-muted">{{ task.description }}</div>
               <div v-if="task.tags" class="d-flex flex-wrap mt-1">
@@ -1877,6 +1962,7 @@ selectedTeam: { name: '', description: '' },
 currentTeamMembers: [],
 manageTeamModal: null,
 recentItems: [],
+flaggedItems: [],
                     currentPage: "sections",
                     activeSidebarTab: 'sections',
                     sections: [],
@@ -1993,6 +2079,39 @@ filteredUsers() {
             this.manageTeamModal.show();
         }
     } catch (e) { console.error(e); }
+},
+// Переключить статус (добавить/удалить из избранного)
+toggleFlag(item, type) {
+    let flagged = JSON.parse(localStorage.getItem('scifi_flagged') || '[]');
+    
+    const index = flagged.findIndex(f => f.id === item.id && f.type === type);
+    
+    if (index > -1) {
+        // Если уже есть — удаляем
+        flagged.splice(index, 1);
+    } else {
+        // Если нет — добавляем
+        flagged.push({
+            id: item.id,
+            title: item.title || item.name,
+            key: item.key || (this.currentProject ? this.currentProject.key : 'TASK'),
+            task_num: item.task_num || null,
+            type: type
+        });
+    }
+    
+    localStorage.setItem('scifi_flagged', JSON.stringify(flagged));
+    this.flaggedItems = flagged;
+},
+
+// Проверить, отмечен ли элемент (для покраски звездочки)
+isFlagged(id, type) {
+    return this.flaggedItems.some(f => f.id === id && f.type === type);
+},
+
+// Загрузка из памяти
+loadFlaggedFromStorage() {
+    this.flaggedItems = JSON.parse(localStorage.getItem('scifi_flagged') || '[]');
 },
 openProjectById(id) {
     const project = this.projects.find(p => p.id === id);
@@ -3064,6 +3183,7 @@ async createTaskFromModal() {
             },
 mounted() {
     this.loadRecentFromStorage();
+    this.loadFlaggedFromStorage();
     const savedTheme = localStorage.getItem('appTheme') || 'light';
     this.applyTheme(savedTheme);
 

@@ -79,3 +79,19 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(attachment)
 }
+
+func GenerateGostReport(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	projectID, _ := strconv.Atoi(idStr)
+
+	reportText, err := services.GetProjectReportData(projectID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Disposition", "attachment; filename=report.txt")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(reportText))
+}

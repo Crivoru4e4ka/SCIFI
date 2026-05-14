@@ -67,5 +67,8 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/logout", handlers.Logout).Methods("GET")
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("web"))))
 
+	// --- Отчеты ---
+	r.HandleFunc("/projects/{id}/report", handlers.GenerateGostReport).Methods("GET")
+
 	return r
 }

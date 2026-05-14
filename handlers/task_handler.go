@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"strconv"
-
+	"project-MVP/db"
 	"project-MVP/models"
 	"project-MVP/services"
+	"strconv"
 
 	"github.com/gorilla/mux"
 )
@@ -143,4 +144,46 @@ func GetAllUserTasksHandler(w http.ResponseWriter, r *http.Request) {
 	// 3. Отправляем JSON
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tasks)
+}
+
+func GetProjectReportData(projectID int) (string, error) {
+	var projectName string
+	var projectDesc string
+	// Получаем данные проекта
+	err := db.DB.QueryRow("SELECT name, description FROM projects WHERE id = $1", projectID).Scan(&projectName, &projectDesc)
+	if err != nil {
+		return "", err
+	}
+
+	// Получаем все завершенные задачи
+	query := `SELECT task_num, title, COALESCE(description, ''), COALESCE(conclusion, '') 
+	          FROM tasks WHERE project_id = $1 AND status IN ('done', 'ГОТОВО') ORDER BY task_num`
+	rows, err := db.DB.Query(query, projectID)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	// Формируем текст по структуре ГОСТ 7.32
+	report := "ОТЧЕТ О НАУЧНО-ИССЛЕДОВАТЕЛЬСКОЙ РАБОТЕ\n"
+	report += "Тема: " + projectName + "\n\n"
+	report += "1. ВВЕДЕНИЕ\n"
+	report += projectDesc + "\n\n"
+	report += "2. ОСНОВНАЯ ЧАСТЬ (РЕЗУЛЬТАТЫ ЭТАПОВ)\n"
+
+	for rows.Next() {
+		var num int
+		var title, desc, conc string
+		rows.Scan(&num, &title, &desc, &conc)
+		report += fmt.Sprintf("\nЭтап %d: %s\n", num, title)
+		report += "Описание работ: " + desc + "\n"
+		if conc != "" {
+			report += "Научный вывод: " + conc + "\n"
+		}
+	}
+
+	report += "\n\n3. ЗАКЛЮЧЕНИЕ\n"
+	report += "Задачи этапа НИР выполнены в полном объеме."
+
+	return report, nil
 }

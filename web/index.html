@@ -721,7 +721,7 @@ body.dark-theme .jira-tag {
                 </div>
             </div>
             <!-- ВКЛАДКА: ОТМЕЧЕННЫЕ -->
-<div v-if="activeSidebarTab === 'flagged'">
+<div v-else-if="activeSidebarTab === 'flagged'">
     <h2 class="mb-4">Отмеченные</h2>
     
     <div v-if="flaggedItems.length > 0" class="row g-3">
@@ -988,6 +988,9 @@ body.dark-theme .jira-tag {
         <h2 class="mb-0">{{ currentProject.name }}</h2>
         <div class="text-muted small">{{ currentProject.description }}</div>
       </div>
+        <a :href="'/projects/' + currentProject.id + '/report'" class="btn btn-outline-primary btn-sm">
+      <i class="fas fa-file-download me-2"></i>Отчет по ГОСТ 7.32
+  </a>
     </div>
 
 <!-- 
@@ -1101,6 +1104,21 @@ body.dark-theme .jira-tag {
                                     </template>
                                     <span v-else class="text-muted italic small">Тегов нет</span>
                                 </div>
+                                <div v-if="task.type === 'experiment'" class="mt-3 p-3 bg-light rounded border-start border-primary border-4">
+    <h6><i class="fas fa-flask me-2"></i>Параметры эксперимента</h6>
+    <div class="small mb-2"><strong>Методика:</strong> {{ task.description }}</div>
+    <div class="row">
+        <div class="col-md-6">
+            <strong>Оборудование:</strong> 
+            <span class="badge bg-secondary">Спектрометр А-1</span>
+        </div>
+        <div class="col-md-6">
+            <strong>Результат:</strong> 
+            <span v-if="task.conclusion" class="text-success">{{ task.conclusion }}</span>
+            <span v-else class="text-muted italic">Ожидание данных...</span>
+        </div>
+    </div>
+</div>
                             </div>
                             <div class="col-md-4 border-start">
                                 <div class="mb-3">
@@ -1673,17 +1691,16 @@ body.dark-theme .jira-tag {
                             <div class="invalid-feedback">Выберите раздел</div>
                         </div>
 
-                        <!-- Тип задачи -->
-                        <div class="mb-3">
-                            <label for="taskType" class="form-label">Тип задачи <span class="text-danger">*</span></label>
-                            <select class="form-select" id="taskType" v-model="newTask.type" required>
-                                <option value="task">Задача</option>
-                                <option value="bug">Баг</option>
-                                <option value="feature">Функция</option>
-                                <option value="epic">Эпик</option>
-                            </select>
-                            <div class="invalid-feedback">Выберите тип задачи</div>
-                        </div>
+<!-- Тип задачи -->
+<div class="mb-3">
+    <label for="taskType" class="form-label">Тип задачи <span class="text-danger">*</span></label>
+    <select class="form-select" id="taskType" v-model="newTask.type" required>
+        <option value="task">Обычная задача</option>
+        <option value="experiment">🧪 Научный эксперимент</option> <!-- ДОБАВЬТЕ ЭТО -->
+        <option value="literature_review">📚 Обзор литературы</option>
+        <option value="publication">✍️ Подготовка публикации</option>
+    </select>
+</div>
 
                         <!-- Статус -->
                         <div class="mb-3">
@@ -2184,6 +2201,34 @@ filteredUsers() {
         }
     } catch (e) { console.error(e); }
 },
+// 1. Загрузка фильтров из памяти браузера
+loadSavedFilters() {
+    try {
+        const saved = localStorage.getItem('scifi_saved_filters');
+        this.userFilters = saved ? JSON.parse(saved) : [];
+    } catch (e) {
+        console.error("Ошибка загрузки фильтров:", e);
+        this.userFilters = [];
+    }
+},
+// 2. Применение выбранного фильтра
+applySavedFilter(f) {
+    // Заполняем поля навигатора данными из сохраненного фильтра
+    this.navFilters.query = f.query || '';
+    this.navFilters.project = f.project || 'all';
+    this.navFilters.assignee = f.assignee || 'all';
+    this.navFilters.status = f.status || 'all';
+    this.navFilters.priority = f.priority || 'all';
+    
+    // Переключаемся на страницу результатов поиска
+    this.filterSubPage = 'search'; 
+},
+// 3. Удаление фильтра
+deleteFilter(id) {
+    if (!confirm("Удалить этот фильтр?")) return;
+    this.userFilters = this.userFilters.filter(f => f.id !== id);
+    localStorage.setItem('scifi_saved_filters', JSON.stringify(this.userFilters));
+},
 // Метод для кнопки "Просмотреть все задачи" в поиске
 openIssueNavigator() {
     this.activeSidebarTab = 'filters';
@@ -2487,6 +2532,7 @@ selectSidebarTab(tabName) {
     this.activeSidebarTab = tabName;
     this.currentProject = null;
     this.currentPage = 'sections';
+    this.filterSubPage = 'list';
     
     if (tabName === 'filters') {
         this.loadSavedFilters(); // Было loadUserFilters
@@ -3338,6 +3384,7 @@ async createTaskFromModal() {
 mounted() {
     this.loadRecentFromStorage();
     this.loadFlaggedFromStorage();
+    this.loadSavedFilters();
     const savedTheme = localStorage.getItem('appTheme') || 'light';
     this.applyTheme(savedTheme);
 

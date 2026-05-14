@@ -50,6 +50,12 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/project-members", handlers.CreateProjectMember).Methods("POST")
 	r.HandleFunc("/projects/{id}/members", handlers.GetProjectMembersByProject).Methods("GET")
 
+	// --- Команды ---
+	r.HandleFunc("/user/{id}/teams", handlers.GetUserTeamsHandler).Methods("GET")
+	r.HandleFunc("/teams", handlers.CreateTeamHandler).Methods("POST")
+	r.HandleFunc("/teams/{id}/members", handlers.GetTeamMembersHandler).Methods("GET")
+	r.HandleFunc("/teams/{id}/members/{userID}", handlers.RemoveTeamMemberHandler).Methods("DELETE")
+
 	// --- UI ---
 	r.HandleFunc("/", handlers.ServeIndex).Methods("GET")
 	r.HandleFunc("/login", handlers.ServeLogin).Methods("GET")

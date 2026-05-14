@@ -12,6 +12,37 @@
             background-color: #f6f7fb;
             color: #172b4d;
         }
+.email-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #dfe1e6;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1070;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.suggestion-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.suggestion-item:hover {
+    background-color: #f4f5f7;
+}
+
+.suggestion-info {
+    display: flex;
+    flex-direction: column;
+    margin-left: 10px;
+}
 /* Контейнер поиска */
 .search-wrap {
     position: relative;
@@ -585,15 +616,16 @@ body.dark-theme .jira-tag {
     <div class="sidebar-section mb-4">
         <div class="section-title">Для Вас</div>
         <nav class="nav flex-column">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'recent'}" @click.prevent="selectSidebarTab('recent')">
                 <img src="/static/recentbadge.png" alt="Recent badge" class="nav-sidebar-badge">
                 <span class="nav-link-text">Недавние</span>
             </a>
-            <a class="nav-link" href="#">
+            <!-- Отмеченные (пока заглушка) -->
+            <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'flagged'}" @click.prevent="selectSidebarTab('flagged')">
                 <img src="/static/flaggedbadge.png" alt="Flagged badge" class="nav-sidebar-badge">
                 <span class="nav-link-text">Отмеченные</span>
             </a>
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'sections'}" @click.prevent="selectSidebarTab('sections')">
                 <img src="/static/projectsbadge.png" alt="Projects badge" class="nav-sidebar-badge">
                 <span class="nav-link-text">Разделы</span>
             </a>
@@ -602,15 +634,15 @@ body.dark-theme .jira-tag {
     <div class="sidebar-section">
         <div class="section-title">Рекомендуется</div>
         <nav class="nav flex-column">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'filters'}" @click.prevent="selectSidebarTab('filters')">
                 <img src="/static/filtersbadge.png" alt="Filters badge" class="nav-sidebar-badge">
                 <span class="nav-link-text">Фильтры</span>
             </a>
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'dashboards'}" @click.prevent="selectSidebarTab('dashboards')">
                 <img src="/static/dashboardsbadge.png" alt="Dashboards badge" class="nav-sidebar-badge">
                 <span class="nav-link-text">Дашборды</span>
             </a>
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'teams'}" @click.prevent="selectSidebarTab('teams')">
                 <img src="/static/teamsbadge.png" alt="Teams badge" class="nav-sidebar-badge">
                 <span class="nav-link-text">Команды</span>
             </a>
@@ -620,57 +652,121 @@ body.dark-theme .jira-tag {
 
             <main class="col px-4 py-4">
                 <template v-if="currentPage === 'sections'">
-  <!-- Список проектов -->
+  <!-- Вид, когда никакой конкретный проект еще не открыт -->
   <template v-if="!currentProject">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
-      <div>
-        <h2 class="mb-1">Разделы</h2>
-      </div>
-      <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-primary" type="button" id="createSectionButton" @click="startProjectCreation">
-          <i class="fas fa-plus me-2"></i>Создать раздел
-        </button>
-      </div>
-    </div>
     
-    <!-- Отображаем проекты, если они есть -->
-    <div v-if="projects && projects.length > 0" class="row g-3">
-      <div class="col-md-6 col-lg-4" v-for="project in projects" :key="project.id">
-        <div class="card card-light mb-3 shadow-sm cursor-pointer" @click="openProject(project)" style="cursor: pointer;">
-          <div class="card-body">
-            <div class="d-flex align-items-center gap-3 mb-3">
-              <div class="avatar-circle bg-primary text-white d-flex align-items-center justify-content-center">
-                {{ project.name.charAt(0) }}
-              </div>
-              <div class="flex-grow-1">
-                <div class="fw-semibold">{{ project.name }}</div>
-                <div class="text-muted small">{{ project.description }}</div>
+    <!-- 1. ВКЛАДКА: РАЗДЕЛЫ (Твой стандартный список проектов) -->
+    <div v-if="activeSidebarTab === 'sections'">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+          <div>
+            <h2 class="mb-1">Разделы</h2>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-primary" type="button" id="createSectionButton" @click="startProjectCreation">
+              <i class="fas fa-plus me-2"></i>Создать раздел
+            </button>
+          </div>
+        </div>
+        
+        <div v-if="projects && projects.length > 0" class="row g-3">
+          <div class="col-md-6 col-lg-4" v-for="project in projects" :key="project.id">
+            <div class="card card-light mb-3 shadow-sm cursor-pointer" @click="openProject(project)" style="cursor: pointer;">
+              <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="avatar-circle bg-primary text-white d-flex align-items-center justify-content-center">
+                    {{ project.name.charAt(0) }}
+                  </div>
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">{{ project.name }}</div>
+                    <div class="text-muted small">{{ project.key }}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-    
-<!-- Состояние, когда разделов еще нет -->
-    <div v-else class="card card-light shadow-sm text-center py-5 border-0">
-      <div class="card-body">
-        <div class="mb-4">
-          <!-- Заменим иконку на более подходящую для старта проекта -->
-          <div class="display-1 text-primary opacity-25">
-            <i class="fas fa-rocket"></i>
+        
+        <div v-else class="card card-light shadow-sm text-center py-5 border-0">
+          <div class="card-body">
+            <div class="mb-4"><div class="display-1 text-primary opacity-25"><i class="fas fa-rocket"></i></div></div>
+            <h3 class="fw-bold mb-3">Добро пожаловать в Scifi</h3>
+            <p class="text-muted mb-4 mx-auto" style="max-width: 500px;">Создайте свой первый рабочий раздел, чтобы начать планирование.</p>
+            <button class="btn btn-primary btn-lg shadow-sm px-5" type="button" @click="startProjectCreation">Создать раздел</button>
           </div>
         </div>
-        <h3 class="fw-bold mb-3">Добро пожаловать в Scifi</h3>
-        <p class="text-muted mb-4 mx-auto" style="max-width: 500px;">
-          Начните работу над вашим научным исследованием. Создайте свой первый рабочий раздел, 
-          чтобы планировать задачи, управлять спринтами и систематизировать вложения.
-        </p>
-        <button class="btn btn-primary btn-lg shadow-sm px-5" type="button" @click="startProjectCreation">
-          <i class="fas fa-plus me-2"></i>Создать первый раздел
-        </button>
-      </div>
     </div>
+
+    <!-- 2. ВКЛАДКА: ФИЛЬТРЫ -->
+    <div v-else-if="activeSidebarTab === 'filters'">
+        <h2 class="mb-4">Ваши сохраненные фильтры</h2>
+        <div class="row" v-if="userFilters && userFilters.length > 0">
+            <div class="col-md-12">
+                <div class="list-group shadow-sm">
+                    <a v-for="f in userFilters" :key="f.id" href="#" 
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3"
+                       @click.prevent="applySavedFilter(f)">
+                        <div>
+                            <div class="fw-bold text-primary"><i class="fas fa-filter me-2"></i>{{ f.name }}</div>
+                            <div class="small text-muted">Запрос: "{{ f.search_query }}" | Приоритет: {{ f.priority_filter }}</div>
+                        </div>
+                        <i class="fas fa-chevron-right text-muted"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div v-else class="text-center py-5 bg-white rounded border shadow-sm">
+            <i class="fas fa-search fa-3x mb-3 text-muted opacity-25"></i>
+            <h5>У вас пока нет сохраненных фильтров</h5>
+            <p class="text-muted">Используйте поиск, чтобы настроить фильтры и сохранить их для быстрого доступа.</p>
+        </div>
+    </div>
+
+    <!-- 3. ВКЛАДКА: КОМАНДЫ -->
+    <div v-else-if="activeSidebarTab === 'teams'">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Команды</h2>
+<button class="btn btn-primary btn-sm" @click="createTeamModal.show()">
+    <i class="fas fa-plus me-1"></i> Создать команду
+</button>
+        </div>
+
+        <div class="row g-3" v-if="teams && teams.length > 0">
+            <div class="col-md-6 col-lg-4" v-for="team in teams" :key="team.id">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar-circle bg-info text-white me-3 d-flex align-items-center justify-content-center">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <h5 class="card-title mb-0">{{ team.name }}</h5>
+                        </div>
+                        <p class="text-muted small mb-3">{{ team.description || 'Научная рабочая группа' }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-light text-dark">{{ team.members_count }} участников</span>
+                            <button class="btn btn-link btn-sm text-decoration-none p-0" @click="openManageTeam(team)">Управлять</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Если команд еще нет -->
+        <div v-else class="text-center py-5 bg-white rounded border shadow-sm">
+            <div class="mb-4"><i class="fas fa-users fa-4x text-muted opacity-25"></i></div>
+            <h5>Вы пока не состоите ни в одной команде</h5>
+            <p class="text-muted">Объединяйтесь с коллегами для совместной работы над проектами.</p>
+            <button class="btn btn-outline-primary">Создать первую команду</button>
+        </div>
+    </div>
+
+<!-- 4. ЗАГЛУШКА ДЛЯ ОСТАЛЬНЫХ ВКЛАДОК -->
+    <div v-else class="text-center py-5">
+        <div class="mb-4"><i class="fas fa-tools fa-4x text-muted opacity-25"></i></div>
+        <h3>Раздел "{{ activeSidebarTab }}"</h3>
+        <p class="text-muted">Этот функционал находится в разработке и будет доступен в ближайшем обновлении.</p>
+        <button class="btn btn-outline-primary" @click="activeSidebarTab = 'sections'">Вернуться к разделам</button>
+    </div>
+
   </template>
 
   <!-- Вид проекта (Доска и Backlog) -->
@@ -985,9 +1081,9 @@ body.dark-theme .jira-tag {
 <div v-for="task in getSprintTasks(sprint.id)" 
      :key="task.id" 
      class="list-group-item list-group-item-action d-flex align-items-center py-2 border-start-0 border-end-0"
-             draggable="true" 
-             @dragstart="startDrag($event, task)"
-             style="cursor: grab;">
+     draggable="true" 
+     @dragstart="startDrag($event, task)"
+     style="cursor: grab;">
                          <span class="text-muted small me-3" style="width: 90px; display: inline-block;">
                             {{ (currentProject && currentProject.key ? currentProject.key : 'TASK').toUpperCase() }}-{{ task.task_num }}
                          </span>
@@ -1508,7 +1604,78 @@ body.dark-theme .jira-tag {
         </div>
     </div>
 </div>
+<<!-- ОДИН ЭКЗЕМПЛЯР: Создание команды -->
+<div class="modal fade" id="createTeamModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Создать новую команду</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Название команды *</label>
+                    <input type="text" class="form-control" v-model="newTeam.name">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Описание</label>
+                    <textarea class="form-control" v-model="newTeam.description" rows="2"></textarea>
+                </div>
+                <div class="mb-3 position-relative" v-click-outside="() => showSuggestions = false">
+                    <label class="form-label small fw-bold">Добавьте участников команды *</label>
+                    <div class="input-group mb-2">
+                        <input type="email" class="form-control" placeholder="Email или имя..." v-model="inviteEmail" @input="showSuggestions = true">
+                        <button class="btn btn-outline-primary" type="button" @click="addEmailToTeam">Добавить</button>
+                    </div>
+                    <!-- Подсказки -->
+                    <div class="email-suggestions shadow-lg" v-if="showSuggestions && filteredUsers.length > 0">
+                        <div v-for="user in filteredUsers" :key="user.id" class="suggestion-item" @click="selectUser(user)">
+                            <div class="avatar-circle bg-primary text-white me-2" style="width: 25px; height: 25px; font-size: 0.7rem;">{{ user.full_name[0] }}</div>
+                            <div class="suggestion-info"><span class="fw-bold small">{{ user.full_name }}</span></div>
+                        </div>
+                    </div>
+                    <!-- Список пилюль -->
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <span v-for="email in newTeam.member_emails" :key="email" class="badge bg-light text-dark border rounded-pill px-2 py-2">
+                            {{ email }} <i class="fas fa-times text-danger ms-1 cursor-pointer" @click="removeEmailFromTeam(email)"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary w-100" @click="createTeam">Создать</button>
+            </div>
+        </div>
     </div>
+</div>
+
+<!-- ОДИН ЭКЗЕМПЛЯР: Управление командой -->
+<div class="modal fade" id="manageTeamModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Участники: {{ selectedTeam?.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="list-group list-group-flush">
+                    <div v-for="m in currentTeamMembers" :key="m.user_id" class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle bg-secondary text-white me-3" style="width: 35px; height: 35px;">{{ m.full_name[0] }}</div>
+                            <div>
+                                <div class="fw-bold small">{{ m.full_name }}</div>
+                                <div class="text-muted small">{{ m.email }}</div>
+                            </div>
+                        </div>
+                        <button v-if="m.email !== profile.email" class="btn btn-outline-danger btn-sm border-0" @click="removeMember(m)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script>
@@ -1588,7 +1755,16 @@ startSprintModal: null,
                     expandedTaskId: null, 
                     selectedFile: null, 
                     users: [],
+                    teams: [],
+                    inviteEmail: '',
+                    showSuggestions: false, // Список команд
+                    newTeam: { name: '', description: '', member_emails: [] },
+createTeamModal: null,
+selectedTeam: null,
+currentTeamMembers: [],
+manageTeamModal: null,
                     currentPage: "sections",
+                    activeSidebarTab: 'sections',
                     sections: [],
                     selectedTemplate: {
                         id: "kanban",
@@ -1656,11 +1832,117 @@ startSprintModal: null,
                 },
                 taskSubmitButtonText() {
                     return this.isTaskSubmitting ? "Создание..." : "Создать";
-                }
+                },
+filteredUsers() {
+    if (!this.inviteEmail || this.inviteEmail.length < 1) return [];
+    
+    const search = this.inviteEmail.toLowerCase();
+    const myEmail = this.profile.email ? this.profile.email.toLowerCase() : '';
+
+    return this.users.filter(user => {
+        const userEmail = user.email.toLowerCase();
+        const userName = user.full_name.toLowerCase();
+        
+        // 1. Исключаем себя
+        const isNotMe = userEmail !== myEmail;
+        
+        // 2. ИСПРАВЛЕННАЯ ЛОГИКА: проверяем, что ПОЧТА начинается на вводимые символы
+        // ИЛИ ИМЯ начинается на эти символы
+        // ИЛИ любое слово в имени начинается на эти символы (например, "М" для "Самир Мурзагулов")
+        const matchesQuery = userEmail.startsWith(search) || 
+                             userName.startsWith(search) ||
+                             userName.split(' ').some(word => word.startsWith(search));
+                             
+        // 3. Убеждаемся, что не добавлен уже
+        const notAlreadyInList = !this.newTeam.member_emails.includes(user.email);
+        
+        return isNotMe && matchesQuery && notAlreadyInList;
+    }).slice(0, 5);
+}
             },
             methods: {
+                async openManageTeam(team) {
+    this.selectedTeam = team;
+    try {
+        // Запрос к бэкенду за участниками этой команды
+        const response = await fetch(`/teams/${team.id}/members`);
+        if (response.ok) {
+            this.currentTeamMembers = await response.json();
+            this.manageTeamModal.show();
+        }
+    } catch (e) { console.error(e); }
+},
+selectUser(user) {
+    // Добавляем почту пользователя, если её еще нет в списке
+    if (!this.newTeam.member_emails.includes(user.email)) {
+        this.newTeam.member_emails.push(user.email);
+    }
+    this.inviteEmail = ''; // Очищаем поле ввода
+    this.showSuggestions = false; // Скрываем подсказки
+},
+addEmailToTeam() {
+    const email = this.inviteEmail.trim().toLowerCase();
+    // Простая валидация и проверка на дубликаты
+    if (email && email.includes('@') && !this.newTeam.member_emails.includes(email)) {
+        this.newTeam.member_emails.push(email);
+        this.inviteEmail = ''; // Очищаем поле
+    } else if (email && !email.includes('@')) {
+        alert("Пожалуйста, введите корректный email.");
+    }
+},
+removeEmailFromTeam(email) {
+    this.newTeam.member_emails = this.newTeam.member_emails.filter(e => e !== email);
+},
+async createTeam() {
+    if (!this.newTeam.name) {
+        alert("Введите название команды");
+        return;
+    }
+
+    try {
+        const response = await fetch('/teams', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.newTeam)
+        });
+
+        if (response.ok) {
+            const createdTeam = await response.json();
+            // Добавляем создателя (тебя) в счетчик участников для красоты
+            createdTeam.members_count = 1;
+            this.teams.unshift(createdTeam);
+            
+            this.createTeamModal.hide();
+            this.newTeam = { name: '', description: '', member_emails: [] };
+            alert("Команда создана!");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Ошибка при создании команды");
+    }
+},
+selectSidebarTab(tabName) {
+    this.activeSidebarTab = tabName;
+    this.currentProject = null;
+    this.currentPage = 'sections';
+    
+    if (tabName === 'filters') this.loadUserFilters();
+    if (tabName === 'teams') this.loadUserTeams(); // <--- ДОБАВИТЬ ЭТО
+},
+async loadUserTeams() {
+    const currentUserId = Number(localStorage.getItem('currentUserId'));
+    try {
+        const response = await fetch(`/user/${currentUserId}/teams`);
+        if (response.ok) {
+            this.teams = await response.json() || [];
+        }
+    } catch (e) {
+        console.error("Ошибка загрузки команд:", e);
+    }
+},
 closeSearch() {
     this.isSearchOpen = false;
+    this.showSuggestions = false;
 },
 startProjectCreation() {
     // Находим основной шаблон (теперь он может называться "Базовый" или "Стандартный")
@@ -1848,10 +2130,6 @@ async loadProjectAttachments(projectId) {
         console.error('Ошибка загрузки файлов:', err);
         this.projectAttachments = [];
     }
-},
-handleTaskFileSelect(event) {
-    this.selectedFile = event.target.files[0];
-    console.log("Файл выбран и готов к загрузке:", this.selectedFile);
 },
 isImage(fileName) {
     if (!fileName) return false;
@@ -2473,20 +2751,30 @@ async createTaskFromModal() {
     }
 },
             },
-            mounted() {
-                const savedTheme = localStorage.getItem('appTheme') || 'light';
-                this.applyTheme(savedTheme);
+mounted() {
+    const savedTheme = localStorage.getItem('appTheme') || 'light';
+    this.applyTheme(savedTheme);
 
-                this.loadCurrentUser();
-                this.loadProjects();
-                this.loadUsers();
+    this.loadCurrentUser();
+    this.loadProjects();
+    this.loadUsers();
 
-                const modalElement = document.getElementById('createProjectModal');
-                this.createProjectModal = new bootstrap.Modal(modalElement);
+    // Существующие модалки
+    const modalElement = document.getElementById('createProjectModal');
+    this.createProjectModal = new bootstrap.Modal(modalElement);
 
-                const taskModalElement = document.getElementById('createTaskModal');
-                this.createTaskModal = new bootstrap.Modal(taskModalElement);
-            }
+    const taskModalElement = document.getElementById('createTaskModal');
+    this.createTaskModal = new bootstrap.Modal(taskModalElement);
+
+    const sprintModalElement = document.getElementById('startSprintModal');
+    this.startSprintModal = new bootstrap.Modal(sprintModalElement);
+
+    const teamModalElement = document.getElementById('createTeamModal');
+    if (teamModalElement) {
+        this.createTeamModal = new bootstrap.Modal(teamModalElement);
+    }
+    this.manageTeamModal = new bootstrap.Modal(document.getElementById('manageTeamModal'));
+}
         });
         app.directive("click-outside", clickOutside);
         app.mount('#app');

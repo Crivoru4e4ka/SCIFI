@@ -631,7 +631,7 @@ body.dark-theme .jira-tag {
         </div>
     </div>
 </div>
-                <button class="btn btn-primary" type="button" id="createProjectButton" @click="createTaskModal.show()">
+                <button class="btn btn-primary" type="button" id="createProjectButton" @click="prepareCreateTask">
                     <i class="fas fa-plus me-2"></i>Создать
                 </button>
             </div>
@@ -1467,7 +1467,7 @@ body.dark-theme .jira-tag {
             </div>
         </div>
         <div class="mt-3">
-            <button class="btn btn-link text-decoration-none p-0 text-primary small" @click="createTaskModal.show()">
+            <button class="btn btn-link text-decoration-none p-0 text-primary small" @click="prepareCreateTask">
                 <i class="fas fa-plus me-1"></i>Создать задачу
             </button>
         </div>
@@ -3504,6 +3504,17 @@ toggleTask(taskId) {
         const task = this.projectTasks.find(t => t.id === taskId);
         if (task) this.addToRecent(task, 'task'); // ЗАПОМИНАЕМ ЗАДАЧУ
     }
+},
+prepareCreateTask() {
+    this.resetTaskForm(); // Сначала полностью очищаем форму
+    
+    // Если сейчас открыт какой-то проект (currentProject не null)
+    if (this.currentProject) {
+        this.newTask.projectId = this.currentProject.id;
+    }
+    
+    // Теперь показываем модалку
+    this.createTaskModal.show();
 },
 async createTaskFromModal() {
     const form = document.getElementById('createTaskForm');

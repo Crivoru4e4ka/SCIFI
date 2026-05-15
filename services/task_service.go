@@ -262,29 +262,12 @@ func UpdateTaskSprint(taskId int, sprintId *int) error {
 }
 
 func GetAllUserTasks(userID int) ([]models.Task, error) {
-	// 1. Мы выбираем данные из задач
-	// 2. С помощью вложенного SELECT и STRING_AGG собираем теги в одну строку "tag1,tag2"
-	// 3. Используем COALESCE для полей, которые могут быть NULL, чтобы Scan не выдал ошибку
 	query := `
 		SELECT 
-			t.id, 
-			t.project_id, 
-			COALESCE(t.task_num, 0) as local_id, 
-			t.sprint_id, 
-			t.title, 
-			COALESCE(t.description, ''), 
-			t.status, 
-			t.priority, 
-			t.assignee_id, 
-			t.created_by, 
-			t.due_date, 
-			t.created_at, 
-			t.updated_at, 
-			t.type, 
-			t.hypothesis_id, 
-			t.resource_id, 
-			COALESCE(t.conclusion, ''), 
-			COALESCE(t.task_num, 0) as task_num,
+			t.id, t.project_id, COALESCE(t.task_num, 0), t.sprint_id, t.title, 
+			COALESCE(t.description, ''), t.status, t.priority, t.assignee_id, 
+			t.created_by, t.due_date, t.created_at, t.updated_at, 
+			t.type, t.hypothesis_id, t.resource_id, COALESCE(t.conclusion, ''),
 			COALESCE((
 				SELECT STRING_AGG(tg.name, ',') 
 				FROM tags tg 
@@ -305,37 +288,23 @@ func GetAllUserTasks(userID int) ([]models.Task, error) {
 	var tasks []models.Task
 	for rows.Next() {
 		var t models.Task
+		// Используем правильные имена полей из твоей модели (Id, ProjectId...)
 		err := rows.Scan(
-			&t.Id,
-			&t.ProjectId,
-			&t.LocalId,
-			&t.SprintId,
-			&t.Title,
-			&t.Description,
-			&t.Status,
-			&t.Priority,
-			&t.AssigneeId,
-			&t.CreatedBy,
-			&t.DueDate,
-			&t.CreatedAt,
-			&t.UpdatedAt,
-			&t.Type,
-			&t.HypothesisId,
-			&t.ResourceId,
-			&t.Conclusion,
-			&t.TaskNum,
-			&t.Tags,
+			&t.Id, &t.ProjectId, &t.TaskNum, &t.SprintId, &t.Title,
+			&t.Description, &t.Status, &t.Priority, &t.AssigneeId,
+			&t.CreatedBy, &t.DueDate, &t.CreatedAt, &t.UpdatedAt,
+			&t.Type, &t.HypothesisId, &t.ResourceId, &t.Conclusion, &t.Tags,
 		)
 		if err != nil {
 			return nil, err
 		}
+		t.LocalId = t.TaskNum // Синхронизируем для фронтенда
 		tasks = append(tasks, t)
 	}
 
 	if tasks == nil {
 		tasks = []models.Task{}
 	}
-
 	return tasks, nil
 }
 
@@ -379,4 +348,44 @@ func GetProjectReportData(projectID int) (string, error) {
 	report += "Задачи этапа НИР выполнены в полном объеме."
 
 	return report, nil
+}
+
+// Создать новую гипотезу
+func CreateHypothesis(h models.Hypothesis) (models.Hypothesis, error) {
+	query := `INSERT INTO hypotheses (project_id, title, description, created_by) 
+              VALUES ($1, $2, $3, $4) RETURNING id, created_at`
+
+	// Используем h.ID и h.ProjectID (заглавными)
+	err := db.DB.QueryRow(query, h.ProjectID, h.Title, h.Description, h.CreatedBy).
+		Scan(&h.ID, &h.CreatedAt)
+
+	return h, err
+}
+
+// Получить все гипотезы проекта
+func GetProjectHypotheses(projectID int) ([]models.Hypothesis, error) {
+	query := `SELECT id, project_id, title, COALESCE(description, ''), status, created_by, created_at 
+              FROM hypotheses WHERE project_id = $1`
+
+	rows, err := db.DB.Query(query, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []models.Hypothesis
+	for rows.Next() {
+		var h models.Hypothesis
+		// Используем h.ID и h.ProjectID (заглавными)
+		err := rows.Scan(&h.ID, &h.ProjectID, &h.Title, &h.Description, &h.Status, &h.CreatedBy, &h.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, h)
+	}
+
+	if list == nil {
+		list = []models.Hypothesis{}
+	}
+	return list, nil
 }

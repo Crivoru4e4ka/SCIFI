@@ -187,3 +187,40 @@ func GetProjectReportData(projectID int) (string, error) {
 
 	return report, nil
 }
+
+// POST /projects/{id}/hypotheses
+func CreateHypothesisHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	projectID, _ := strconv.Atoi(vars["id"])
+
+	var h models.Hypothesis
+	if err := json.NewDecoder(r.Body).Decode(&h); err != nil {
+		http.Error(w, "Bad request", 400)
+		return
+	}
+	h.ProjectID = projectID
+
+	newHypo, err := services.CreateHypothesis(h)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(newHypo)
+}
+
+// GET /projects/{id}/hypotheses
+func GetProjectHypothesesHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	projectID, _ := strconv.Atoi(vars["id"])
+
+	list, err := services.GetProjectHypotheses(projectID)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(list)
+}

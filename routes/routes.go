@@ -28,6 +28,8 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/projects/{id}/tasks", handlers.CreateTaskInProject).Methods("POST")
 	r.HandleFunc("/projects/{id}/tasks", handlers.GetProjectTasks).Methods("GET")
 	r.HandleFunc("/projects/{id}/progress", handlers.GetProjectProgress).Methods("GET")
+	r.HandleFunc("/projects/{id}/hypotheses", handlers.GetProjectHypothesesHandler).Methods("GET")
+	r.HandleFunc("/projects/{id}/hypotheses", handlers.CreateHypothesisHandler).Methods("POST")
 
 	// --- Tasks ---
 	r.HandleFunc("/tasks", handlers.CreateTask).Methods("POST")

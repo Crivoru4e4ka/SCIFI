@@ -555,20 +555,27 @@ body.dark-theme .jira-tag {
             <!-- ЛЕВАЯ ЧАСТЬ: Результаты -->
             <div class="search-results-left flex-grow-1">
                 <div class="search-section-title">Задачи (результаты поиска)</div>
-                <div v-for="task in displayedTasks.slice(0, 5)" :key="task.id" class="search-item" @click="openTaskDetails(task); isSearchOpen = false">
+                <div v-for="task in globalSearchResults" :key="task.id" class="search-item" @click="openTaskFromNavigator(task); isSearchOpen = false">
                     <i class="fas fa-check-square text-primary me-2"></i>
                     <span class="text-muted small me-2">{{ (currentProject?.key || 'TASK') }}-{{ task.task_num }}</span>
                     <span class="small">{{ task.title }}</span>
                 </div>
                 <div v-if="displayedTasks.length === 0" class="p-3 text-muted small">Ничего не найдено</div>
 
-                <div class="search-section-title">Разделы</div>
-                <div v-for="proj in projects.slice(0, 3)" :key="proj.id" class="search-item" @click="openProject(proj); isSearchOpen = false">
-                    <div class="avatar-circle bg-primary text-white me-2" style="width: 24px; height: 24px; font-size: 0.7rem;">
-                        {{ proj.name[0] }}
-                    </div>
-                    <span class="small">{{ proj.name }}</span>
-                </div>
+<div class="search-section-title">Разделы</div>
+<div v-for="proj in filteredSearchProjects" :key="proj.id" class="search-item" @click="openProject(proj); isSearchOpen = false">
+    <div class="avatar-circle bg-primary text-white me-2" style="width: 24px; height: 24px; font-size: 0.7rem; flex-shrink: 0;">
+        {{ proj.name[0] }}
+    </div>
+    <div class="d-flex flex-column">
+        <span class="small fw-bold">{{ proj.name }}</span>
+        <span class="text-muted" style="font-size: 0.65rem;">{{ proj.key }}</span>
+    </div>
+</div>
+<!-- Сообщение, если ничего не найдено -->
+<div v-if="searchQuery && filteredSearchProjects.length === 0" class="p-2 text-muted small ms-2">
+    Разделы не найдены
+</div>
                 
 <hr>
 <a href="#" class="search-item text-primary small" @click.prevent="openIssueNavigator">
@@ -1104,19 +1111,32 @@ body.dark-theme .jira-tag {
                                     </template>
                                     <span v-else class="text-muted italic small">Тегов нет</span>
                                 </div>
-                                <div v-if="task.type === 'experiment'" class="mt-3 p-3 bg-light rounded border-start border-primary border-4">
-    <h6><i class="fas fa-flask me-2"></i>Параметры эксперимента</h6>
-    <div class="small mb-2"><strong>Методика:</strong> {{ task.description }}</div>
-    <div class="row">
-        <div class="col-md-6">
-            <strong>Оборудование:</strong> 
-            <span class="badge bg-secondary">Спектрометр А-1</span>
+<!-- Динамический блок для Эксперимента -->
+<div v-if="task.type === 'experiment'" class="mt-3 p-3 bg-white rounded border-start border-primary border-4 shadow-sm">
+    <h6 class="text-primary small fw-bold text-uppercase">Параметры эксперимента</h6>
+    <div class="row small mb-2">
+        <div class="col-md-4">
+            <span class="text-muted">ID Гипотезы:</span> #{{ task.hypothesis_id || '—' }}
         </div>
-        <div class="col-md-6">
-            <strong>Результат:</strong> 
-            <span v-if="task.conclusion" class="text-success">{{ task.conclusion }}</span>
-            <span v-else class="text-muted italic">Ожидание данных...</span>
+        <div class="col-md-8">
+            <span class="text-muted">Методика/Условия:</span> {{ task.parameters || 'Не указаны' }}
         </div>
+    </div>
+    <div class="mt-2 pt-2 border-top">
+        <span class="fw-bold small text-muted">Научный вывод:</span>
+        <div :class="task.conclusion ? 'text-success fw-semibold' : 'text-muted italic'">
+            {{ task.conclusion || 'Эксперимент в процессе выполнения...' }}
+        </div>
+    </div>
+</div>
+
+<!-- Динамический блок для Публикации -->
+<div v-if="task.type === 'publication'" class="mt-3 p-3 bg-white rounded border-start border-success border-4 shadow-sm">
+    <h6 class="text-success small fw-bold text-uppercase">Информация о публикации</h6>
+    <div class="small">
+        <span class="text-muted">DOI:</span> 
+        <a v-if="task.doi" :href="'https://doi.org/' + task.doi" target="_blank">{{ task.doi }}</a>
+        <span v-else>не указан</span>
     </div>
 </div>
                             </div>
@@ -1508,6 +1528,13 @@ body.dark-theme .jira-tag {
                                         <input class="form-control" type="text" v-model="kanbanWizard.name" @input="updateKanbanKey" placeholder="Введите название раздела">
                                     </div>
                                     <div class="mb-3">
+    <label class="form-label text-primary fw-bold"><i class="fas fa-lightbulb me-2"></i>Начальная гипотеза *</label>
+    <textarea class="form-control" rows="2" 
+              v-model="kanbanWizard.initialHypothesis" 
+              placeholder="Сформулируйте основное предположение исследования"></textarea>
+    <div class="form-text" style="font-size: 0.75rem;">Эта гипотеза будет автоматически создана внутри раздела</div>
+</div>
+                                    <div class="mb-3">
                                         <label class="form-label">Способ управления разделом *</label>
                                         <select class="form-select" v-model="kanbanWizard.managementType">
                                             <option value="team">Управляется командой</option>
@@ -1696,9 +1723,9 @@ body.dark-theme .jira-tag {
     <label for="taskType" class="form-label">Тип задачи <span class="text-danger">*</span></label>
     <select class="form-select" id="taskType" v-model="newTask.type" required>
         <option value="task">Обычная задача</option>
-        <option value="experiment">🧪 Научный эксперимент</option> <!-- ДОБАВЬТЕ ЭТО -->
-        <option value="literature_review">📚 Обзор литературы</option>
-        <option value="publication">✍️ Подготовка публикации</option>
+        <option value="experiment">Научный эксперимент</option> <!-- ДОБАВЬТЕ ЭТО -->
+        <option value="literature_review">Обзор литературы</option>
+        <option value="publication">Подготовка публикации</option>
     </select>
 </div>
 
@@ -1727,6 +1754,27 @@ body.dark-theme .jira-tag {
                             <textarea class="form-control" id="taskDescription" v-model="newTask.description" 
                                       rows="5" placeholder="Введите описание задачи"></textarea>
                         </div>
+
+                        <!-- СПЕЦИФИКА НИР: Динамические поля -->
+<div v-if="newTask.type === 'experiment'" class="p-3 mb-3 bg-light rounded border-start border-primary border-4 shadow-sm">
+    <div class="fw-bold text-primary mb-2 small"><i class="fas fa-microscope me-2"></i>ДАННЫЕ ЭКСПЕРИМЕНТА</div>
+    <div class="row g-2">
+        <div class="col-md-6">
+            <label class="form-label small">ID Гипотезы</label>
+            <input type="number" class="form-control form-control-sm" v-model="newTask.hypothesis_id" placeholder="Напр: 1">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small">Условия / Оборудование</label>
+            <input type="text" class="form-control form-control-sm" v-model="newTask.parameters" placeholder="Напр: Спектрометр, 20°C">
+        </div>
+    </div>
+</div>
+
+<div v-if="newTask.type === 'publication'" class="p-3 mb-3 bg-light rounded border-start border-success border-4 shadow-sm">
+    <div class="fw-bold text-success mb-2 small"><i class="fas fa-book me-2"></i>ДАННЫЕ ПУБЛИКАЦИИ</div>
+    <label class="form-label small">DOI публикации</label>
+    <input type="text" class="form-control form-control-sm" v-model="newTask.doi" placeholder="10.1000/xyz123">
+</div>
 
                         <!-- Исполнитель -->
                         <div class="mb-3">
@@ -2023,7 +2071,11 @@ const app = createApp({
                         assigneeId: null,
                         priority: "Medium",
                         dueDate: "",
-                        tags: ""
+                        tags: "",
+                        hypothesis_id: null,
+                        parameters: "",   
+                        conclusion: "",   
+                        doi: "" // Для публикаций
                     },
                     taskError: "",
                     taskSuccess: "",
@@ -2089,7 +2141,8 @@ flaggedItems: [],
                         key: "",
                         inviteInput: "",
                         members: [],
-                        role: "member"
+                        role: "member",
+                        initialHypothesis: ""
                     },
                     createdKanban: {
                         id: null,
@@ -2151,17 +2204,36 @@ flaggedItems: [],
         return !alreadyIn && (user.email.toLowerCase().includes(search) || user.full_name.toLowerCase().includes(search));
     }).slice(0, 5);
 },
-navigatorFilteredTasks() {
-    return this.allTasks.filter(t => {
-        const matchesSearch = !this.navFilters.query || t.title.toLowerCase().includes(this.navFilters.query.toLowerCase());
-        const matchesProj = this.navFilters.project === 'all' || t.project_id === Number(this.navFilters.project);
-        const matchesUser = this.navFilters.assignee === 'all' || t.assignee_id === Number(this.navFilters.assignee);
-        const matchesStatus = this.navFilters.status === 'all' || t.status.toLowerCase() === this.navFilters.status.toLowerCase();
-        const matchesPrio = this.navFilters.priority === 'all' || t.priority.toLowerCase() === this.navFilters.priority.toLowerCase();
+    // Поиск по разделам (проектам)
+    filteredSearchProjects() {
+        if (!this.searchQuery || this.searchQuery.length < 1) return [];
         
-        return matchesSearch && matchesProj && matchesUser && matchesStatus && matchesPrio;
-    });
+        const q = this.searchQuery.toLowerCase();
+        return this.projects.filter(p => {
+            return p.name.toLowerCase().includes(q) || 
+                   (p.key && p.key.toLowerCase().includes(q));
+        }).slice(0, 5); // Ограничим до 5 результатов
+    },
+    // Глобальный поиск для выпадающего списка в шапке
+globalSearchResults() {
+    // Если в строке поиска пусто — ничего не показываем
+    if (!this.searchQuery || this.searchQuery.trim().length === 0) return [];
+    
+    const q = this.searchQuery.toLowerCase();
+    return this.allTasks.filter(t => {
+        return t.title.toLowerCase().includes(q) || 
+               (this.getProjectKey(t.project_id).toLowerCase() + '-' + t.task_num).includes(q);
+    }).slice(0, 10);
 },
+    navigatorFilteredTasks() {
+        return this.allTasks.filter(t => {
+            const matchesSearch = !this.navFilters.query || t.title.toLowerCase().includes(this.navFilters.query.toLowerCase());
+            const matchesProj = this.navFilters.project === 'all' || t.project_id === Number(this.navFilters.project);
+            const matchesUser = this.navFilters.assignee === 'all' || t.assignee_id === Number(this.navFilters.assignee);
+            const matchesStatus = this.navFilters.status === 'all' || t.status.toLowerCase() === this.navFilters.status.toLowerCase();
+            return matchesSearch && matchesProj && matchesUser && matchesStatus;
+        });
+    },
 filteredUsers() {
     if (!this.inviteEmail || this.inviteEmail.length < 1) return [];
     
@@ -2200,6 +2272,36 @@ filteredUsers() {
             this.manageTeamModal.show();
         }
     } catch (e) { console.error(e); }
+},
+async openTaskFromNavigator(task) {
+    // 1. Находим объект проекта, к которому относится задача
+    const project = this.projects.find(p => p.id === task.project_id);
+
+    if (project) {
+        // 2. Закрываем окно поиска
+        this.isSearchOpen = false;
+        this.searchQuery = ""; // Очищаем поиск, чтобы не мешал
+
+        // 3. Вызываем стандартный метод открытия проекта (загрузит задачи, спринты и т.д.)
+        this.openProject(project);
+
+        // 4. Принудительно ставим вид "Список" (в нем удобнее всего смотреть детали)
+        this.currentProjectView = 'list';
+
+        // 5. Устанавливаем ID развернутой задачи
+        this.expandedTaskId = task.id;
+
+        // 6. Небольшая задержка, чтобы Vue успел отрендерить список, и прокрутка к задаче
+        setTimeout(() => {
+            const element = document.querySelector('.table-active');
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 600); 
+
+    } else {
+        alert("Раздел, к которому относится задача, не найден или недоступен.");
+    }
 },
 // 1. Загрузка фильтров из памяти браузера
 loadSavedFilters() {
@@ -2241,11 +2343,14 @@ openIssueNavigator() {
 // Загрузка вообще всех задач для навигатора
 async loadAllTasks() {
     try {
-        const response = await fetch('/user/tasks'); // Нужно создать такой эндпоинт в Go
+        const response = await fetch('/user/tasks');
         if (response.ok) {
             this.allTasks = await response.json();
+            console.log("Глобальные задачи загружены для поиска:", this.allTasks.length);
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error("Ошибка загрузки задач для поиска:", e);
+    }
 },
 
 // Сброс фильтров навигатора
@@ -2846,54 +2951,37 @@ async onDropToSprint(event, sprintId) {
     }
 },
 organizeTasksByStatus() {
+    const taskSource = this.currentProject ? this.projectTasks : this.allTasks;
     if (!this.projectTasks) return;
 
     const currentUserId = Number(localStorage.getItem('currentUserId'));
 
-    // 1. Сначала применяем фильтры ко всему массиву задач
-    const filtered = this.projectTasks.filter(task => {
-        // Фильтр по тексту (поиск в названии, описании и тегах)
-        const searchLower = this.searchQuery.toLowerCase();
+    // Применяем фильтры
+    const filtered = taskSource.filter(task => {
+        const q = this.searchQuery.toLowerCase();
         const matchesSearch = !this.searchQuery || 
-            task.title.toLowerCase().includes(searchLower) || 
-            (task.description && task.description.toLowerCase().includes(searchLower)) ||
-            (task.tags && task.tags.toLowerCase().includes(searchLower));
+            task.title.toLowerCase().includes(q) || 
+            (task.description && task.description.toLowerCase().includes(q)) ||
+            (task.tags && task.tags.toLowerCase().includes(q));
 
-        // Фильтр "Только мои"
-        const matchesAssignee = !this.filterMyTasks || task.assignee_id === currentUserId;
-
-        // Фильтр по приоритету
-        const matchesPriority = this.filterPriority === 'all' || task.priority.toLowerCase() === this.filterPriority;
-
-        return matchesSearch && matchesAssignee && matchesPriority;
+        return matchesSearch; 
     });
 
-    // 2. Затем смотрим, какой спринт активен (как мы делали раньше)
+    // 2. Логика для ДОСКИ (Board)
     const activeSprint = this.sprints.find(s => s.status === 'active');
-
-    // 3. Если мы на "Доске", показываем только задачи активного спринта (если он есть)
-    // Но для Списка и Бэклога нам нужны все отфильтрованные задачи
+    
+    // Если есть активный спринт — на доске только его задачи. 
+    // Если активного спринта НЕТ — показываем все задачи (чтобы они не пропадали!)
     const boardTasksSource = activeSprint 
         ? filtered.filter(t => t.sprint_id === activeSprint.id)
         : filtered;
 
-    // 4. Распределяем по колонкам для Доски
     this.projectBoardTasks = {
-        todo: boardTasksSource.filter(t => {
-            const s = (t.status || '').toLowerCase();
-            return s === 'todo' || s === 'к выполнению';
-        }),
-        inProgress: boardTasksSource.filter(t => {
-            const s = (t.status || '').toLowerCase();
-            return s === 'in_progress' || s === 'в работе';
-        }),
-        done: boardTasksSource.filter(t => {
-            const s = (t.status || '').toLowerCase();
-            return s === 'done' || s === 'готово';
-        })
+        todo: boardTasksSource.filter(t => ['todo', 'к выполнению'].includes((t.status || '').toLowerCase())),
+        inProgress: boardTasksSource.filter(t => ['in_progress', 'в работе'].includes((t.status || '').toLowerCase())),
+        done: boardTasksSource.filter(t => ['done', 'готово'].includes((t.status || '').toLowerCase()))
     };
     
-    // Сохраняем отфильтрованный список для табличного вида (Список)
     this.displayedTasks = filtered; 
 },
 
@@ -3045,91 +3133,77 @@ nextKanbanStep() {
                 removeInvite(member) {
                     this.kanbanWizard.members = this.kanbanWizard.members.filter((item) => item !== member);
                 },
-                async finishKanbanSetup() {
-                    this.isSubmitting = true;
-                    
-                    // Финальная валидация ключа
-                    if (!this.kanbanWizard.key || this.kanbanWizard.key.length < 2 || this.kanbanWizard.key.length > 10) {
-                        alert("Ошибка: Ключ должен содержать от 2 до 10 символов.");
-                        this.isSubmitting = false;
-                        return;
-                    }
-                    
-                    if (!/^[A-ZА-Я]/.test(this.kanbanWizard.key)) {
-                        alert("Ошибка: Ключ должен начинаться с заглавной буквы (латиница или кириллица).");
-                        this.isSubmitting = false;
-                        return;
-                    }
+async finishKanbanSetup() {
+    this.isSubmitting = true;
+    
+    // 1. Валидация ключа
+    if (!this.kanbanWizard.key || this.kanbanWizard.key.length < 2 || this.kanbanWizard.key.length > 10) {
+        alert("Ошибка: Ключ должен содержать от 2 до 10 символов.");
+        this.isSubmitting = false;
+        return;
+    }
 
-                    const projectPayload = {
-                        name: this.kanbanWizard.name.trim(),
-                        key: this.kanbanWizard.key,
-                        description: `Научный раздел: ${this.kanbanWizard.managementType}. Доступ: ${this.kanbanWizard.access}. Ключ: ${this.kanbanWizard.key}`,
-                        status: "active",
-                        start_date: new Date().toISOString(),
-                        created_by: Number(localStorage.getItem('currentUserId') || 1)
-                    };
+    // 2. Подготовка данных для создания проекта
+    const projectPayload = {
+        name: this.kanbanWizard.name.trim(),
+        key: this.kanbanWizard.key.toUpperCase(),
+        description: this.kanbanWizard.initialHypothesis 
+            ? `Научный раздел. Основная гипотеза: ${this.kanbanWizard.initialHypothesis}` 
+            : "Научный раздел",
+        status: "active",
+        start_date: new Date().toISOString(),
+        created_by: Number(localStorage.getItem('currentUserId') || 1)
+    };
 
-                    try {
-                        const response = await fetch('/projects', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(projectPayload)
-                        });
+    try {
+        // 3. Сначала создаем сам Проект (Раздел)
+        const response = await fetch('/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(projectPayload)
+        });
 
-                        if (!response.ok) {
-                            const errorMsg = await response.text();
-                            throw new Error(errorMsg || 'Ошибка при создании раздела');
-                        }
+        if (!response.ok) {
+            const errorMsg = await response.text();
+            throw new Error(errorMsg || 'Ошибка при создании раздела');
+        }
 
-                        const newProject = await response.json();
+        // ВАЖНО: Сначала получаем данные созданного проекта (включая его ID)
+        const newProject = await response.json(); 
 
-                        const boardTasks = {
-                            todo: [
-                                {
-                                    id: `${this.kanbanWizard.key}-1`,
-                                    title: 'Первая задача',
-                                    description: 'Начните с этой задачи и переместите её по колонкам.',
-                                    priority: 'medium'
-                                }
-                            ],
-                            inProgress: [],
-                            done: []
-                        };
+        // 4. Теперь, когда у нас ТОЧНО есть newProject.id, создаем гипотезу
+        if (this.kanbanWizard.initialHypothesis && this.kanbanWizard.initialHypothesis.trim()) {
+            const hypoResponse = await fetch(`/projects/${newProject.id}/hypotheses`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: this.kanbanWizard.initialHypothesis.trim(),
+                    description: "Начальная гипотеза исследования",
+                    project_id: newProject.id,
+                    created_by: projectPayload.created_by
+                })
+            });
+            
+            if (!hypoResponse.ok) {
+                console.error("Проект создан, но гипотезу сохранить не удалось");
+            }
+        }
 
-                        const newSection = {
-                            id: newProject.id,
-                            name: newProject.name,
-                            description: projectPayload.description,
-                            key: this.kanbanWizard.key,
-                            boardTasks
-                        };
+        // 5. Очистка формы и переход
+        alert("Научный раздел успешно создан!");
+        this.kanbanWizard.name = "";
+        this.kanbanWizard.key = "";
+        this.kanbanWizard.initialHypothesis = "";
+        this.currentPage = "sections";
+        this.loadProjects(); // Перезагружаем список проектов
 
-                        this.sections.unshift(newSection);
-                        this.sectionViewModes[newSection.id] = 'board';
-                        this.createdKanban = {
-                            id: newSection.id,
-                            name: newSection.name,
-                            key: newSection.key,
-                            description: newSection.description,
-                            viewMode: 'board',
-                            boardTasks
-                        };
-
-                        this.kanbanWizard.step = 1;
-                        this.kanbanWizard.name = "";
-                        this.kanbanWizard.key = "";
-                        this.kanbanWizard.inviteInput = "";
-                        this.kanbanWizard.members = [];
-                        this.kanbanWizard.role = "member";
-                        this.currentPage = "sections";
-                        this.projectSuccess = 'Раздел успешно создан';
-                    } catch (error) {
-                        alert("Ошибка: " + error.message);
-                    } finally {
-                        this.isSubmitting = false;
-                    }
-            },
+    } catch (error) {
+        console.error("Ошибка в процессе создания:", error);
+        alert("Ошибка: " + error.message);
+    } finally {
+        this.isSubmitting = false;
+    }
+},
                 openKanbanPage() {
                     window.location.href = '/kanban.html';
                 },
@@ -3311,16 +3385,20 @@ async createTaskFromModal() {
 
     const currentUserId = Number(localStorage.getItem('currentUserId') || 1);
 
-    const taskPayload = {
-        project_id: Number(this.newTask.projectId),
-        title: this.newTask.title.trim(),
-        description: this.newTask.description.trim(),
-        status: this.newTask.status,
-        priority: this.newTask.priority,
-        assignee_id: this.newTask.assigneeId || null,
-        created_by: currentUserId,
-        tags: this.newTask.tags
-    };
+const taskPayload = {
+    project_id: Number(this.newTask.projectId),
+    title: this.newTask.title.trim(),
+    description: this.newTask.description.trim(),
+    status: this.newTask.status,
+    priority: this.newTask.priority,
+    assignee_id: this.newTask.assigneeId || null,
+    created_by: currentUserId,
+    tags: this.newTask.tags,
+    type: this.newTask.type,
+    hypothesis_id: this.newTask.hypothesis_id ? Number(this.newTask.hypothesis_id) : null,
+    parameters: this.newTask.parameters, 
+    conclusion: this.newTask.conclusion || ""
+};
 
     this.isTaskSubmitting = true;
 
@@ -3391,6 +3469,7 @@ mounted() {
     this.loadCurrentUser();
     this.loadProjects();
     this.loadUsers();
+    this.loadAllTasks();
 
     // Существующие модалки
     const modalElement = document.getElementById('createProjectModal');

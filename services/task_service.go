@@ -68,14 +68,14 @@ func CreateTask(task models.Task) (models.Task, error) {
 		}
 	}
 
-	query := `INSERT INTO tasks (project_id, title, description, status, priority, assignee_id, created_by, due_date, created_at, updated_at)
-              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW()) RETURNING id, task_num`
+	query := `INSERT INTO tasks (project_id, title, description, status, priority, assignee_id, created_by, due_date, created_at, updated_at, research_contribution, research_method)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW(),$9,$10) RETURNING id, task_num`
 
 	var newId int
 	var newTaskNum int
 	if err := db.DB.QueryRow(query,
 		task.ProjectId, task.Title, task.Description, task.Status, task.Priority,
-		task.AssigneeId, task.CreatedBy, task.DueDate).Scan(&newId, &newTaskNum); err != nil {
+		task.AssigneeId, task.CreatedBy, task.DueDate, task.ResearchContribution, task.ResearchMethod).Scan(&newId, &newTaskNum); err != nil {
 		return models.Task{}, err
 	}
 
@@ -137,6 +137,7 @@ func GetTasksByProject(projectId int) ([]models.Task, error) {
 			t.id, t.project_id, t.title, t.description, t.status, t.priority, 
 			t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, 
 			t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id,
+			t.research_contribution, t.research_method,
 			COALESCE((SELECT STRING_AGG(tg.name, ', ') FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id), '') as tags
 		FROM tasks t
 		WHERE t.project_id = $1
@@ -154,11 +155,12 @@ func GetTasksByProject(projectId int) ([]models.Task, error) {
 		var assignee, sprint, hypothesis, resource sql.NullInt64
 		var dueDate, updatedAt, taskType sql.NullString
 
-		// Scan теперь на 18 полей (17 старых + 1 теги)
+		// Scan теперь на 20 полей (17 старых + 2 новых + 1 теги)
 		err := rows.Scan(
 			&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
 			&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
 			&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
+			&t.ResearchContribution, &t.ResearchMethod,
 			&t.Tags, // ВОТ ТУТ МЫ ЧИТАЕМ ТЕГИ
 		)
 		if err != nil {
@@ -208,6 +210,7 @@ func GetTaskByID(id int) (models.Task, error) {
 			t.id, t.project_id, t.title, t.description, t.status, t.priority, 
 			t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, 
 			t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id,
+			t.research_contribution, t.research_method,
 			COALESCE((SELECT STRING_AGG(tg.name, ', ') FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id), '') as tags
 		FROM tasks t WHERE t.id=$1`
 
@@ -215,6 +218,7 @@ func GetTaskByID(id int) (models.Task, error) {
 		&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
 		&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
 		&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
+		&t.ResearchContribution, &t.ResearchMethod,
 		&t.Tags,
 	)
 
@@ -268,6 +272,7 @@ func GetAllUserTasks(userID int) ([]models.Task, error) {
 			COALESCE(t.description, ''), t.status, t.priority, t.assignee_id, 
 			t.created_by, t.due_date, t.created_at, t.updated_at, 
 			t.type, t.hypothesis_id, t.resource_id, COALESCE(t.conclusion, ''),
+			t.research_contribution, t.research_method,
 			COALESCE((
 				SELECT STRING_AGG(tg.name, ',') 
 				FROM tags tg 
@@ -293,7 +298,7 @@ func GetAllUserTasks(userID int) ([]models.Task, error) {
 			&t.Id, &t.ProjectId, &t.TaskNum, &t.SprintId, &t.Title,
 			&t.Description, &t.Status, &t.Priority, &t.AssigneeId,
 			&t.CreatedBy, &t.DueDate, &t.CreatedAt, &t.UpdatedAt,
-			&t.Type, &t.HypothesisId, &t.ResourceId, &t.Conclusion, &t.Tags,
+			&t.Type, &t.HypothesisId, &t.ResourceId, &t.Conclusion, &t.ResearchContribution, &t.ResearchMethod, &t.Tags,
 		)
 		if err != nil {
 			return nil, err

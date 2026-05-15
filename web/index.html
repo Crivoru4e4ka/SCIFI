@@ -113,6 +113,32 @@
     color: #42526e;
     margin-bottom: 12px;
 }
+.passport-card {
+    background-color: #ffffff;
+    border: 1px solid #e4e7eb;
+    border-radius: 12px;
+    border-left: 5px solid #0d6efd;
+}
+.passport-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #6b778c;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+.passport-value {
+    font-size: 0.9rem;
+    color: #172b4d;
+    margin-bottom: 12px;
+}
+.hypothesis-highlight {
+    background-color: #f0f7ff;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px dashed #0d6efd;
+    font-style: italic;
+}
 .star-toggle {
     cursor: pointer;
     color: #adbac7; /* Сделали базовый цвет темнее, чтобы его было видно */
@@ -1027,6 +1053,29 @@ body.dark-theme .jira-tag {
     </button>
 </div> 
 -->
+    <!-- БЛОК НАУЧНОГО ПАСПОРТА -->
+    <div class="collapse show mb-4" id="passportCollapse">
+        <div class="passport-card shadow-sm p-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="passport-label">Цель исследования</div>
+                    <div class="passport-value">{{ currentProject.research_goal || 'Не указана' }}</div>
+                    
+                    <div class="passport-label">Научная новизна</div>
+                    <div class="passport-value">{{ currentProject.novelty || 'Не указана' }}</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="passport-label">Ожидаемый результат</div>
+                    <div class="passport-value">{{ currentProject.expected_result || 'Не указан' }}</div>
+                    
+                    <div class="passport-label text-primary">Основная гипотеза</div>
+                    <div class="passport-value hypothesis-highlight">
+                        {{ currentProject.main_hypothesis || 'Гипотеза не сформулирована' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Вкладки: Доска и Backlog -->
     <div class="mb-3 border-bottom">
@@ -1111,18 +1160,33 @@ body.dark-theme .jira-tag {
                                     </template>
                                     <span v-else class="text-muted italic small">Тегов нет</span>
                                 </div>
-<!-- Динамический блок для Эксперимента -->
-<div v-if="task.type === 'experiment'" class="mt-3 p-3 bg-white rounded border-start border-primary border-4 shadow-sm">
-    <h6 class="text-primary small fw-bold text-uppercase">Параметры эксперимента</h6>
-    <div class="row small mb-2">
-        <div class="col-md-4">
-            <span class="text-muted">ID Гипотезы:</span> #{{ task.hypothesis_id || '—' }}
-        </div>
-        <div class="col-md-8">
-            <span class="text-muted">Методика/Условия:</span> {{ task.parameters || 'Не указаны' }}
-        </div>
+<div class="mt-3 p-3 bg-white rounded border-start border-info border-4 shadow-sm">
+    <h6 class="text-info small fw-bold text-uppercase">Исследовательский контекст</h6>
+    <div class="mb-2">
+        <span class="text-muted">Основная гипотеза проекта:</span>
+        <div class="mt-1 text-secondary">{{ getProjectHypothesis(task.project_id) }}</div>
     </div>
-    <div class="mt-2 pt-2 border-top">
+    <div class="mb-2">
+        <span class="text-muted">Вклад задачи в проверку гипотезы:</span>
+        <div class="mt-1 text-secondary">{{ task.research_contribution || 'Не указано' }}</div>
+    </div>
+    <div class="mb-2">
+        <span class="text-muted">Проверяемый параметр:</span>
+        <div class="mt-1 text-secondary">{{ task.parameters || 'Не указан' }}</div>
+    </div>
+    <div class="mb-2">
+        <span class="text-muted">Метод исследования:</span>
+        <div class="mt-1 text-secondary">{{ task.research_method || 'Не указан' }}</div>
+    </div>
+    <div>
+        <span class="text-muted">Ожидаемый результат:</span>
+        <div class="mt-1 text-secondary">{{ task.expected_result || 'Не указан' }}</div>
+    </div>
+</div>
+
+<div v-if="task.type === 'experiment'" class="mt-3 p-3 bg-white rounded border-start border-primary border-4 shadow-sm">
+    <h6 class="text-primary small fw-bold text-uppercase">Результаты интерпретации</h6>
+    <div class="mb-3">
         <span class="fw-bold small text-muted">Научный вывод:</span>
         <div :class="task.conclusion ? 'text-success fw-semibold' : 'text-muted italic'">
             {{ task.conclusion || 'Эксперимент в процессе выполнения...' }}
@@ -1527,13 +1591,34 @@ body.dark-theme .jira-tag {
                                         <label class="form-label">Название *</label>
                                         <input class="form-control" type="text" v-model="kanbanWizard.name" @input="updateKanbanKey" placeholder="Введите название раздела">
                                     </div>
-                                    <div class="mb-3">
-    <label class="form-label text-primary fw-bold"><i class="fas fa-lightbulb me-2"></i>Начальная гипотеза *</label>
-    <textarea class="form-control" rows="2" 
-              v-model="kanbanWizard.initialHypothesis" 
-              placeholder="Сформулируйте основное предположение исследования"></textarea>
-    <div class="form-text" style="font-size: 0.75rem;">Эта гипотеза будет автоматически создана внутри раздела</div>
-</div>
+                                    
+                                        <!-- ГИПОТЕЗА (Важнейшее поле) -->
+    <div class="mb-3">
+        <label class="form-label fw-bold">Основная научная гипотеза *</label>
+        <textarea class="form-control" v-model="kanbanWizard.main_hypothesis" rows="2" placeholder="Какое утверждение вы проверяете?"></textarea>
+    </div>
+
+    <div class="row">
+        <div class="form-label mb-3">
+            <label class="form-label fw-bold">Цель исследования</label>
+            <input class="form-control" type="text" v-model="kanbanWizard.research_goal" placeholder="Чего хотите достичь?">
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-bold">Научная новизна</label>
+        <textarea class="form-control" v-model="kanbanWizard.novelty" rows="2" placeholder="В чем уникальность вашей работы?"></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-bold">Ожидаемый результат</label>
+        <input class="form-control" type="text" v-model="kanbanWizard.expected_result" placeholder="Что получится в итоге?">
+    </div>
+            <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Ключ *</label>
+            <input class="form-control" type="text" v-model="kanbanWizard.key" maxlength="10">
+        </div>
+
                                     <div class="mb-3">
                                         <label class="form-label">Способ управления разделом *</label>
                                         <select class="form-select" v-model="kanbanWizard.managementType">
@@ -1651,6 +1736,22 @@ body.dark-theme .jira-tag {
                             <label for="projectDescriptionInput" class="form-label">Описание</label>
                             <textarea class="form-control" id="projectDescriptionInput" rows="3" placeholder="Кратко опишите проект" v-model="project.description"></textarea>
                         </div>
+                        <div class="mb-3">
+                            <label for="projectResearchGoalInput" class="form-label">Цель исследования</label>
+                            <textarea class="form-control" id="projectResearchGoalInput" rows="2" placeholder="Укажите цель исследования" v-model="project.research_goal"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="projectHypothesisInput" class="form-label">Основная гипотеза</label>
+                            <textarea class="form-control" id="projectHypothesisInput" rows="2" placeholder="Опишите основную гипотезу" v-model="project.main_hypothesis"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="projectNoveltyInput" class="form-label">Научная новизна</label>
+                            <textarea class="form-control" id="projectNoveltyInput" rows="2" placeholder="Опишите научную новизну" v-model="project.novelty"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="projectExpectedResultInput" class="form-label">Ожидаемый результат</label>
+                            <textarea class="form-control" id="projectExpectedResultInput" rows="2" placeholder="Опишите ожидаемый результат" v-model="project.expected_result"></textarea>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="projectStatusInput" class="form-label">Статус</label>
@@ -1755,18 +1856,42 @@ body.dark-theme .jira-tag {
                                       rows="5" placeholder="Введите описание задачи"></textarea>
                         </div>
 
+                        <div class="p-3 mb-3 bg-light rounded border-start border-info border-4 shadow-sm">
+                            <div class="fw-bold text-info small text-uppercase mb-3">Исследовательский контекст</div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Основная гипотеза проекта</label>
+                                <textarea class="form-control form-control-sm" rows="2" :value="getProjectHypothesis(newTask.projectId)" readonly></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Вклад задачи в проверку гипотезы</label>
+                                <textarea class="form-control form-control-sm" v-model="newTask.researchContribution" rows="2" placeholder="Как эта задача помогает проверить гипотезу?"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Проверяемый параметр</label>
+                                <input type="text" class="form-control form-control-sm" v-model="newTask.parameters" placeholder="Какой параметр или утверждение проверяется?">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Метод исследования</label>
+                                <select class="form-select form-select-sm" v-model="newTask.researchMethod">
+                                    <option value="">Выберите метод</option>
+                                    <option value="experiment">Эксперимент</option>
+                                    <option value="theory">Теоретический анализ</option>
+                                    <option value="modeling">Моделирование</option>
+                                    <option value="observation">Наблюдение</option>
+                                </select>
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label small fw-bold">Ожидаемый результат</label>
+                                <textarea class="form-control form-control-sm" v-model="newTask.expectedScientificResult" rows="2" placeholder="Что должно подтвердиться или измениться?"></textarea>
+                            </div>
+                        </div>
+
                         <!-- СПЕЦИФИКА НИР: Динамические поля -->
 <div v-if="newTask.type === 'experiment'" class="p-3 mb-3 bg-light rounded border-start border-primary border-4 shadow-sm">
-    <div class="fw-bold text-primary mb-2 small"><i class="fas fa-microscope me-2"></i>ДАННЫЕ ЭКСПЕРИМЕНТА</div>
-    <div class="row g-2">
-        <div class="col-md-6">
-            <label class="form-label small">ID Гипотезы</label>
-            <input type="number" class="form-control form-control-sm" v-model="newTask.hypothesis_id" placeholder="Напр: 1">
-        </div>
-        <div class="col-md-6">
-            <label class="form-label small">Условия / Оборудование</label>
-            <input type="text" class="form-control form-control-sm" v-model="newTask.parameters" placeholder="Напр: Спектрометр, 20°C">
-        </div>
+    <div class="fw-bold text-primary mb-2 small"><i class="fas fa-microscope me-2"></i>РЕЗУЛЬТАТЫ ИНТЕРПРЕТАЦИИ</div>
+    <div class="mb-3">
+        <label class="form-label small">Научный вывод</label>
+        <textarea class="form-control form-control-sm" v-model="newTask.conclusion" rows="3" placeholder="Что показали данные?"></textarea>
     </div>
 </div>
 
@@ -2055,7 +2180,11 @@ const app = createApp({
                         name: "",
                         description: "",
                         status: "active",
-                        start_date: ""
+                        start_date: "",
+                        research_goal: "",
+                        main_hypothesis: "",
+                        novelty: "",
+                        expected_result: ""
                     },
                     projectError: "",
                     projectSuccess: "",
@@ -2072,9 +2201,12 @@ const app = createApp({
                         priority: "Medium",
                         dueDate: "",
                         tags: "",
-                        hypothesis_id: null,
-                        parameters: "",   
-                        conclusion: "",   
+    // Новые поля для научного контекста задачи
+    researchContribution: "", // Вклад в гипотезу
+    researchMethod: "",       // Метод исследования
+    expectedScientificResult: "", // Ожидаемый научный результат
+    parameters: "",   
+    conclusion: "",   
                         doi: "" // Для публикаций
                     },
                     taskError: "",
@@ -2142,7 +2274,10 @@ flaggedItems: [],
                         inviteInput: "",
                         members: [],
                         role: "member",
-                        initialHypothesis: ""
+                        research_goal: "", 
+                        main_hypothesis: "", 
+                        novelty: "", 
+                        expected_result: "",
                     },
                     createdKanban: {
                         id: null,
@@ -2272,6 +2407,11 @@ filteredUsers() {
             this.manageTeamModal.show();
         }
     } catch (e) { console.error(e); }
+},
+getProjectHypothesis(projectId) {
+    if (!projectId) return "Выберите раздел";
+    const p = this.projects.find(proj => proj.id === Number(projectId));
+    return p && p.main_hypothesis ? p.main_hypothesis : "Гипотеза исследования не задана для этого раздела";
 },
 async openTaskFromNavigator(task) {
     // 1. Находим объект проекта, к которому относится задача
@@ -3147,13 +3287,17 @@ async finishKanbanSetup() {
     const projectPayload = {
         name: this.kanbanWizard.name.trim(),
         key: this.kanbanWizard.key.toUpperCase(),
-        description: this.kanbanWizard.initialHypothesis 
-            ? `Научный раздел. Основная гипотеза: ${this.kanbanWizard.initialHypothesis}` 
-            : "Научный раздел",
-        status: "active",
-        start_date: new Date().toISOString(),
-        created_by: Number(localStorage.getItem('currentUserId') || 1)
-    };
+            description: this.kanbanWizard.main_hypothesis
+                ? `Научный раздел. Основная гипотеза: ${this.kanbanWizard.main_hypothesis}`
+                : "Научный раздел",
+            status: "active",
+            start_date: new Date().toISOString(),
+            created_by: Number(localStorage.getItem('currentUserId') || 1),
+            research_goal: this.kanbanWizard.research_goal,
+            main_hypothesis: this.kanbanWizard.main_hypothesis,
+            novelty: this.kanbanWizard.novelty,
+            expected_result: this.kanbanWizard.expected_result,
+        };
 
     try {
         // 3. Сначала создаем сам Проект (Раздел)
@@ -3169,31 +3313,9 @@ async finishKanbanSetup() {
         }
 
         // ВАЖНО: Сначала получаем данные созданного проекта (включая его ID)
-        const newProject = await response.json(); 
-
-        // 4. Теперь, когда у нас ТОЧНО есть newProject.id, создаем гипотезу
-        if (this.kanbanWizard.initialHypothesis && this.kanbanWizard.initialHypothesis.trim()) {
-            const hypoResponse = await fetch(`/projects/${newProject.id}/hypotheses`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: this.kanbanWizard.initialHypothesis.trim(),
-                    description: "Начальная гипотеза исследования",
-                    project_id: newProject.id,
-                    created_by: projectPayload.created_by
-                })
-            });
-            
-            if (!hypoResponse.ok) {
-                console.error("Проект создан, но гипотезу сохранить не удалось");
-            }
-        }
-
-        // 5. Очистка формы и переход
-        alert("Научный раздел успешно создан!");
+        const newProject = await response.json();
         this.kanbanWizard.name = "";
         this.kanbanWizard.key = "";
-        this.kanbanWizard.initialHypothesis = "";
         this.currentPage = "sections";
         this.loadProjects(); // Перезагружаем список проектов
 
@@ -3247,6 +3369,10 @@ applyTheme(theme) {
                         description: this.project.description.trim(),
                         status: this.project.status,
                         start_date: this.formatDateForApi(this.project.start_date),
+                        research_goal: this.project.research_goal.trim(),
+                        main_hypothesis: this.project.main_hypothesis.trim(),
+                        novelty: this.project.novelty.trim(),
+                        expected_result: this.project.expected_result.trim(),
                         created_by: Number(localStorage.getItem('currentUserId') || 1)
                     };
 
@@ -3263,7 +3389,7 @@ applyTheme(theme) {
                         }
 
                         this.projectSuccess = 'Проект успешно создан';
-                        this.project = { name: "", description: "", status: "active", start_date: "" };
+                        this.project = { name: "", description: "", status: "active", start_date: "", research_goal: "", main_hypothesis: "", novelty: "", expected_result: "" };
                         form.classList.remove('was-validated');
 
                         setTimeout(() => {
@@ -3346,7 +3472,13 @@ applyTheme(theme) {
                         assigneeId: null,
                         priority: "Medium",
                         dueDate: "",
-                        tags: ""
+                        tags: "",
+                        researchContribution: "",
+                        researchMethod: "",
+                        expectedScientificResult: "",
+                        parameters: "",
+                        conclusion: "",
+                        doi: ""
                     };
                     this.taskError = "";
                     this.taskSuccess = "";
@@ -3391,12 +3523,15 @@ const taskPayload = {
     description: this.newTask.description.trim(),
     status: this.newTask.status,
     priority: this.newTask.priority,
+    due_date: this.newTask.dueDate || null,
     assignee_id: this.newTask.assigneeId || null,
     created_by: currentUserId,
     tags: this.newTask.tags,
     type: this.newTask.type,
-    hypothesis_id: this.newTask.hypothesis_id ? Number(this.newTask.hypothesis_id) : null,
-    parameters: this.newTask.parameters, 
+    research_contribution: this.newTask.researchContribution,
+    research_method: this.newTask.researchMethod,
+    expected_result: this.newTask.expectedScientificResult,
+    parameters: this.newTask.parameters,
     conclusion: this.newTask.conclusion || ""
 };
 

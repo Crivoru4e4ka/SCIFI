@@ -6,6 +6,8 @@ import (
 	"project-MVP/models"
 	"project-MVP/services"
 	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 // POST /project-members
@@ -47,4 +49,107 @@ func CreateProjectMember(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(created)
 }
 
+// DELETE /projects/{id}/members/{userID}
+func RemoveProjectMemberHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	currentUserID, err := strconv.Atoi(cookie.Value)
+	if err != nil {
+		http.Error(w, "invalid session", http.StatusUnauthorized)
+		return
+	}
 
+	vars := mux.Vars(r)
+	projectID, err := strconv.Atoi(vars["id"])
+	if err != nil || projectID <= 0 {
+		http.Error(w, "invalid project id", http.StatusBadRequest)
+		return
+	}
+	memberUserID, err := strconv.Atoi(vars["userID"])
+	if err != nil || memberUserID <= 0 {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	if err := services.CheckPermission(currentUserID, projectID, "project.manage_members"); err != nil {
+		http.Error(w, "insufficient permissions", http.StatusForbidden)
+		return
+	}
+
+	if err := services.RemoveProjectMember(projectID, memberUserID); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	services.LogAudit(currentUserID, projectID, "member_removed", "project_member", memberUserID, "Удален участник")
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// PATCH /projects/{id}/members/{userID}/role
+func UpdateProjectMemberRoleHandler(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	currentUserID, err := strconv.Atoi(cookie.Value)
+	if err != nil {
+		http.Error(w, "invalid session", http.StatusUnauthorized)
+		return
+	}
+
+	vars := mux.Vars(r)
+	projectID, err := strconv.Atoi(vars["id"])
+	if err != nil || projectID <= 0 {
+		http.Error(w, "invalid project id", http.StatusBadRequest)
+		return
+	}
+	memberUserID, err := strconv.Atoi(vars["userID"])
+	if err != nil || memberUserID <= 0 {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	if err := services.CheckPermission(currentUserID, projectID, "project.manage_members"); err != nil {
+		http.Error(w, "insufficient permissions", http.StatusForbidden)
+		return
+	}
+
+	var payload struct {
+		RoleID int `json:"role_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Получаем имя роли по role_id
+	roles, err := services.GetAllRoles()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var roleName string
+	for _, r := range roles {
+		if r.Id == payload.RoleID {
+			roleName = r.Name
+			break
+		}
+	}
+	if roleName == "" {
+		http.Error(w, "role not found", http.StatusBadRequest)
+		return
+	}
+
+	roleID := payload.RoleID
+	if err := services.UpdateProjectMemberRole(projectID, memberUserID, roleName, &roleID); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	services.LogAudit(currentUserID, projectID, "member_role_updated", "project_member", memberUserID, "Изменена роль участника")
+	w.WriteHeader(http.StatusNoContent)
+}

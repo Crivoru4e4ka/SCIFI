@@ -141,7 +141,7 @@ func GetTasksByProject(projectId int) ([]models.Task, error) {
 			t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, 
 			t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id,
 			t.research_contribution, t.research_method,
-			t.parameters, t.metrics, t.doi,
+			t.parameters, t.metrics, COALESCE(t.doi, '') AS doi,
 			COALESCE((SELECT STRING_AGG(tg.name, ', ') FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id), '') as tags
 		FROM tasks t
 		WHERE t.project_id = $1
@@ -222,7 +222,7 @@ func GetTaskByID(id int) (models.Task, error) {
 			t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, 
 			t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id,
 			t.research_contribution, t.research_method,
-			t.parameters, t.metrics, t.doi,
+			t.parameters, t.metrics, COALESCE(t.doi, '') AS doi,
 			COALESCE((SELECT STRING_AGG(tg.name, ', ') FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id), '') as tags
 		FROM tasks t WHERE t.id=$1`
 
@@ -293,7 +293,7 @@ func GetAllUserTasks(userID int) ([]models.Task, error) {
 			t.created_by, t.due_date, t.created_at, t.updated_at, 
 			t.type, t.hypothesis_id, t.resource_id, COALESCE(t.conclusion, ''),
 			t.research_contribution, t.research_method,
-			t.parameters, t.metrics, t.doi,
+			t.parameters, t.metrics, COALESCE(t.doi, '') AS doi,
 			COALESCE((
 				SELECT STRING_AGG(tg.name, ',') 
 				FROM tags tg 

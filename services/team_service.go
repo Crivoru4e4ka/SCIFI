@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"project-MVP/db"
 	"project-MVP/models"
 	"strings"
@@ -43,13 +44,13 @@ func CreateTeam(t models.Team) (models.Team, error) {
 		return t, err
 	}
 
-	// 2. Добавляем создателя
-	_, err = tx.Exec(`INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'admin')`, t.ID, t.CreatedBy)
+	// 2. Добавляем создателя с проектной ролью project_lead
+	_, err = tx.Exec(`INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'project_lead')`, t.ID, t.CreatedBy)
 	if err != nil {
 		return t, err
 	}
 
-	// 3. Добавляем приглашенных по почте
+	// 3. Добавляем приглашенных по почте с ролью researcher по умолчанию
 	for _, email := range t.MemberEmails {
 		var invitedID int
 		// Ищем ID пользователя
@@ -62,7 +63,7 @@ func CreateTeam(t models.Team) (models.Team, error) {
 		}
 
 		// Записываем в связку
-		_, err = tx.Exec(`INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'member')`, t.ID, invitedID)
+		_, err = tx.Exec(`INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'researcher')`, t.ID, invitedID)
 		if err != nil {
 			return t, err
 		}
@@ -120,16 +121,20 @@ func AddMemberToTeam(teamID int, email string) (models.TeamMemberInfo, error) {
 		return m, err
 	}
 
-	// 2. Добавляем в связку
-	_, err = db.DB.Exec("INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'member') ON CONFLICT DO NOTHING", teamID, userID)
+	// 2. Добавляем в связку с проектной ролью researcher по умолчанию
+	_, err = db.DB.Exec("INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, 'researcher') ON CONFLICT DO NOTHING", teamID, userID)
 
 	m.UserID = userID
-	m.Role = "member"
+	m.Role = "researcher"
 	return m, err
 }
 
-// Изменить роль участника
+// Изменить роль участника команды (допускаются только проектные роли)
 func UpdateMemberRole(teamID, userID int, newRole string) error {
+	newRole = strings.ToLower(strings.TrimSpace(newRole))
+	if !IsValidProjectRole(newRole) {
+		return errors.New("invalid team member role: must be a valid project role")
+	}
 	_, err := db.DB.Exec("UPDATE team_members SET role = $1 WHERE team_id = $2 AND user_id = $3", newRole, teamID, userID)
 	return err
 }

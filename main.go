@@ -6,6 +6,7 @@ import (
 
 	"project-MVP/db"
 	"project-MVP/routes"
+	"project-MVP/services"
 
 	"github.com/joho/godotenv"
 )
@@ -19,6 +20,8 @@ func main() {
 	}
 
 	db.Connect()
+
+	services.InitRoles()
 
 	r := routes.InitRoutes()
 

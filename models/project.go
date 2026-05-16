@@ -17,4 +17,6 @@ type Project struct {
 	Novelty        string     `json:"novelty"`         // НОВИЗНА
 	ExpectedResult string     `json:"expected_result"` // РЕЗУЛЬТАТ
 	Visibility     string     `json:"visibility"`      // ВИДИМОСТЬ
+	TeamId         *int       `json:"team_id,omitempty"`
+	ExecutionType  string     `json:"execution_type"`
 }

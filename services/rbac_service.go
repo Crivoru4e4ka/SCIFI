@@ -136,9 +136,22 @@ func CheckPermission(userID, projectID int, permissionCode string) error {
 
 // AssignProjectRole назначает роль участнику проекта
 func AssignProjectRole(projectID, userID, roleID int) error {
+	// Блокируем ручное управление участниками для team-managed проектов
+	var execType string
+	err := db.DB.QueryRow(`SELECT execution_type FROM projects WHERE id = $1`, projectID).Scan(&execType)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return ErrNotFound
+		}
+		return err
+	}
+	if execType == "team" {
+		return errors.New("cannot manually manage members of a team-managed project")
+	}
+
 	// Проверяем существование участника
 	var exists bool
-	err := db.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2)`, projectID, userID).Scan(&exists)
+	err = db.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2)`, projectID, userID).Scan(&exists)
 	if err != nil {
 		return err
 	}
@@ -146,17 +159,17 @@ func AssignProjectRole(projectID, userID, roleID int) error {
 		return errors.New("user is not a member of this project")
 	}
 
-	// Проверяем существование роли
-	var roleExists bool
-	err = db.DB.QueryRow(`SELECT EXISTS(SELECT 1 FROM roles WHERE id = $1)`, roleID).Scan(&roleExists)
+	// Проверяем существование роли и получаем её имя
+	var roleName string
+	err = db.DB.QueryRow(`SELECT name FROM roles WHERE id = $1`, roleID).Scan(&roleName)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return errors.New("role not found")
+		}
 		return err
 	}
-	if !roleExists {
-		return errors.New("role not found")
-	}
 
-	_, err = db.DB.Exec(`UPDATE project_members SET role_id = $1 WHERE project_id = $2 AND user_id = $3`, roleID, projectID, userID)
+	_, err = db.DB.Exec(`UPDATE project_members SET role_id = $1, role = $2 WHERE project_id = $3 AND user_id = $4`, roleID, roleName, projectID, userID)
 	return err
 }
 
@@ -164,7 +177,7 @@ func AssignProjectRole(projectID, userID, roleID int) error {
 func GetProjectMembersWithRoles(projectID int) ([]models.ProjectMemberWithRole, error) {
 	query := `
 		SELECT pm.id, pm.user_id, pm.project_id, pm.role_id,
-			COALESCE(r.name, '') as role_name,
+			COALESCE(r.name, pm.role, '') as role_name,
 			COALESCE(r.description, '') as role_desc,
 			u.full_name, u.email
 		FROM project_members pm

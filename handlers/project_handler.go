@@ -25,7 +25,14 @@ func CreateProject(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "creator not found", http.StatusBadRequest)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// Валидационные ошибки — 400, остальное — 500
+		switch err.Error() {
+		case "project name is required", "created_by is required", "team_id is required for team execution type", "project_lead role not found in RBAC system":
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		default:
+			log.Printf("CreateProject error: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -127,4 +134,23 @@ func GetProjectTasks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tasks)
+}
+
+// GET /projects/{id}/assignable-users — участники проекта, которых можно назначить исполнителями
+func GetProjectAssignableUsers(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil || id <= 0 {
+		http.Error(w, "invalid project id", http.StatusBadRequest)
+		return
+	}
+
+	users, err := services.GetProjectAssignableUsers(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
 }

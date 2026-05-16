@@ -19,11 +19,13 @@
     text-transform: uppercase;
     font-weight: 700;
 }
-.role-lead { background-color: #ffe8e8; color: #d63333; }
-.role-supervisor { background-color: #e0f2ff; color: #0747a6; }
+.role-project_lead { background-color: #ffe8e8; color: #d63333; }
+.role-scientific_supervisor { background-color: #e0f2ff; color: #0747a6; }
 .role-researcher { background-color: #e6ffed; color: #006644; }
+.role-analyst { background-color: #f3e8ff; color: #6b21a8; }
+.role-developer { background-color: #e0f7fa; color: #006064; }
 .role-reviewer { background-color: #fff4e5; color: #ff8b00; }
-.role-watcher { background-color: #f4f5f7; color: #42526e; }
+.role-viewer { background-color: #f4f5f7; color: #42526e; }
 /* Подсказки в командах */
 .email-suggestions {
     position: absolute;
@@ -1007,7 +1009,6 @@ body.dark-theme .jira-tag {
             <div class="mb-4"><i class="fas fa-users fa-4x text-muted opacity-25"></i></div>
             <h5>Вы пока не состоите ни в одной команде</h5>
             <p class="text-muted">Объединяйтесь с коллегами для совместной работы над проектами.</p>
-            <button class="btn btn-outline-primary">Создать первую команду</button>
         </div>
     </div>
 
@@ -1246,6 +1247,17 @@ body.dark-theme .jira-tag {
       <div>
         <h2 class="mb-0">{{ currentProject.name }}</h2>
         <div class="text-muted small">{{ currentProject.description }}</div>
+        <div class="d-flex gap-2 mt-1">
+            <span class="badge bg-info" v-if="currentProject.execution_type === 'team'">
+                <i class="fas fa-users me-1"></i>Управляется командой
+            </span>
+            <span class="badge bg-secondary" v-else-if="currentProject.execution_type === 'manual'">
+                <i class="fas fa-user me-1"></i>Ручное управление
+            </span>
+            <span class="badge bg-light text-dark" v-if="currentProject.team_id && getTeamName(currentProject.team_id)">
+                {{ getTeamName(currentProject.team_id) }}
+            </span>
+        </div>
       </div>
       <div class="d-flex gap-2">
         <button v-if="canManageMembers" class="btn btn-outline-secondary btn-sm" @click="openManageMembers">
@@ -1380,7 +1392,7 @@ body.dark-theme .jira-tag {
     <!-- Добавляем кнопку утверждения -->
     <!-- Условие: статус "В работе" + тип "Эксперимент" или "Публикация" -->
     <div v-if="task.status.toLowerCase().includes('работе') && ['experiment', 'doc'].includes(task.type)" class="mt-2">
-        <button v-if="currentUserProjectRole === 'supervisor'" 
+        <button v-if="currentUserProjectRole === 'scientific_supervisor'" 
                 class="btn btn-sm btn-success py-0 px-2 shadow-sm"
                 style="font-size: 0.65rem; font-weight: bold;"
                 @click.stop="approveResearchTask(task)">
@@ -1950,6 +1962,20 @@ body.dark-theme .jira-tag {
                                         </select>
                                     </div>
                                     <div class="mb-3">
+                                        <label class="form-label">Тип выполнения *</label>
+                                        <select class="form-select" v-model="kanbanWizard.managementType">
+                                            <option value="manual">Ручное управление участниками</option>
+                                            <option value="team">Привязать к команде</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3" v-if="kanbanWizard.managementType === 'team'">
+                                        <label class="form-label">Команда *</label>
+                                        <select class="form-select" v-model="kanbanWizard.teamId" @change="onWizardTeamChange">
+                                            <option :value="null">Выберите команду...</option>
+                                            <option v-for="team in teams" :key="team.id" :value="team.id">{{ team.name }}</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
                                         <label class="form-label">Ключ *</label>
                                         <input class="form-control" type="text" v-model="kanbanWizard.key" maxlength="10">
                                     </div>
@@ -1961,26 +1987,76 @@ body.dark-theme .jira-tag {
                                 </template>
 
                                 <template v-else>
-                                    <p class="text-muted small mb-4">Добавьте пользователей, с которыми вы уже работаете, или пригласите новых.</p>
-                                    <div class="mb-3">
-                                        <label class="form-label">Имена или email</label>
-                                        <input class="form-control" type="text" v-model="kanbanWizard.inviteInput" @keyup.enter="addInvite" placeholder="Например: ira-users, user@example.com">
-                                    </div>
-                                    <div class="d-flex flex-wrap gap-2 mb-3">
-                                        <span class="invite-pill" v-for="member in kanbanWizard.members" :key="member">
-                                            {{ member }}
-                                            <button class="btn btn-sm p-0 border-0 bg-transparent" @click="removeInvite(member)" type="button">
-                                                <i class="fas fa-times text-muted"></i>
-                                            </button>
-                                        </span>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Роль</label>
-                                        <select class="form-select" v-model="kanbanWizard.role">
-                                            <option value="member">Участник</option>
-                                            <option value="admin">Администратор</option>
-                                        </select>
-                                    </div>
+                                    <!-- TEAM-MANAGED -->
+                                    <template v-if="kanbanWizard.managementType === 'team'">
+                                        <div class="alert alert-info mb-3">
+                                            <i class="fas fa-users me-2"></i>
+                                            <strong>Управляется командой</strong>
+                                            <p class="small mb-0 mt-1">Участники проекта будут автоматически взяты из состава выбранной команды. Редактирование состава доступно только через настройки команды.</p>
+                                        </div>
+                                        <div v-if="kanbanWizard.teamId">
+                                            <label class="form-label small fw-bold">Участники команды</label>
+                                            <div class="list-group list-group-flush border rounded">
+                                                <div class="list-group-item d-flex align-items-center gap-2 py-2" v-for="tm in getTeamMembersPreview(kanbanWizard.teamId)" :key="tm.user_id">
+                                                    <div class="avatar-circle bg-primary text-white" style="width: 28px; height: 28px; font-size: 0.7rem;">{{ tm.full_name ? tm.full_name.charAt(0) : '?' }}</div>
+                                                    <span class="small">{{ tm.full_name }}</span>
+                                                    <span class="text-muted small ms-auto">{{ tm.email }}</span>
+                                                    <span class="badge bg-light text-dark small">{{ getRoleLabel(tm.role) }}</span>
+                                                </div>
+                                                <div v-if="getTeamMembersPreview(kanbanWizard.teamId).length === 0" class="list-group-item text-muted small py-2">
+                                                    В команде пока нет участников
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div v-else class="alert alert-warning small">
+                                            Выберите команду на шаге 1
+                                        </div>
+                                    </template>
+
+                                    <!-- MANUAL -->
+                                    <template v-else>
+                                        <p class="text-muted small mb-3">Добавьте участников проекта и назначьте каждому роль.</p>
+                                        <div v-for="(row, index) in kanbanWizard.memberRows" :key="index" class="row g-2 mb-2 align-items-end">
+                                        <div class="col-md-5 position-relative" v-click-outside="() => row.showSuggestions = false">
+                                            <label class="form-label small" v-if="index === 0">Участник</label>
+                                            <!-- Вместо select теперь input -->
+                                            <input type="text" class="form-control form-control-sm" 
+                                                placeholder="Почта или имя..." 
+                                                v-model="row.searchText"
+                                                @input="row.showSuggestions = true">
+                                            
+                                            <!-- Подсказки как в командах -->
+                                            <div class="email-suggestions shadow-lg" v-if="row.showSuggestions && filterWizardUsers(row.searchText).length > 0">
+                                                <div v-for="user in filterWizardUsers(row.searchText)" 
+                                                    :key="user.id" 
+                                                    class="suggestion-item" 
+                                                    @click="selectUserForRow(row, user)">
+                                                    <div class="avatar-circle bg-primary text-white me-2" style="width: 25px; height: 25px; font-size: 0.7rem;">
+                                                        {{ user.full_name[0] }}
+                                                    </div>
+                                                    <div class="suggestion-info">
+                                                        <span class="fw-bold small">{{ user.full_name }}</span>
+                                                        <span class="text-muted" style="font-size: 0.65rem;">{{ user.email }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                            <div class="col-md-5">
+                                                <label class="form-label small" v-if="index === 0">Роль</label>
+                                                <select class="form-select form-select-sm" v-model="row.role">
+                                                    <option v-for="role in projectRoles.filter(r => !r.is_system)" :key="role.id" :value="role.name">{{ getRoleLabel(role.name) }}</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <button class="btn btn-sm btn-outline-danger w-100" @click="removeMemberRow(index)" type="button" :disabled="kanbanWizard.memberRows.length === 1">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-primary mt-1" @click="addMemberRow" type="button">
+                                            <i class="fas fa-plus me-1"></i>Добавить участника
+                                        </button>
+                                    </template>
                                 </template>
                             </div>
                         </div>
@@ -2080,6 +2156,22 @@ body.dark-theme .jira-tag {
                             <div class="col-md-6">
                                 <label for="projectStartDateInput" class="form-label">Дата начала</label>
                                 <input type="date" class="form-control" id="projectStartDateInput" v-model="project.start_date">
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label for="projectExecTypeInput" class="form-label">Тип выполнения</label>
+                                <select id="projectExecTypeInput" class="form-select" v-model="project.execution_type">
+                                    <option value="manual">Ручное управление</option>
+                                    <option value="team">Привязать к команде</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6" v-if="project.execution_type === 'team'">
+                                <label for="projectTeamInput" class="form-label">Команда</label>
+                                <select id="projectTeamInput" class="form-select" v-model="project.team_id">
+                                    <option :value="null">Выберите команду...</option>
+                                    <option v-for="team in teams" :key="team.id" :value="team.id">{{ team.name }}</option>
+                                </select>
                             </div>
                         </div>
                         <div class="alert alert-danger mt-3" id="createProjectError" :class="{ 'd-none': !projectError }" v-text="projectError"></div>
@@ -2211,9 +2303,9 @@ body.dark-theme .jira-tag {
             <input type="text" class="form-control" v-model="source.authors" placeholder="Авторы">
             <input type="text" class="form-control w-25" v-model="source.year" placeholder="Год">
             <input type="text" class="form-control" v-model="source.doi" placeholder="DOI/URL">
-            <button class="btn btn-outline-danger" @click="newTask.resSources.splice(index, 1)"><i class="fas fa-times"></i></button>
+            <button type="button" class="btn btn-outline-danger" @click="newTask.resSources.splice(index, 1)"><i class="fas fa-times"></i></button>
         </div>
-        <button class="btn btn-link btn-sm p-0 text-decoration-none" @click="newTask.resSources.push({title:'', authors:'', year:'', doi:''})">+ Добавить источник</button>
+        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="newTask.resSources.push({title:'', authors:'', year:'', doi:''})">+ Добавить источник</button>
     </div>
 
     <!-- 2. ЭКСПЕРИМЕНТ -->
@@ -2250,11 +2342,11 @@ body.dark-theme .jira-tag {
                     </select></td>
                     <td><input type="text" class="form-control form-control-sm border-0" v-model="v.name"></td>
                     <td><input type="text" class="form-control form-control-sm border-0" v-model="v.value"></td>
-                    <td><button class="btn btn-sm text-danger" @click="newTask.expVariables.splice(index, 1)"><i class="fas fa-trash"></i></button></td>
+                    <td><button type="button" class="btn btn-sm text-danger" @click="newTask.expVariables.splice(index, 1)"><i class="fas fa-trash"></i></button></td>
                 </tr>
             </tbody>
         </table>
-        <button class="btn btn-link btn-sm p-0 text-decoration-none" @click="newTask.expVariables.push({type:'Independent', name:'', value:''})">+ Добавить переменную</button>
+        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" @click="newTask.expVariables.push({type:'Independent', name:'', value:''})">+ Добавить переменную</button>
         <div class="row g-2 mt-2">
             <div class="col-md-6">
                 <label class="form-label small fw-bold">Метрики измерения</label>
@@ -2422,7 +2514,7 @@ body.dark-theme .jira-tag {
                         <div class="input-group">
                             <select class="form-select" id="taskAssignee" v-model="newTask.assigneeId">
                                 <option :value="null">Выберите исполнителя...</option>
-                                <option v-for="user in users" :key="user.id" :value="user.id">{{ user.full_name }}</option>
+                                <option v-for="user in projectAssignableUsers" :key="user.id" :value="user.id">{{ user.full_name }}</option>
                             </select>
                             <button class="btn btn-outline-secondary" type="button" @click="assignToCurrentUser">Назначить себе</button>
                         </div>
@@ -2733,10 +2825,31 @@ body.dark-theme .jira-tag {
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <div v-if="currentProject && currentProject.execution_type === 'team'" class="alert alert-info mb-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Этот проект привязан к команде. Участники управляются через настройки команды.
+                </div>
+                <div v-if="currentProject && currentProject.execution_type !== 'team'" class="mb-3">
+                    <label class="form-label small fw-bold">Добавить участника</label>
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control form-control-sm" v-model="newProjectMemberEmail" @input="filterUsersForMember" placeholder="Email или имя пользователя">
+                        <select class="form-select form-select-sm" v-model="newProjectMemberRole" style="max-width: 180px;">
+                            <option v-for="role in projectRoles.filter(r => !r.is_system)" :key="role.id" :value="role.name">{{ getRoleLabel(role.name) }}</option>
+                        </select>
+                        <button class="btn btn-sm btn-primary" @click="addProjectMemberFromModal" type="button">
+                            <i class="fas fa-plus me-1"></i>Добавить
+                        </button>
+                    </div>
+                    <div v-if="filteredProjectMemberUsers.length > 0" class="list-group mt-1 shadow-sm" style="max-height: 150px; overflow-y: auto;">
+                        <button type="button" class="list-group-item list-group-item-action py-1 px-2 small" v-for="u in filteredProjectMemberUsers" :key="u.id" @click="selectProjectMemberUser(u)">
+                            {{ u.full_name }} <span class="text-muted">({{ u.email }})</span>
+                        </button>
+                    </div>
+                </div>
                 <div v-if="currentProjectMembers && currentProjectMembers.length > 0">
                     <table class="table table-sm align-middle">
                         <thead class="table-light">
-                            <tr><th>Участник</th><th>Email</th><th>Текущая роль</th><th>Назначить роль</th></tr>
+                            <tr><th>Участник</th><th>Email</th><th>Текущая роль</th><th>Назначить роль</th><th v-if="currentProject && currentProject.execution_type !== 'team'">Действия</th></tr>
                         </thead>
                         <tbody>
                             <tr v-for="m in currentProjectMembers" :key="m.user_id">
@@ -2752,12 +2865,17 @@ body.dark-theme .jira-tag {
                                     <span v-else class="badge bg-secondary">Участник</span>
                                 </td>
                                 <td>
-                                    <select class="form-select form-select-sm" @change="assignMemberRole(currentProject.id, m.user_id, $event.target.value)">
+                                    <select class="form-select form-select-sm" @change="assignMemberRole(currentProject.id, m.user_id, $event.target.value)" :disabled="currentProject && currentProject.execution_type === 'team'">
                                         <option value="">-- Роль --</option>
                                         <option v-for="role in projectRoles.filter(r => !r.is_system)" :key="role.id" :value="role.id" :selected="m.role_id == role.id">
                                             {{ getRoleLabel(role.name) }}
                                         </option>
                                     </select>
+                                </td>
+                                <td v-if="currentProject && currentProject.execution_type !== 'team'">
+                                    <button class="btn btn-sm btn-outline-danger" @click="removeProjectMember(m.user_id)">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
@@ -2835,11 +2953,7 @@ body.dark-theme .jira-tag {
                         <div class="d-flex align-items-center gap-3">
                             <!-- Выбор роли -->
 <select class="role-select form-select-sm" v-model="m.role" @change="changeMemberRole(m)">
-    <option value="researcher">Исследователь</option>
-    <option value="supervisor">Научный руководитель</option>
-    <option value="analyst">Аналитик</option>
-    <option value="reviewer">Рецензент</option>
-    <option value="watcher">Наблюдатель</option>
+    <option v-for="role in projectRoles.filter(r => !r.is_system)" :key="role.id" :value="role.name">{{ getRoleLabel(role.name) }}</option>
 </select>
 
                             <!-- Удаление -->
@@ -2901,8 +3015,9 @@ const app = createApp({
                         research_goal: "",
                         main_hypothesis: "",
                         novelty: "",
-                        expected_result: ""
-                    },
+                        expected_result: "",
+                        execution_type: "manual",
+                        team_id: null},
                     projectError: "",
                     projectSuccess: "",
                     isSubmitting: false,
@@ -3032,12 +3147,11 @@ flaggedItems: [],
                     kanbanWizard: {
                         step: 1,
                         name: "",
-                        managementType: "team",
+                        managementType: "manual",
+                        teamId: null,
                         access: "closed",
                         key: "",
-                        inviteInput: "",
-                        members: [],
-                        role: "member",
+                        memberRows: [{ user_id: null, role: 'researcher', searchText: '', showSuggestions: false }],             // Список уже добавленных объектов {user_id, full_name, email, role}
                         research_goal: "", 
                         main_hypothesis: "", 
                         novelty: "", 
@@ -3116,6 +3230,10 @@ flaggedItems: [],
                     auditLog: [],
                     manageMembersModal: null,
                     currentProjectMembers: [],
+                    wizardTeamMembers: [],
+                    newProjectMemberEmail: '',
+                    newProjectMemberRole: 'researcher',
+                    filteredProjectMemberUsers: [],
                     grantProjectForm: {
                         project_id: '',
                         allocated_amount: 0,
@@ -3130,6 +3248,10 @@ flaggedItems: [],
             computed: {
                 submitButtonText() {
                     return this.isSubmitting ? "Создание..." : "Создать";
+                },
+                availableUsersForWizard() {
+                    const currentUserId = Number(localStorage.getItem('currentUserId'));
+                    return this.users.filter(u => u.id !== currentUserId);
                 },
                 taskTypeLabel() {
                     const labels = {
@@ -3260,6 +3382,7 @@ filteredUsers() {
             methods: {
                 async openManageTeam(team) {
     this.selectedTeam = team;
+    this.loadProjectRoles();
     try {
         // Запрос к бэкенду за участниками этой команды
         const response = await fetch(`/teams/${team.id}/members`);
@@ -3268,6 +3391,43 @@ filteredUsers() {
             this.manageTeamModal.show();
         }
     } catch (e) { console.error(e); }
+},
+// Фильтр пользователей для конкретной строки поиска
+filterWizardUsers(text) {
+    if (!text || text.length < 1) return [];
+    const q = text.toLowerCase();
+    const currentUserId = Number(localStorage.getItem('currentUserId'));
+
+    return this.users.filter(u => {
+        const email = (u.email || "").toLowerCase();
+        const name = (u.full_name || "").toLowerCase();
+
+        // 1. Проверяем, начинается ли ПОЧТА на введённые символы
+        const emailMatch = email.startsWith(q);
+
+        // 2. Проверяем, начинается ли ИМЯ или ФАМИЛИЯ на эти символы
+        // (разбиваем на слова, чтобы "М" находило и "Максим", и "Иванов Максим")
+        const nameMatch = name.split(' ').some(word => word.startsWith(q));
+
+        // Исключаем себя
+        const notMe = u.id !== currentUserId;
+
+        return (emailMatch || nameMatch) && notMe;
+    }).slice(0, 5);
+},
+// Срабатывает при клике на подсказку
+selectUserForRow(row, user) {
+    row.user_id = user.id;          // записываем ID для сервера
+    row.searchText = user.full_name; // записываем имя в инпут
+    row.showSuggestions = false;    // закрываем подсказки
+},
+addMemberRow() {
+    this.kanbanWizard.memberRows.push({ 
+        user_id: null, 
+        role: 'researcher', 
+        searchText: '', 
+        showSuggestions: false 
+    });
 },
 getProjectHypothesis(projectId) {
     if (!projectId) return "Выберите раздел";
@@ -3674,8 +3834,8 @@ startProjectCreation() {
     this.kanbanWizard.step = 1;
     this.kanbanWizard.name = '';
     this.kanbanWizard.key = '';
-    this.kanbanWizard.inviteInput = "";
-    this.kanbanWizard.members = [];
+    this.kanbanWizard.memberRows = [{ user_id: null, role: 'researcher' }];
+    this.loadUserTeams();
     
     this.selectedTemplate = mainTemplate;
     this.currentPage = "kanbanSetup";
@@ -3711,8 +3871,8 @@ async openProject(project) {
             const currentUserId = Number(localStorage.getItem('currentUserId'));
             const myMemberEntry = members.find(m => m.user_id === currentUserId);
             
-            // Сохраняем роль (если не нашли - значит watcher по умолчанию)
-            this.currentUserProjectRole = myMemberEntry ? myMemberEntry.role : 'watcher';
+            // Сохраняем роль (если не нашли - значит viewer по умолчанию)
+            this.currentUserProjectRole = myMemberEntry ? myMemberEntry.role_name || myMemberEntry.role : 'viewer';
             console.log("Моя роль в проекте:", this.currentUserProjectRole);
         }
     } catch (e) {
@@ -3722,6 +3882,7 @@ async openProject(project) {
     this.loadProjectTasks(project.id);
     this.loadProjectSprints(project.id);
     this.loadProjectAttachments(project.id);
+    this.loadProjectAssignableUsers(project.id);
     this.loadProjectGrants(project.id);
     this.loadProjectPermissions(project.id);
     this.loadAuditLog(project.id);
@@ -3919,6 +4080,18 @@ handleTaskFileSelect(event) {
                         console.error('Failed to load project tasks:', err);
                     }
                 },
+                async loadProjectAssignableUsers(projectId) {
+                    try {
+                        const response = await fetch(`/projects/${projectId}/assignable-users`, {
+                            credentials: 'include'
+                        });
+                        if (response.ok) {
+                            this.projectAssignableUsers = await response.json();
+                        }
+                    } catch (err) {
+                        console.error('Failed to load assignable users:', err);
+                    }
+                },
                 async createNewSprint() {
     console.log("Кнопка нажата, проект:", this.currentProject);
     if (!this.currentProject) {
@@ -4104,14 +4277,18 @@ resetFilters() {
                     const user = this.users.find(u => u.id === userId);
                     return user ? user.full_name : 'Unknown';
                 },
+                getTeamName(teamId) {
+                    const team = this.teams.find(t => t.id === teamId);
+                    return team ? team.name : '';
+                },
                 selectTemplate(templateItem) {
                     this.selectedTemplate = templateItem;
                     this.kanbanWizard.step = 1;
                     this.kanbanWizard.name = '';
                     this.kanbanWizard.key = '';
-                    this.kanbanWizard.inviteInput = "";
-                    this.kanbanWizard.members = [];
-                    this.kanbanWizard.role = "member";
+                    this.kanbanWizard.memberRows = [{ user_id: null, role: 'researcher' }];
+                    this.loadUserTeams();
+                    this.loadProjectRoles();
                     this.currentPage = "kanbanSetup";
                 },
 updateKanbanKey() {
@@ -4154,23 +4331,47 @@ nextKanbanStep() {
         return;
     }
     
-    if (!this.kanbanWizard.key || this.kanbanWizard.key.length < 1) { // Уменьшил до 1 для гибкости
+    if (!this.kanbanWizard.key || this.kanbanWizard.key.length < 1) {
         alert("Не удалось сгенерировать ключ. Попробуйте ввести название латиницей или введите ключ вручную.");
+        return;
+    }
+
+    if (this.kanbanWizard.managementType === 'team' && (!this.kanbanWizard.teamId || this.kanbanWizard.teamId <= 0)) {
+        alert("Пожалуйста, выберите команду для проекта.");
         return;
     }
     
     this.kanbanWizard.step = 2;
 },
-                addInvite() {
-                    const value = this.kanbanWizard.inviteInput.trim();
-                    if (!value || this.kanbanWizard.members.includes(value)) {
+                onWizardTeamChange() {
+                    if (this.kanbanWizard.teamId) {
+                        this.loadTeamMembersForWizard(this.kanbanWizard.teamId);
+                    }
+                },
+                addMemberRow() {
+                    this.kanbanWizard.memberRows.push({ user_id: null, role: 'researcher' });
+                },
+                removeMemberRow(index) {
+                    if (this.kanbanWizard.memberRows.length > 1) {
+                        this.kanbanWizard.memberRows.splice(index, 1);
+                    }
+                },
+                getTeamMembersPreview(teamId) {
+                    return this.wizardTeamMembers || [];
+                },
+                async loadTeamMembersForWizard(teamId) {
+                    if (!teamId) {
+                        this.wizardTeamMembers = [];
                         return;
                     }
-                    this.kanbanWizard.members.push(value);
-                    this.kanbanWizard.inviteInput = "";
-                },
-                removeInvite(member) {
-                    this.kanbanWizard.members = this.kanbanWizard.members.filter((item) => item !== member);
+                    try {
+                        const response = await fetch(`/teams/${teamId}/members`);
+                        if (response.ok) {
+                            this.wizardTeamMembers = await response.json();
+                        }
+                    } catch (err) {
+                        console.error('Failed to load team members:', err);
+                    }
                 },
 async finishKanbanSetup() {
     this.isSubmitting = true;
@@ -4182,25 +4383,29 @@ async finishKanbanSetup() {
         return;
     }
 
-    // 2. Подготовка данных для создания проекта
+    const currentUserId = Number(localStorage.getItem('currentUserId') || 1);
+
+    // 2. Подготовка данных
     const projectPayload = {
         name: this.kanbanWizard.name.trim(),
         key: this.kanbanWizard.key.toUpperCase(),
-            description: this.kanbanWizard.main_hypothesis
-                ? `Научный раздел. Основная гипотеза: ${this.kanbanWizard.main_hypothesis}`
-                : "Научный раздел",
-            status: "active",
-            start_date: new Date().toISOString(),
-            created_by: Number(localStorage.getItem('currentUserId') || 1),
-            research_goal: this.kanbanWizard.research_goal,
-            main_hypothesis: this.kanbanWizard.main_hypothesis,
-            novelty: this.kanbanWizard.novelty,
-            expected_result: this.kanbanWizard.expected_result,
-            visibility: this.kanbanWizard.access,
-        };
+        description: this.kanbanWizard.main_hypothesis
+            ? `Научный раздел. Основная гипотеза: ${this.kanbanWizard.main_hypothesis}`
+            : "Научный раздел",
+        status: "active",
+        start_date: new Date().toISOString(),
+        created_by: currentUserId,
+        research_goal: this.kanbanWizard.research_goal,
+        main_hypothesis: this.kanbanWizard.main_hypothesis,
+        novelty: this.kanbanWizard.novelty,
+        expected_result: this.kanbanWizard.expected_result,
+        visibility: this.kanbanWizard.access,
+        execution_type: this.kanbanWizard.managementType,
+        team_id: this.kanbanWizard.managementType === 'team' ? this.kanbanWizard.teamId : null,
+    };
 
     try {
-        // 3. Сначала создаем сам Проект (Раздел)
+        // 3. Создаем проект
         const response = await fetch('/projects', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -4212,12 +4417,37 @@ async finishKanbanSetup() {
             throw new Error(errorMsg || 'Ошибка при создании раздела');
         }
 
-        // ВАЖНО: Сначала получаем данные созданного проекта (включая его ID)
         const newProject = await response.json();
+
+        // Создатель автоматически получает роль project_lead на бэкенде (CreateProject).
+        // Дополнительный вызов не требуется.
+
+        // 4. Если ручное управление — добавляем остальных приглашенных
+        if (this.kanbanWizard.managementType === 'manual') {
+            for (const row of this.kanbanWizard.memberRows) {
+                if (!row.user_id || row.user_id === currentUserId) continue;
+                try {
+                    await fetch('/project-members', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            project_id: newProject.id, 
+                            user_id: row.user_id, 
+                            role: row.role 
+                        })
+                    });
+                } catch (e) {
+                    console.error('Не удалось добавить участника:', e);
+                }
+            }
+        }
+
+        // 5. Сброс и выход
         this.kanbanWizard.name = "";
         this.kanbanWizard.key = "";
+        this.kanbanWizard.memberRows = [{ user_id: null, role: 'researcher' }];
         this.currentPage = "sections";
-        this.loadProjects(); // Перезагружаем список проектов
+        this.loadProjects(); 
 
     } catch (error) {
         console.error("Ошибка в процессе создания:", error);
@@ -4274,7 +4504,9 @@ applyTheme(theme) {
                         novelty: this.project.novelty.trim(),
                         expected_result: this.project.expected_result.trim(),
                         created_by: Number(localStorage.getItem('currentUserId') || 1),
-                        visibility: this.project.visibility || 'closed'
+                        visibility: this.project.visibility || 'closed',
+                        execution_type: this.project.execution_type || 'manual',
+                        team_id: this.project.execution_type === 'team' ? this.project.team_id : null
                     };
 
                     this.isSubmitting = true;
@@ -4288,11 +4520,9 @@ applyTheme(theme) {
                             const errorText = await response.text();
                             throw new Error(errorText || 'Не удалось создать проект');
                         }
-
                         this.projectSuccess = 'Проект успешно создан';
-                        this.project = { name: "", description: "", status: "active", start_date: "", research_goal: "", main_hypothesis: "", novelty: "", expected_result: "" };
+                        this.project = { name: "", description: "", status: "active", start_date: "", research_goal: "", main_hypothesis: "", novelty: "", expected_result: "", execution_type: "manual", team_id: null};
                         form.classList.remove('was-validated');
-
                         setTimeout(() => {
                             if (this.createProjectModal) {
                                 this.createProjectModal.hide();
@@ -4843,6 +5073,41 @@ async loadAuditLog(projectId) {
         console.error('Failed to load audit log:', err);
     }
 },
+filterUsersForMember() {
+    const q = this.newProjectMemberEmail.toLowerCase().trim();
+    if (!q) {
+        this.filteredProjectMemberUsers = [];
+        return;
+    }
+    this.filteredProjectMemberUsers = this.users.filter(u => {
+        if (this.currentProjectMembers.some(m => m.user_id === u.id)) return false;
+        return (u.full_name && u.full_name.toLowerCase().includes(q)) || (u.email && u.email.toLowerCase().includes(q));
+    }).slice(0, 5);
+},
+selectProjectMemberUser(user) {
+    this.newProjectMemberEmail = user.email;
+    this.filteredProjectMemberUsers = [];
+},
+async addProjectMemberFromModal() {
+    const user = this.users.find(u => u.email === this.newProjectMemberEmail.trim());
+    if (!user) {
+        alert('Пользователь не найден');
+        return;
+    }
+    try {
+        const response = await fetch('/project-members', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: this.currentProject.id, user_id: user.id, role: this.newProjectMemberRole })
+        });
+        if (!response.ok) throw new Error('Не удалось добавить участника');
+        this.newProjectMemberEmail = '';
+        this.newProjectMemberRole = 'researcher';
+        this.loadProjectMembers(this.currentProject.id);
+    } catch (err) {
+        alert(err.message);
+    }
+},
 async assignMemberRole(projectId, userId, roleId) {
     try {
         const response = await fetch(`/projects/${projectId}/members/${userId}/role`, {
@@ -4857,7 +5122,23 @@ async assignMemberRole(projectId, userId, roleId) {
         alert(err.message);
     }
 },
+async removeProjectMember(userId) {
+    if (!confirm('Удалить участника из проекта?')) return;
+    try {
+        const response = await fetch(`/projects/${this.currentProject.id}/members/${userId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Не удалось удалить участника');
+        this.loadProjectMembers(this.currentProject.id);
+    } catch (err) {
+        alert(err.message);
+    }
+},
 openManageMembers() {
+    this.newProjectMemberEmail = '';
+    this.newProjectMemberRole = 'researcher';
+    this.filteredProjectMemberUsers = [];
     this.loadProjectRoles();
     this.loadProjectMembers(this.currentProject.id);
     this.manageMembersModal.show();
@@ -4873,7 +5154,8 @@ getRoleLabel(roleName) {
         viewer: 'Наблюдатель',
         admin: 'Администратор',
         user: 'Пользователь',
-        guest: 'Гость'
+        guest: 'Гость',
+        member: 'Участник'
     };
     return map[roleName] || roleName;
 },

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"project-MVP/models"
 	"project-MVP/services"
@@ -54,7 +55,8 @@ func CreateTeamHandler(w http.ResponseWriter, r *http.Request) {
 	// Для диплома важно, чтобы создатель сразу стал участником команды в team_members
 	newTeam, err := services.CreateTeam(t)
 	if err != nil {
-		http.Error(w, "Не удалось создать команду", http.StatusInternalServerError)
+		log.Printf("CreateTeam error: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -133,7 +135,11 @@ func UpdateMemberRoleHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&req)
 
 	if err := services.UpdateMemberRole(teamID, userID, req.Role); err != nil {
-		http.Error(w, err.Error(), 500)
+		if err.Error() == "invalid team member role: must be a valid project role" {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 	w.WriteHeader(http.StatusOK)

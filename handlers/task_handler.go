@@ -11,11 +11,32 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// POST /tasks
+// POST /tasks — устаревший endpoint, требует авторизации и перенаправляет на CreateTaskInProject
 func CreateTask(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	userID, err := strconv.Atoi(cookie.Value)
+	if err != nil {
+		http.Error(w, "invalid session", http.StatusUnauthorized)
+		return
+	}
+
 	var t models.Task
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if t.ProjectId <= 0 {
+		http.Error(w, "project_id is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := services.CheckPermission(userID, t.ProjectId, "task.create"); err != nil {
+		http.Error(w, "insufficient permissions", http.StatusForbidden)
 		return
 	}
 
@@ -29,6 +50,7 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	services.LogAudit(userID, t.ProjectId, "task_created", "task", created.Id, "Создана задача")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(created)
 }

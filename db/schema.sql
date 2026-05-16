@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS public.projects
     novelty text COLLATE pg_catalog."default" DEFAULT ''::text,
     expected_result text COLLATE pg_catalog."default" DEFAULT ''::text,
     visibility text COLLATE pg_catalog."default" DEFAULT 'closed'::text,
+    team_id integer,
     CONSTRAINT projects_pkey PRIMARY KEY (id)
 );
 
@@ -266,8 +267,7 @@ CREATE TABLE IF NOT EXISTS public.users
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     is_active boolean DEFAULT false,
     CONSTRAINT users_pkey PRIMARY KEY (id),
-    CONSTRAINT users_email_key UNIQUE (email),
-    CONSTRAINT users_role_check CHECK (role IN ('admin', 'user', 'guest'))
+    CONSTRAINT users_email_key UNIQUE (email)
 );
 
 ALTER TABLE IF EXISTS public.attachments
@@ -407,6 +407,13 @@ ALTER TABLE IF EXISTS public.project_members
 ALTER TABLE IF EXISTS public.projects
     ADD CONSTRAINT fk_project_creator FOREIGN KEY (created_by)
     REFERENCES public.users (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.projects
+    ADD CONSTRAINT fk_project_team FOREIGN KEY (team_id)
+    REFERENCES public.teams (id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE SET NULL;
 

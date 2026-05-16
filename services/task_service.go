@@ -2,6 +2,7 @@ package services
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -68,14 +69,16 @@ func CreateTask(task models.Task) (models.Task, error) {
 		}
 	}
 
-	query := `INSERT INTO tasks (project_id, title, description, status, priority, assignee_id, created_by, due_date, created_at, updated_at, research_contribution, research_method)
-              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW(),$9,$10) RETURNING id, task_num`
+	query := `INSERT INTO tasks (project_id, title, description, status, priority, assignee_id, created_by, due_date, type, hypothesis_id, resource_id, conclusion, parameters, metrics, doi, research_contribution, research_method, created_at, updated_at)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,NOW(),NOW()) RETURNING id, task_num`
 
 	var newId int
 	var newTaskNum int
 	if err := db.DB.QueryRow(query,
 		task.ProjectId, task.Title, task.Description, task.Status, task.Priority,
-		task.AssigneeId, task.CreatedBy, task.DueDate, task.ResearchContribution, task.ResearchMethod).Scan(&newId, &newTaskNum); err != nil {
+		task.AssigneeId, task.CreatedBy, task.DueDate, task.Type, task.HypothesisId,
+		task.ResourceId, task.Conclusion, task.Parameters, task.Metrics, task.DOI,
+		task.ResearchContribution, task.ResearchMethod).Scan(&newId, &newTaskNum); err != nil {
 		return models.Task{}, err
 	}
 
@@ -138,6 +141,7 @@ func GetTasksByProject(projectId int) ([]models.Task, error) {
 			t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, 
 			t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id,
 			t.research_contribution, t.research_method,
+			t.parameters, t.metrics, t.doi,
 			COALESCE((SELECT STRING_AGG(tg.name, ', ') FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id), '') as tags
 		FROM tasks t
 		WHERE t.project_id = $1
@@ -154,18 +158,19 @@ func GetTasksByProject(projectId int) ([]models.Task, error) {
 		var t models.Task
 		var assignee, sprint, hypothesis, resource sql.NullInt64
 		var dueDate, updatedAt, taskType sql.NullString
+		var paramsBytes, metricsBytes []byte
 
-		// Scan теперь на 20 полей (17 старых + 2 новых + 1 теги)
 		err := rows.Scan(
 			&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
 			&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
 			&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
 			&t.ResearchContribution, &t.ResearchMethod,
-			&t.Tags, // ВОТ ТУТ МЫ ЧИТАЕМ ТЕГИ
+			&paramsBytes, &metricsBytes, &t.DOI,
+			&t.Tags,
 		)
 		if err != nil {
-			log.Printf("Scan error: %v", err)
-			return nil, err
+			log.Printf("Scan error in GetTasksByProject: %v", err)
+			continue
 		}
 
 		if assignee.Valid {
@@ -193,6 +198,12 @@ func GetTasksByProject(projectId int) ([]models.Task, error) {
 		if taskType.Valid {
 			t.Type = &taskType.String
 		}
+		if len(paramsBytes) > 0 {
+			t.Parameters = json.RawMessage(paramsBytes)
+		}
+		if len(metricsBytes) > 0 {
+			t.Metrics = json.RawMessage(metricsBytes)
+		}
 
 		tasks = append(tasks, t)
 	}
@@ -211,14 +222,17 @@ func GetTaskByID(id int) (models.Task, error) {
 			t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, 
 			t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id,
 			t.research_contribution, t.research_method,
+			t.parameters, t.metrics, t.doi,
 			COALESCE((SELECT STRING_AGG(tg.name, ', ') FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id), '') as tags
 		FROM tasks t WHERE t.id=$1`
 
+	var paramsBytes, metricsBytes []byte
 	err := db.DB.QueryRow(query, id).Scan(
 		&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
 		&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
 		&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
 		&t.ResearchContribution, &t.ResearchMethod,
+		&paramsBytes, &metricsBytes, &t.DOI,
 		&t.Tags,
 	)
 
@@ -254,6 +268,12 @@ func GetTaskByID(id int) (models.Task, error) {
 	if taskType.Valid {
 		t.Type = &taskType.String
 	}
+	if len(paramsBytes) > 0 {
+		t.Parameters = json.RawMessage(paramsBytes)
+	}
+	if len(metricsBytes) > 0 {
+		t.Metrics = json.RawMessage(metricsBytes)
+	}
 
 	return t, nil
 }
@@ -273,6 +293,7 @@ func GetAllUserTasks(userID int) ([]models.Task, error) {
 			t.created_by, t.due_date, t.created_at, t.updated_at, 
 			t.type, t.hypothesis_id, t.resource_id, COALESCE(t.conclusion, ''),
 			t.research_contribution, t.research_method,
+			t.parameters, t.metrics, t.doi,
 			COALESCE((
 				SELECT STRING_AGG(tg.name, ',') 
 				FROM tags tg 
@@ -293,15 +314,25 @@ func GetAllUserTasks(userID int) ([]models.Task, error) {
 	var tasks []models.Task
 	for rows.Next() {
 		var t models.Task
+		var paramsBytes, metricsBytes []byte
 		// Используем правильные имена полей из твоей модели (Id, ProjectId...)
 		err := rows.Scan(
 			&t.Id, &t.ProjectId, &t.TaskNum, &t.SprintId, &t.Title,
 			&t.Description, &t.Status, &t.Priority, &t.AssigneeId,
 			&t.CreatedBy, &t.DueDate, &t.CreatedAt, &t.UpdatedAt,
-			&t.Type, &t.HypothesisId, &t.ResourceId, &t.Conclusion, &t.ResearchContribution, &t.ResearchMethod, &t.Tags,
+			&t.Type, &t.HypothesisId, &t.ResourceId, &t.Conclusion, &t.ResearchContribution, &t.ResearchMethod,
+			&paramsBytes, &metricsBytes, &t.DOI,
+			&t.Tags,
 		)
 		if err != nil {
-			return nil, err
+			log.Printf("Scan error in GetAllUserTasks: %v", err)
+			continue
+		}
+		if len(paramsBytes) > 0 {
+			t.Parameters = json.RawMessage(paramsBytes)
+		}
+		if len(metricsBytes) > 0 {
+			t.Metrics = json.RawMessage(metricsBytes)
 		}
 		t.LocalId = t.TaskNum // Синхронизируем для фронтенда
 		tasks = append(tasks, t)

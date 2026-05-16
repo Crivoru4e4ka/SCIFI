@@ -14,6 +14,19 @@ CREATE TABLE IF NOT EXISTS public.attachments
     CONSTRAINT attachments_pkey PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS public.audit_log
+(
+    id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    user_id integer,
+    project_id integer,
+    action character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    entity_type character varying(50) COLLATE pg_catalog."default",
+    entity_id integer,
+    details text COLLATE pg_catalog."default",
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT audit_log_pkey PRIMARY KEY (id)
+);
+
 CREATE TABLE IF NOT EXISTS public.comments
 (
     id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
@@ -44,6 +57,29 @@ CREATE TABLE IF NOT EXISTS public.experiment_datasets
     CONSTRAINT experiment_datasets_pkey PRIMARY KEY (task_id, dataset_id)
 );
 
+CREATE TABLE IF NOT EXISTS public.grants
+(
+    id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    title character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    code character varying(100) COLLATE pg_catalog."default",
+    funding_organization character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    country character varying(100) COLLATE pg_catalog."default",
+    description text COLLATE pg_catalog."default",
+    scientific_direction character varying(255) COLLATE pg_catalog."default",
+    grant_type character varying(50) COLLATE pg_catalog."default" DEFAULT 'state'::character varying,
+    status character varying(50) COLLATE pg_catalog."default" DEFAULT 'draft'::character varying,
+    total_amount numeric(15, 2) DEFAULT 0,
+    currency character varying(10) COLLATE pg_catalog."default" DEFAULT 'RUB'::character varying,
+    start_date date,
+    end_date date,
+    application_deadline date,
+    principal_investigator_id integer,
+    created_by integer,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone,
+    CONSTRAINT grants_pkey PRIMARY KEY (id)
+);
+
 CREATE TABLE IF NOT EXISTS public.hypotheses
 (
     id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
@@ -56,12 +92,39 @@ CREATE TABLE IF NOT EXISTS public.hypotheses
     CONSTRAINT hypotheses_pkey PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS public.permissions
+(
+    id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    code character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    category character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT permissions_pkey PRIMARY KEY (id),
+    CONSTRAINT permissions_code_key UNIQUE (code)
+);
+
+CREATE TABLE IF NOT EXISTS public.project_grant_funding
+(
+    id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    grant_id integer NOT NULL,
+    project_id integer NOT NULL,
+    section_id integer,
+    allocated_amount numeric(15, 2) DEFAULT 0,
+    funding_purpose text COLLATE pg_catalog."default",
+    funding_start_date date,
+    funding_end_date date,
+    notes text COLLATE pg_catalog."default",
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT project_grant_funding_pkey PRIMARY KEY (id),
+    CONSTRAINT unique_grant_project_section UNIQUE (grant_id, project_id, section_id)
+);
+
 CREATE TABLE IF NOT EXISTS public.project_members
 (
     id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
     project_id integer NOT NULL,
     user_id integer NOT NULL,
     role character varying(20) COLLATE pg_catalog."default" DEFAULT 'participant'::character varying,
+    role_id integer,
     CONSTRAINT project_members_pkey PRIMARY KEY (id),
     CONSTRAINT unique_member UNIQUE (project_id, user_id)
 );
@@ -82,7 +145,26 @@ CREATE TABLE IF NOT EXISTS public.projects
     main_hypothesis text COLLATE pg_catalog."default" DEFAULT ''::text,
     novelty text COLLATE pg_catalog."default" DEFAULT ''::text,
     expected_result text COLLATE pg_catalog."default" DEFAULT ''::text,
+    visibility text COLLATE pg_catalog."default" DEFAULT 'closed'::text,
     CONSTRAINT projects_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.role_permissions
+(
+    role_id integer NOT NULL,
+    permission_id integer NOT NULL,
+    CONSTRAINT role_permissions_pkey PRIMARY KEY (role_id, permission_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.roles
+(
+    id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
+    name character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    description text COLLATE pg_catalog."default",
+    is_system boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT roles_pkey PRIMARY KEY (id),
+    CONSTRAINT roles_name_key UNIQUE (name)
 );
 
 CREATE TABLE IF NOT EXISTS public.sprints
@@ -152,6 +234,7 @@ CREATE TABLE IF NOT EXISTS public.tasks
     sprint_id integer,
     research_contribution text COLLATE pg_catalog."default" DEFAULT ''::text,
     research_method text COLLATE pg_catalog."default" DEFAULT 'experiment'::text,
+    doi text COLLATE pg_catalog."default",
     CONSTRAINT tasks_pkey PRIMARY KEY (id)
 );
 
@@ -183,7 +266,8 @@ CREATE TABLE IF NOT EXISTS public.users
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     is_active boolean DEFAULT false,
     CONSTRAINT users_pkey PRIMARY KEY (id),
-    CONSTRAINT users_email_key UNIQUE (email)
+    CONSTRAINT users_email_key UNIQUE (email),
+    CONSTRAINT users_role_check CHECK (role IN ('admin', 'user', 'guest'))
 );
 
 ALTER TABLE IF EXISTS public.attachments
@@ -198,6 +282,24 @@ ALTER TABLE IF EXISTS public.attachments
     REFERENCES public.users (id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
+
+
+ALTER TABLE IF EXISTS public.audit_log
+    ADD CONSTRAINT fk_audit_project FOREIGN KEY (project_id)
+    REFERENCES public.projects (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_audit_log_project
+    ON public.audit_log(project_id);
+
+
+ALTER TABLE IF EXISTS public.audit_log
+    ADD CONSTRAINT fk_audit_user FOREIGN KEY (user_id)
+    REFERENCES public.users (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_audit_log_user
+    ON public.audit_log(user_id);
 
 
 ALTER TABLE IF EXISTS public.comments
@@ -235,6 +337,20 @@ ALTER TABLE IF EXISTS public.experiment_datasets
     ON DELETE CASCADE;
 
 
+ALTER TABLE IF EXISTS public.grants
+    ADD CONSTRAINT fk_grant_creator FOREIGN KEY (created_by)
+    REFERENCES public.users (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.grants
+    ADD CONSTRAINT fk_grant_pi FOREIGN KEY (principal_investigator_id)
+    REFERENCES public.users (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
+
+
 ALTER TABLE IF EXISTS public.hypotheses
     ADD CONSTRAINT fk_hypothesis_creator FOREIGN KEY (created_by)
     REFERENCES public.users (id) MATCH SIMPLE
@@ -249,11 +365,36 @@ ALTER TABLE IF EXISTS public.hypotheses
     ON DELETE CASCADE;
 
 
+ALTER TABLE IF EXISTS public.project_grant_funding
+    ADD CONSTRAINT fk_pgf_grant FOREIGN KEY (grant_id)
+    REFERENCES public.grants (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_pgf_grant
+    ON public.project_grant_funding(grant_id);
+
+
+ALTER TABLE IF EXISTS public.project_grant_funding
+    ADD CONSTRAINT fk_pgf_project FOREIGN KEY (project_id)
+    REFERENCES public.projects (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_pgf_project
+    ON public.project_grant_funding(project_id);
+
+
 ALTER TABLE IF EXISTS public.project_members
     ADD CONSTRAINT fk_pm_project FOREIGN KEY (project_id)
     REFERENCES public.projects (id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE CASCADE;
+
+
+ALTER TABLE IF EXISTS public.project_members
+    ADD CONSTRAINT fk_pm_role FOREIGN KEY (role_id)
+    REFERENCES public.roles (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE SET NULL;
 
 
 ALTER TABLE IF EXISTS public.project_members
@@ -268,6 +409,20 @@ ALTER TABLE IF EXISTS public.projects
     REFERENCES public.users (id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE SET NULL;
+
+
+ALTER TABLE IF EXISTS public.role_permissions
+    ADD CONSTRAINT fk_rp_permission FOREIGN KEY (permission_id)
+    REFERENCES public.permissions (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
+
+
+ALTER TABLE IF EXISTS public.role_permissions
+    ADD CONSTRAINT fk_rp_role FOREIGN KEY (role_id)
+    REFERENCES public.roles (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE;
 
 
 ALTER TABLE IF EXISTS public.sprints

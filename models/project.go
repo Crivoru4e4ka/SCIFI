@@ -16,4 +16,5 @@ type Project struct {
 	MainHypothesis string     `json:"main_hypothesis"` // ГИПОТЕЗА
 	Novelty        string     `json:"novelty"`         // НОВИЗНА
 	ExpectedResult string     `json:"expected_result"` // РЕЗУЛЬТАТ
+	Visibility     string     `json:"visibility"`      // ВИДИМОСТЬ
 }

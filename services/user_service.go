@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
 	"project-MVP/db"
 	"project-MVP/models"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -19,10 +20,9 @@ var (
 )
 
 var allowedRoles = map[string]bool{
-	"admin":      true,
-	"manager":    true,
-	"researcher": true,
-	"watcher": true,
+	"admin": true, // Системный администратор
+	"user":  true, // Обычный сотрудник/студент
+	"guest": true, // Внешний эксперт/рецензент
 }
 
 func roleIsValid(role string) bool {

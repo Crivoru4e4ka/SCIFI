@@ -5,9 +5,9 @@ import (
 	"project-MVP/models"
 )
 
-// Получить все связи
+// GetAllExperimentDatasets получает все связи задач с датасетами
 func GetAllExperimentDatasets() ([]models.ExperimentDataset, error) {
-	rows, err := db.DB.Query(`SELECT id, experiment_id, dataset_id FROM experiment_datasets`)
+	rows, err := db.DB.Query(`SELECT task_id, dataset_id FROM experiment_datasets`)
 	if err != nil {
 		return nil, err
 	}
@@ -16,8 +16,7 @@ func GetAllExperimentDatasets() ([]models.ExperimentDataset, error) {
 	var result []models.ExperimentDataset
 	for rows.Next() {
 		var eds models.ExperimentDataset
-		// Поля ID, ExperimentID, DatasetID должны быть с Большой буквы
-		if err := rows.Scan(&eds.ID, &eds.ExperimentID, &eds.DatasetID); err != nil {
+		if err := rows.Scan(&eds.TaskID, &eds.DatasetID); err != nil {
 			return nil, err
 		}
 		result = append(result, eds)
@@ -25,16 +24,12 @@ func GetAllExperimentDatasets() ([]models.ExperimentDataset, error) {
 	return result, nil
 }
 
-// Создать связь
+// CreateExperimentDataset создает связь задачи и датасета
 func CreateExperimentDataset(eds models.ExperimentDataset) (models.ExperimentDataset, error) {
-	row := db.DB.QueryRow(`INSERT INTO experiment_datasets (experiment_id, dataset_id) VALUES ($1, $2) RETURNING id`,
-		eds.ExperimentID, eds.DatasetID)
-
-	var id int
-	if err := row.Scan(&id); err != nil {
+	_, err := db.DB.Exec(`INSERT INTO experiment_datasets (task_id, dataset_id) VALUES ($1, $2)`,
+		eds.TaskID, eds.DatasetID)
+	if err != nil {
 		return eds, err
 	}
-
-	eds.ID = id // Теперь это поле будет доступно
 	return eds, nil
 }

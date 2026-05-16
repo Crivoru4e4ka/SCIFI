@@ -1,7 +1,7 @@
 package models
 
+// ExperimentDataset связывает задачу (task_id) и датасет (dataset_id)
 type ExperimentDataset struct {
-	ID           int `json:"id"`
-	ExperimentID int `json:"experiment_id"`
-	DatasetID    int `json:"dataset_id"`
+	TaskID    int `json:"task_id"`
+	DatasetID int `json:"dataset_id"`
 }

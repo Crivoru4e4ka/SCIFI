@@ -9,10 +9,12 @@ import (
 )
 
 var allowedProjectMemberRoles = map[string]bool{
-	"manager":    true,
-	"researcher": true,
-	"reviewer":   true,
-	"watcher": true,
+	"lead":       true, // Руководитель проекта (PI)
+	"supervisor": true, // Научный руководитель
+	"researcher": true, // Исследователь (основной исполнитель)
+	"analyst":    true, // Аналитик данных
+	"reviewer":   true, // Рецензент (проверяющий)
+	"watcher":    true, // Наблюдатель
 }
 
 func isValidProjectMemberRole(role string) bool {

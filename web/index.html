@@ -12,6 +12,18 @@
             background-color: #f6f7fb;
             color: #172b4d;
         }
+        .role-badge {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+.role-lead { background-color: #ffe8e8; color: #d63333; }
+.role-supervisor { background-color: #e0f2ff; color: #0747a6; }
+.role-researcher { background-color: #e6ffed; color: #006644; }
+.role-reviewer { background-color: #fff4e5; color: #ff8b00; }
+.role-watcher { background-color: #f4f5f7; color: #42526e; }
 /* Подсказки в командах */
 .email-suggestions {
     position: absolute;
@@ -667,7 +679,7 @@ body.dark-theme .jira-tag {
                             <i class="fas fa-adjust"></i>Тема
                         </a>
                         <div class="dropdown-divider"></div>
-                        <a class="dropdown-item d-flex align-items-center gap-2" href="/logout">
+                        <a class="dropdown-item d-flex align-items-center gap-2" href="#" @click.prevent="logout">
                             <i class="fas fa-sign-out-alt"></i>Выйти
                         </a>
                     </div>
@@ -711,6 +723,10 @@ body.dark-theme .jira-tag {
             <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'teams'}" @click.prevent="selectSidebarTab('teams')">
                 <img src="/static/teamsbadge.png" alt="Teams badge" class="nav-sidebar-badge">
                 <span class="nav-link-text">Команды</span>
+            </a>
+            <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'grants'}" @click.prevent="selectSidebarTab('grants')">
+                <i class="fas fa-hand-holding-dollar nav-sidebar-badge text-success" style="font-size: 18px; width: 24px; text-align: center;"></i>
+                <span class="nav-link-text">Гранты</span>
             </a>
         </nav>
     </div>
@@ -870,7 +886,7 @@ body.dark-theme .jira-tag {
         </div>
     </template>
 
-<!-- Вид 2: Поиск задач (Issue Navigator как на скриншоте) -->
+<!-- Вид 2: Поиск задач (Issue Navigator) -->
     <template v-else-if="filterSubPage === 'search'">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="h4 mb-0">Все задачи</h2>
@@ -995,7 +1011,217 @@ body.dark-theme .jira-tag {
         </div>
     </div>
 
-<!-- 4. ЗАГЛУШКА ДЛЯ ОСТАЛЬНЫХ ВКЛАДОК -->
+<!-- 4. ВКЛАДКА: ГРАНТЫ -->
+<div v-else-if="activeSidebarTab === 'grants'">
+    <template v-if="!currentGrant">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+            <h2 class="mb-0">Гранты и финансирование</h2>
+            <button class="btn btn-primary btn-sm" @click="prepareCreateGrant">
+                <i class="fas fa-plus me-1"></i> Создать грант
+            </button>
+        </div>
+        <!-- Фильтры -->
+        <div class="row g-2 mb-4">
+            <div class="col-md-3">
+                <input type="text" class="form-control form-control-sm" placeholder="Поиск..." v-model="grantFilters.search" @input="loadGrants">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" v-model="grantFilters.status" @change="loadGrants">
+                    <option value="">Все статусы</option>
+                    <option value="draft">Черновик</option>
+                    <option value="submitted">Подан</option>
+                    <option value="under_review">На рассмотрении</option>
+                    <option value="approved">Одобрен</option>
+                    <option value="active">Активен</option>
+                    <option value="completed">Завершен</option>
+                    <option value="suspended">Приостановлен</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" v-model="grantFilters.type" @change="loadGrants">
+                    <option value="">Все типы</option>
+                    <option value="state">Государственный</option>
+                    <option value="university">Университетский</option>
+                    <option value="international">Международный</option>
+                    <option value="corporate">Корпоративный</option>
+                    <option value="internal">Внутренний</option>
+                </select>
+            </div>
+        </div>
+        <!-- Список грантов -->
+        <div v-if="grants && grants.length > 0" class="row g-3">
+            <div class="col-12" v-for="grant in grants" :key="grant.id">
+                <div class="card card-light shadow-sm border-0" style="cursor: pointer;" @click="openGrant(grant)">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h5 class="mb-0 fw-bold">{{ grant.title }}</h5>
+                                    <span class="badge" :class="getGrantStatusBadgeClass(grant.status)">{{ getGrantStatusLabel(grant.status) }}</span>
+                                    <span class="badge bg-light text-dark">{{ getGrantTypeLabel(grant.grant_type) }}</span>
+                                </div>
+                                <div class="text-muted small mb-2">
+                                    <i class="fas fa-building me-1"></i>{{ grant.funding_organization }}
+                                    <span v-if="grant.code" class="ms-2 text-secondary">№ {{ grant.code }}</span>
+                                </div>
+                                <div class="d-flex flex-wrap gap-3 text-muted small">
+                                    <span v-if="grant.total_amount > 0"><i class="fas fa-coins me-1 text-success"></i>{{ grant.total_amount.toLocaleString('ru-RU') }} {{ grant.currency }}</span>
+                                    <span v-if="grant.start_date && grant.end_date"><i class="fas fa-calendar-alt me-1"></i>{{ formatDate(grant.start_date) }} — {{ formatDate(grant.end_date) }}</span>
+                                    <span v-if="grant.scientific_direction"><i class="fas fa-flask me-1"></i>{{ grant.scientific_direction }}</span>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-link btn-sm text-decoration-none p-0" @click.stop="prepareEditGrant(grant)">
+                                    <i class="fas fa-pen text-muted"></i>
+                                </button>
+                                <button class="btn btn-link btn-sm text-decoration-none p-0" @click.stop="deleteGrant(grant.id)">
+                                    <i class="fas fa-trash text-danger"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-else class="text-center py-5 bg-white rounded border shadow-sm">
+            <div class="mb-4"><i class="fas fa-hand-holding-dollar fa-4x text-muted opacity-25"></i></div>
+            <h5>Гранты не найдены</h5>
+            <p class="text-muted">Создайте первый грант для управления научным финансированием.</p>
+            <button class="btn btn-outline-primary" @click="prepareCreateGrant">Создать грант</button>
+        </div>
+    </template>
+
+    <!-- Детали гранта -->
+    <template v-else>
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <button class="btn btn-link text-decoration-none p-0" @click="goBackToGrants">
+                <i class="fas fa-arrow-left me-2"></i>Назад к грантам
+            </button>
+        </div>
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="avatar-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                <i class="fas fa-hand-holding-dollar"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h2 class="mb-0">{{ currentGrant.title }}</h2>
+                <div class="text-muted small">{{ currentGrant.funding_organization }}</div>
+            </div>
+            <div class="d-flex gap-2">
+                <span class="badge" :class="grantStatusBadgeClass">{{ grantStatusLabel }}</span>
+                <span class="badge bg-light text-dark">{{ getGrantTypeLabel(currentGrant.grant_type) }}</span>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold mb-3">Описание</h5>
+                        <p class="text-muted">{{ currentGrant.description || 'Описание отсутствует' }}</p>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6" v-if="currentGrant.scientific_direction">
+                                <div class="small text-muted">Научное направление</div>
+                                <div class="fw-semibold">{{ currentGrant.scientific_direction }}</div>
+                            </div>
+                            <div class="col-md-6" v-if="currentGrant.code">
+                                <div class="small text-muted">Регистрационный номер</div>
+                                <div class="fw-semibold">{{ currentGrant.code }}</div>
+                            </div>
+                            <div class="col-md-6" v-if="currentGrant.country">
+                                <div class="small text-muted">Страна</div>
+                                <div class="fw-semibold">{{ currentGrant.country }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="card-title fw-bold mb-0">Финансируемые проекты</h5>
+                            <button class="btn btn-primary btn-sm" @click="prepareAddProjectToGrant">
+                                <i class="fas fa-plus me-1"></i> Прикрепить проект
+                            </button>
+                        </div>
+                        <div v-if="currentGrant.projects && currentGrant.projects.length > 0">
+                            <table class="table table-sm align-middle">
+                                <thead class="table-light">
+                                    <tr><th>Проект</th><th>Сумма</th><th>Цель</th><th>Сроки</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="p in currentGrant.projects" :key="p.id">
+                                        <td>
+                                            <div class="fw-semibold">{{ p.project_name }}</div>
+                                            <div class="text-muted small">{{ p.project_key }}</div>
+                                        </td>
+                                        <td>{{ p.allocated_amount.toLocaleString('ru-RU') }} {{ currentGrant.currency }}</td>
+                                        <td>{{ p.funding_purpose || '-' }}</td>
+                                        <td class="text-nowrap small">
+                                            <span v-if="p.funding_start_date">{{ formatDate(p.funding_start_date) }}</span>
+                                            <span v-if="p.funding_end_date"> — {{ formatDate(p.funding_end_date) }}</span>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-link btn-sm text-danger p-0" @click="removeProjectFromGrant(p.id)">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-else class="text-muted small">Проекты еще не прикреплены.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold mb-3">Бюджет</h5>
+                        <div v-if="currentGrant.budget">
+                            <div class="mb-2 d-flex justify-content-between">
+                                <span class="text-muted">Общий бюджет</span>
+                                <span class="fw-bold">{{ currentGrant.budget.total.toLocaleString('ru-RU') }} {{ currentGrant.currency }}</span>
+                            </div>
+                            <div class="mb-2 d-flex justify-content-between">
+                                <span class="text-muted">Распределено</span>
+                                <span class="fw-semibold text-primary">{{ currentGrant.budget.allocated.toLocaleString('ru-RU') }} {{ currentGrant.currency }}</span>
+                            </div>
+                            <div class="mb-3 d-flex justify-content-between">
+                                <span class="text-muted">Остаток</span>
+                                <span class="fw-semibold" :class="currentGrant.budget.remaining < 0 ? 'text-danger' : 'text-success'">{{ currentGrant.budget.remaining.toLocaleString('ru-RU') }} {{ currentGrant.currency }}</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar" role="progressbar" :style="{width: Math.min(100, (currentGrant.budget.allocated / currentGrant.budget.total) * 100) + '%'}"></div>
+                            </div>
+                        </div>
+                        <div v-else class="text-muted small">Загрузка...</div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold mb-3">Сроки</h5>
+                        <div class="mb-2">
+                            <div class="small text-muted">Начало</div>
+                            <div>{{ currentGrant.start_date ? formatDate(currentGrant.start_date) : 'Не указано' }}</div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="small text-muted">Окончание</div>
+                            <div>{{ currentGrant.end_date ? formatDate(currentGrant.end_date) : 'Не указано' }}</div>
+                        </div>
+                        <div v-if="currentGrant.application_deadline">
+                            <div class="small text-muted">Дедлайн подачи</div>
+                            <div>{{ formatDate(currentGrant.application_deadline) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+
+<!-- 5. ЗАГЛУШКА ДЛЯ ОСТАЛЬНЫХ ВКЛАДОК -->
     <div v-else class="text-center py-5">
         <div class="mb-4"><i class="fas fa-tools fa-4x text-muted opacity-25"></i></div>
         <h3>Раздел "{{ activeSidebarTab }}"</h3>
@@ -1021,9 +1247,14 @@ body.dark-theme .jira-tag {
         <h2 class="mb-0">{{ currentProject.name }}</h2>
         <div class="text-muted small">{{ currentProject.description }}</div>
       </div>
+      <div class="d-flex gap-2">
+        <button v-if="canManageMembers" class="btn btn-outline-secondary btn-sm" @click="openManageMembers">
+            <i class="fas fa-users-cog me-2"></i>Участники
+        </button>
         <a :href="'/projects/' + currentProject.id + '/report'" class="btn btn-outline-primary btn-sm">
-      <i class="fas fa-file-download me-2"></i>Отчет по ГОСТ 7.32
-  </a>
+            <i class="fas fa-file-download me-2"></i>Отчет по ГОСТ 7.32
+        </a>
+      </div>
     </div>
 
 <!-- 
@@ -1091,6 +1322,12 @@ body.dark-theme .jira-tag {
         <button class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'attachments' }" @click="currentProjectView = 'attachments'">
             <i class="fas fa-paperclip me-2"></i>Файлы
         </button>
+        <button class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'funding' }" @click="currentProjectView = 'funding'">
+            <i class="fas fa-hand-holding-dollar me-2"></i>Финансирование
+        </button>
+        <button v-if="canViewAudit" class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'audit' }" @click="currentProjectView = 'audit'">
+            <i class="fas fa-shield-halved me-2"></i>Аудит
+        </button>
     </div>
     <!-- Содержимое Списка (Таблица задач) -->
 <div v-if="currentProjectView === 'list'" class="mt-4">
@@ -1137,7 +1374,23 @@ body.dark-theme .jira-tag {
         </div>
     </div>
 </td>
-            <td><span :class="getStatusBadgeClass(task.status)">{{ task.status.toUpperCase() }}</span></td>
+            <td>
+    <span :class="getStatusBadgeClass(task.status)">{{ task.status.toUpperCase() }}</span>
+    
+    <!-- Добавляем кнопку утверждения -->
+    <!-- Условие: статус "В работе" + тип "Эксперимент" или "Публикация" -->
+    <div v-if="task.status.toLowerCase().includes('работе') && ['experiment', 'doc'].includes(task.type)" class="mt-2">
+        <button v-if="currentUserProjectRole === 'supervisor'" 
+                class="btn btn-sm btn-success py-0 px-2 shadow-sm"
+                style="font-size: 0.65rem; font-weight: bold;"
+                @click.stop="approveResearchTask(task)">
+            <i class="fas fa-check-double me-1"></i> Утвердить
+        </button>
+        <span v-else class="text-muted d-block" style="font-size: 0.6rem; font-style: italic;">
+            Ожидает подтверждения НР
+        </span>
+    </div>
+</td>
             <td>{{ task.assignee_id ? getUserName(task.assignee_id) : '—' }}</td>
             <td>{{ task.priority }}</td>
             <td class="small text-muted">{{ task.due_date ? formatDate(task.due_date) : '—' }}</td>
@@ -1404,7 +1657,7 @@ body.dark-theme .jira-tag {
      :key="task.id" 
      class="list-group-item list-group-item-action d-flex align-items-center py-2 border-start-0 border-end-0"
      draggable="true" 
-     @dragstart="startDrag($event, task)"
+     @dragstart="startSprintDrag($event, task)"
      style="cursor: grab;">
                          <span class="text-muted small me-3" style="width: 90px; display: inline-block;">
                             {{ (currentProject && currentProject.key ? currentProject.key : 'TASK').toUpperCase() }}-{{ task.task_num }}
@@ -1440,7 +1693,7 @@ body.dark-theme .jira-tag {
      :key="task.id" 
      class="list-group-item list-group-item-action d-flex align-items-center py-2 border-start-0 border-end-0"
              draggable="true" 
-             @dragstart="startDrag($event, task)"
+             @dragstart="startSprintDrag($event, task)"
              style="cursor: grab;">
                     <i class="fas fa-grip-vertical me-3 text-muted small"></i>
                     <span class="text-muted small me-3" style="width: 90px; display: inline-block;">
@@ -1466,7 +1719,7 @@ body.dark-theme .jira-tag {
                 </div>
             </div>
         </div>
-        <div class="mt-3">
+        <div v-if="canCreateTask" class="mt-3">
             <button class="btn btn-link text-decoration-none p-0 text-primary small" @click="prepareCreateTask">
                 <i class="fas fa-plus me-1"></i>Создать задачу
             </button>
@@ -1535,6 +1788,76 @@ body.dark-theme .jira-tag {
         </div>
     </div>
 </div>
+
+<!-- Содержимое: Финансирование -->
+<div v-if="currentProjectView === 'funding'" class="mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <h5 class="card-title mb-4 fw-bold">Финансирование / Гранты</h5>
+            <div v-if="projectGrants && projectGrants.length > 0">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr><th>Грант</th><th>Номер</th><th>Сумма</th><th>Цель</th><th>Сроки финансирования</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="pg in projectGrants" :key="pg.id">
+                            <td>
+                                <div class="fw-semibold">{{ pg.grant_title }}</div>
+                                <div class="text-muted small">{{ pg.grant_code || '-' }}</div>
+                            </td>
+                            <td>{{ pg.grant_code || '-' }}</td>
+                            <td class="fw-semibold text-primary">{{ pg.allocated_amount.toLocaleString('ru-RU') }}</td>
+                            <td>{{ pg.funding_purpose || '-' }}</td>
+                            <td class="text-nowrap small">
+                                <span v-if="pg.funding_start_date">{{ formatDate(pg.funding_start_date) }}</span>
+                                <span v-if="pg.funding_end_date"> — {{ formatDate(pg.funding_end_date) }}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div v-else class="text-center py-5 text-muted">
+                <i class="fas fa-hand-holding-dollar fa-3x mb-3 opacity-25"></i>
+                <p>У этого проекта пока нет прикрепленных грантов.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Содержимое: Аудит -->
+<div v-if="currentProjectView === 'audit'" class="mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <h5 class="card-title mb-4 fw-bold">Аудит действий</h5>
+            <div v-if="auditLog && auditLog.length > 0">
+                <div class="timeline">
+                    <div v-for="entry in auditLog" :key="entry.id" class="d-flex mb-3 pb-3 border-bottom">
+                        <div class="me-3">
+                            <div class="avatar-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                                <i class="fas fa-circle-info small"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="fw-semibold small">{{ entry.action }}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">{{ formatDate(entry.created_at) }}</div>
+                            </div>
+                            <div class="text-muted small">{{ entry.details }}</div>
+                            <div v-if="entry.entity_type" class="mt-1">
+                                <span class="badge bg-light text-dark" style="font-size: 0.7rem;">{{ entry.entity_type }} #{{ entry.entity_id }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div v-else class="text-center py-5 text-muted">
+                <i class="fas fa-shield-halved fa-3x mb-3 opacity-25"></i>
+                <p>Записи аудита отсутствуют.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
   </template>
 </template>
                 <template v-else-if="currentPage === 'templates'">
@@ -1618,14 +1941,6 @@ body.dark-theme .jira-tag {
             <label class="form-label fw-bold">Ключ *</label>
             <input class="form-control" type="text" v-model="kanbanWizard.key" maxlength="10">
         </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label">Способ управления разделом *</label>
-                                        <select class="form-select" v-model="kanbanWizard.managementType">
-                                            <option value="team">Управляется командой</option>
-                                            <option value="company">Управляется компанией</option>
-                                        </select>
-                                    </div>
                                     <div class="mb-3">
                                         <label class="form-label">Доступ *</label>
                                         <select class="form-select" v-model="kanbanWizard.access">
@@ -1793,175 +2108,371 @@ body.dark-theme .jira-tag {
         </div>
     </div>
 
-    <!-- Modal for User Projects -->
     <!-- Modal for Creating Task -->
-    <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="createTaskModalLabel">Создание задачи типа «Задача»</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+<div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createTaskModalLabel">Создание задачи: {{ taskTypeLabel }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <p class="mb-0"><small>Обязательные поля отмечены звездочкой <span class="text-danger">*</span></small></p>
                 </div>
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <p class="mb-0"><small>Обязательные поля отмечены звездочкой <span class="text-danger">*</span></small></p>
+                <form id="createTaskForm" class="needs-validation" novalidate>
+                    <!-- Раздел -->
+                    <div class="mb-3">
+                        <label for="taskProject" class="form-label">Раздел <span class="text-danger">*</span></label>
+                        <select class="form-select" id="taskProject" v-model="newTask.projectId" required>
+                            <option value="">Выберите раздел...</option>
+                            <option v-for="project in projects" :key="project.id" :value="project.id">
+                                {{ project.name }}
+                            </option>
+                        </select>
+                        <div class="invalid-feedback">Выберите раздел</div>
                     </div>
-                    <form id="createTaskForm" class="needs-validation" novalidate>
-                        <!-- Раздел -->
-                        <div class="mb-3">
-                            <label for="taskProject" class="form-label">Раздел <span class="text-danger">*</span></label>
-                            <select class="form-select" id="taskProject" v-model="newTask.projectId" required>
-                                <option value="">Выберите раздел...</option>
-                                <option v-for="project in projects" :key="project.id" :value="project.id">
-                                    {{ project.name }}
-                                </option>
-                            </select>
-                            <div class="invalid-feedback">Выберите раздел</div>
-                        </div>
 
-<!-- Тип задачи -->
-<div class="mb-3">
-    <label for="taskType" class="form-label">Тип задачи <span class="text-danger">*</span></label>
-    <select class="form-select" id="taskType" v-model="newTask.type" required>
-        <option value="task">Обычная задача</option>
-        <option value="experiment">Научный эксперимент</option> <!-- ДОБАВЬТЕ ЭТО -->
-        <option value="literature_review">Обзор литературы</option>
-        <option value="publication">Подготовка публикации</option>
-    </select>
-</div>
+                    <!-- Тип задачи -->
+                    <div class="mb-3">
+                        <label for="taskType" class="form-label fw-bold">Тип задачи <span class="text-danger">*</span></label>
+                        <select class="form-select" id="taskType" v-model="newTask.type" required>
+                            <option value="research">Исследование</option>
+                            <option value="experiment">Эксперимент</option>
+                            <option value="data_collection">Сбор данных</option>
+                            <option value="analysis">Анализ результатов</option>
+                            <option value="dev">Разработка</option>
+                            <option value="doc">Публикация / Отчет</option>
+                        </select>
+                    </div>
 
-                        <!-- Статус -->
-                        <div class="mb-3">
-                            <label for="taskStatus" class="form-label">Статус <span class="text-danger">*</span></label>
-                            <select class="form-select" id="taskStatus" v-model="newTask.status" required>
-                                <option value="К выполнению">К выполнению</option>
-                                <option value="В РАБОТЕ">В РАБОТЕ</option>
-                                <option value="ГОТОВО">ГОТОВО</option>
-                            </select>
-                            <div class="invalid-feedback">Выберите статус</div>
-                        </div>
+                    <!-- Статус -->
+                    <div class="mb-3">
+                        <label for="taskStatus" class="form-label">Статус <span class="text-danger">*</span></label>
+                        <select class="form-select" id="taskStatus" v-model="newTask.status" required>
+                            <option value="К выполнению">К выполнению</option>
+                            <option value="В РАБОТЕ">В РАБОТЕ</option>
+                            <option value="ГОТОВО">ГОТОВО</option>
+                        </select>
+                        <div class="invalid-feedback">Выберите статус</div>
+                    </div>
 
-                        <!-- Резюме (заголовок) -->
-                        <div class="mb-3">
-                            <label for="taskTitle" class="form-label">Резюме <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="taskTitle" v-model="newTask.title" 
-                                   placeholder="Кратко опишите задачу" maxlength="150" required>
-                            <div class="invalid-feedback">Введите резюме задачи</div>
-                        </div>
+                    <!-- Резюме (заголовок) -->
+                    <div class="mb-3">
+                        <label for="taskTitle" class="form-label">Резюме <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="taskTitle" v-model="newTask.title" placeholder="Кратко опишите задачу" maxlength="150" required>
+                        <div class="invalid-feedback">Введите резюме задачи</div>
+                    </div>
 
-                        <!-- Описание -->
-                        <div class="mb-3">
-                            <label for="taskDescription" class="form-label">Описание</label>
-                            <textarea class="form-control" id="taskDescription" v-model="newTask.description" 
-                                      rows="5" placeholder="Введите описание задачи"></textarea>
-                        </div>
+                    <!-- Описание -->
+                    <div class="mb-3">
+                        <label for="taskDescription" class="form-label">Описание</label>
+                        <textarea class="form-control" id="taskDescription" v-model="newTask.description" rows="5" placeholder="Введите описание задачи"></textarea>
+                    </div>
 
-                        <div class="p-3 mb-3 bg-light rounded border-start border-info border-4 shadow-sm">
-                            <div class="fw-bold text-info small text-uppercase mb-3">Исследовательский контекст</div>
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">Основная гипотеза проекта</label>
-                                <textarea class="form-control form-control-sm" rows="2" :value="getProjectHypothesis(newTask.projectId)" readonly></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">Вклад задачи в проверку гипотезы</label>
-                                <textarea class="form-control form-control-sm" v-model="newTask.researchContribution" rows="2" placeholder="Как эта задача помогает проверить гипотезу?"></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">Проверяемый параметр</label>
-                                <input type="text" class="form-control form-control-sm" v-model="newTask.parameters" placeholder="Какой параметр или утверждение проверяется?">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">Метод исследования</label>
-                                <select class="form-select form-select-sm" v-model="newTask.researchMethod">
-                                    <option value="">Выберите метод</option>
-                                    <option value="experiment">Эксперимент</option>
-                                    <option value="theory">Теоретический анализ</option>
-                                    <option value="modeling">Моделирование</option>
-                                    <option value="observation">Наблюдение</option>
-                                </select>
-                            </div>
-                            <div class="mb-0">
-                                <label class="form-label small fw-bold">Ожидаемый результат</label>
-                                <textarea class="form-control form-control-sm" v-model="newTask.expectedScientificResult" rows="2" placeholder="Что должно подтвердиться или измениться?"></textarea>
-                            </div>
-                        </div>
-
-                        <!-- СПЕЦИФИКА НИР: Динамические поля -->
-<div v-if="newTask.type === 'experiment'" class="p-3 mb-3 bg-light rounded border-start border-primary border-4 shadow-sm">
-    <div class="fw-bold text-primary mb-2 small"><i class="fas fa-microscope me-2"></i>РЕЗУЛЬТАТЫ ИНТЕРПРЕТАЦИИ</div>
-    <div class="mb-3">
-        <label class="form-label small">Научный вывод</label>
-        <textarea class="form-control form-control-sm" v-model="newTask.conclusion" rows="3" placeholder="Что показали данные?"></textarea>
+<!-- ======= НАЧАЛО УМНОГО НАУЧНОГО КОНТЕКСТА ======= -->
+<div v-if="newTask.projectId" class="p-3 mb-4 border-start border-info border-4 rounded-end shadow-sm" style="background: #f0f7ff;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="fw-bold text-info small text-uppercase">Научный паспорт: {{ newTask.type }}</div>
+        <div v-if="newTask.type === 'analysis' && newTask.statPValue !== '' && newTask.statPValue !== null" class="badge" :class="newTask.statPValue < 0.05 ? 'bg-success' : 'bg-danger'">
+            p-value: {{ newTask.statPValue }} ({{ newTask.statPValue < 0.05 ? 'Значимо' : 'Незначимо' }})
+        </div>
     </div>
-</div>
 
-<div v-if="newTask.type === 'publication'" class="p-3 mb-3 bg-light rounded border-start border-success border-4 shadow-sm">
-    <div class="fw-bold text-success mb-2 small"><i class="fas fa-book me-2"></i>ДАННЫЕ ПУБЛИКАЦИИ</div>
-    <label class="form-label small">DOI публикации</label>
-    <input type="text" class="form-control form-control-sm" v-model="newTask.doi" placeholder="10.1000/xyz123">
-</div>
+    <!-- 1. ИССЛЕДОВАНИЕ -->
+    <div v-if="newTask.type === 'research'">
+        <div class="row g-2 mb-3">
+            <div class="col-md-12 mb-2">
+                <label class="form-label small fw-bold">Исследовательский вопрос</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.resQuestion" placeholder="Какова цель исследования?">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Объект исследования</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.resObject" placeholder="Что изучается?">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Предмет исследования</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.resSubject" placeholder="Какой аспект объекта?">
+            </div>
+        </div>
+        <div class="row g-2 mb-3">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Методология / Подход</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.resApproach" placeholder="Например, системный анализ">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Базы данных / Ресурсы</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.resDatabases" placeholder="PubMed, Scopus, IEEE">
+            </div>
+        </div>
+        <label class="form-label small fw-bold">Ключевые источники</label>
+        <div v-for="(source, index) in newTask.resSources" :key="index" class="input-group input-group-sm mb-2">
+            <input type="text" class="form-control" v-model="source.title" placeholder="Название">
+            <input type="text" class="form-control" v-model="source.authors" placeholder="Авторы">
+            <input type="text" class="form-control w-25" v-model="source.year" placeholder="Год">
+            <input type="text" class="form-control" v-model="source.doi" placeholder="DOI/URL">
+            <button class="btn btn-outline-danger" @click="newTask.resSources.splice(index, 1)"><i class="fas fa-times"></i></button>
+        </div>
+        <button class="btn btn-link btn-sm p-0 text-decoration-none" @click="newTask.resSources.push({title:'', authors:'', year:'', doi:''})">+ Добавить источник</button>
+    </div>
 
-                        <!-- Исполнитель -->
-                        <div class="mb-3">
-                            <label for="taskAssignee" class="form-label">Исполнитель</label>
-                            <div class="input-group">
-                                <select class="form-select" id="taskAssignee" v-model="newTask.assigneeId">
-                                    <option :value="null">Выберите исполнителя...</option>
-                                    <option v-for="user in users" :key="user.id" :value="user.id">
-                                        {{ user.full_name }}
-                                    </option>
-                                </select>
-                                <button class="btn btn-outline-secondary" type="button" @click="assignToCurrentUser">
-                                    Назначить себе
-                                </button>
-                            </div>
-                        </div>
+    <!-- 2. ЭКСПЕРИМЕНТ -->
+    <div v-if="newTask.type === 'experiment'">
+        <div class="row g-2 mb-3">
+            <div class="col-md-12 mb-2">
+                <label class="form-label small fw-bold">Цель эксперимента</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.expGoal" placeholder="Что необходимо доказать/измерить?">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Размер выборки</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.expSampleSize" placeholder="n = ?">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Контрольные параметры</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.expControls" placeholder="Условия контроля">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Входные данные</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.expInputData" placeholder="Источник данных">
+            </div>
+        </div>
+        <label class="form-label small fw-bold">Переменные эксперимента</label>
+        <table class="table table-sm table-bordered bg-white small">
+            <thead class="table-light">
+                <tr><th>Тип</th><th>Название</th><th>Значение</th><th></th></tr>
+            </thead>
+            <tbody>
+                <tr v-for="(v, index) in newTask.expVariables" :key="index">
+                    <td><select class="form-select form-select-sm border-0" v-model="v.type">
+                        <option value="Independent">Независимая</option>
+                        <option value="Dependent">Зависимая</option>
+                        <option value="Control">Контрольная</option>
+                    </select></td>
+                    <td><input type="text" class="form-control form-control-sm border-0" v-model="v.name"></td>
+                    <td><input type="text" class="form-control form-control-sm border-0" v-model="v.value"></td>
+                    <td><button class="btn btn-sm text-danger" @click="newTask.expVariables.splice(index, 1)"><i class="fas fa-trash"></i></button></td>
+                </tr>
+            </tbody>
+        </table>
+        <button class="btn btn-link btn-sm p-0 text-decoration-none" @click="newTask.expVariables.push({type:'Independent', name:'', value:''})">+ Добавить переменную</button>
+        <div class="row g-2 mt-2">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Метрики измерения</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.expMetrics" placeholder="Какие показатели отслеживаются?">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Статистическая значимость</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.expStatSignificance" placeholder="α = 0.05">
+            </div>
+        </div>
+    </div>
 
-                        <!-- Приоритет -->
-                        <div class="mb-3">
-                            <label for="taskPriority" class="form-label">Приоритет</label>
-                            <select class="form-select" id="taskPriority" v-model="newTask.priority">
-                                <option value="Lowest">Lowest</option>
-                                <option value="Low">Low</option>
-                                <option value="Medium" selected>Medium</option>
-                                <option value="High">High</option>
-                                <option value="Highest">Highest</option>
-                            </select>
-                        </div>
+    <!-- 3. СБОР ДАННЫХ -->
+    <div v-if="newTask.type === 'data_collection'">
+        <div class="row g-2 mb-3">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Тип источника данных</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.dsSourceType" placeholder="Опрос, сенсоры, парсинг">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Метод сбора</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.dsMethod" placeholder="Методология сбора">
+            </div>
+        </div>
+        <div class="row g-2 mb-3">
+            <div class="col-md-8">
+                <label class="form-label small fw-bold">Ссылка на источник / датасет</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.dsLink" placeholder="URL или название БД">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Объём выборки</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.sampleSize" placeholder="Количество записей">
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label small fw-bold d-flex justify-content-between">
+                Полнота данных <span>{{ newTask.dsCompleteness }}%</span>
+            </label>
+            <input type="range" class="form-range" v-model="newTask.dsCompleteness" min="0" max="100">
+            <div class="progress" style="height: 4px;">
+                <div class="progress-bar" role="progressbar" :style="{width: newTask.dsCompleteness + '%'}"></div>
+            </div>
+        </div>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Формат хранения</label>
+                <select class="form-select form-select-sm" v-model="newTask.dsFormat">
+                    <option value="csv">CSV / Excel</option>
+                    <option value="sql">PostgreSQL / NoSQL</option>
+                    <option value="hdf5">HDF5 / Binary</option>
+                </select>
+            </div>
+        </div>
+    </div>
 
-                        <!-- Срок выполнения -->
-                        <div class="mb-3">
-                            <label for="taskDueDate" class="form-label">Срок выполнения</label>
-                            <input type="date" class="form-control" id="taskDueDate" v-model="newTask.dueDate">
-                        </div>
-                        <!-- Теги -->
-<div class="mb-3">
-    <label for="taskTags" class="form-label">Теги (через запятую)</label>
-    <input type="text" class="form-control" id="taskTags" 
-           v-model="newTask.tags" placeholder="например: дизайн, фронтенд, баг">
-    <div class="form-text">Введите теги, разделяя их запятыми</div>
-</div>
-                        <!-- Вложение -->
-                        <div class="mb-3">
-                            <label for="taskFile" class="form-label">Прикрепить файл</label>
-                            <input type="file" class="form-control" id="taskFile" @change="handleTaskFileSelect">
-                            <div class="form-text text-muted">Вы можете прикрепить документ или изображение к этой задаче</div>
-                        </div>
+    <!-- 4. РАЗРАБОТКА -->
+    <div v-if="newTask.type === 'dev'" class="row g-2">
+        <div class="col-md-6 mb-2">
+            <label class="form-label small fw-bold">Компонент / модуль</label>
+            <input type="text" class="form-control form-control-sm" v-model="newTask.devComponent" placeholder="Название компонента">
+        </div>
+        <div class="col-md-6 mb-2">
+            <label class="form-label small fw-bold">Технологический стек</label>
+            <input type="text" class="form-control form-control-sm" v-model="newTask.devStack" placeholder="Go, Vue, Python">
+        </div>
+        <div class="col-md-6 mb-2">
+            <label class="form-label small fw-bold">Репозиторий</label>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white text-primary"><i class="fab fa-github"></i></span>
+                <input type="text" class="form-control" v-model="newTask.devRepo" placeholder="github.com/user/repo">
+            </div>
+        </div>
+        <div class="col-md-6 mb-2">
+            <label class="form-label small fw-bold">Версия</label>
+            <input type="text" class="form-control form-control-sm" v-model="newTask.devVersion" placeholder="v1.0.0">
+        </div>
+        <div class="col-md-12 mb-2">
+            <label class="form-label small fw-bold">Swagger / API Endpoint</label>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white text-primary"><i class="fas fa-link"></i></span>
+                <input type="text" class="form-control" v-model="newTask.devSwagger" placeholder="http://localhost:8080/swagger">
+            </div>
+        </div>
+        <div class="col-md-12">
+            <label class="form-label small fw-bold">Покрытие тестами: {{ newTask.devTestCoverage }}%</label>
+            <input type="range" class="form-range" v-model="newTask.devTestCoverage" min="0" max="100">
+        </div>
+    </div>
 
-                        <!-- Ошибка и успех -->
-                        <div class="alert alert-danger mt-3" id="createTaskError" :class="{ 'd-none': !taskError }" v-text="taskError"></div>
-                        <div class="alert alert-success mt-3" id="createTaskSuccess" :class="{ 'd-none': !taskSuccess }" v-text="taskSuccess"></div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="button" class="btn btn-primary" id="submitCreateTaskButton" :disabled="isTaskSubmitting" @click="createTaskFromModal">
-                        {{ taskSubmitButtonText }}
-                    </button>
+    <!-- 5. ПУБЛИКАЦИЯ -->
+    <div v-if="newTask.type === 'doc'">
+        <div class="row g-2 mb-3">
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Тип публикации</label>
+                <select class="form-select form-select-sm" v-model="newTask.docType">
+                    <option value="article">Статья</option>
+                    <option value="thesis">Тезисы</option>
+                    <option value="report">Отчёт</option>
+                    <option value="monograph">Монография</option>
+                </select>
+            </div>
+            <div class="col-md-8">
+                <label class="form-label small fw-bold">Название журнала / конференции</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.journal" placeholder="Название">
+            </div>
+        </div>
+        <div class="row g-2 mb-3">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">DOI</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.doi" placeholder="10.xxxx/xxxxx">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Соавторы</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.coAuthors" placeholder="ФИО через запятую">
+            </div>
+        </div>
+        <label class="form-label small fw-bold mb-2">Статус публикации</label>
+        <div class="btn-group btn-group-sm w-100 mb-3" role="group">
+            <input type="radio" class="btn-check" v-model="newTask.docStatus" value="draft" id="st1">
+            <label class="btn btn-outline-primary" for="st1">Черновик</label>
+            
+            <input type="radio" class="btn-check" v-model="newTask.docStatus" value="review" id="st2">
+            <label class="btn btn-outline-primary" for="st2">Рецензия</label>
+            
+            <input type="radio" class="btn-check" v-model="newTask.docStatus" value="published" id="st3">
+            <label class="btn btn-outline-primary" for="st3">Издано</label>
+        </div>
+    </div>
+
+    <!-- 6. АНАЛИЗ -->
+    <div v-if="newTask.type === 'analysis'">
+        <div class="row g-2 mb-3">
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Инструменты анализа</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.anTools" placeholder="Python, R, SPSS">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Визуализации</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.anVisuals" placeholder="Графики, диаграммы">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Стат. показатели</label>
+                <input type="text" class="form-control form-control-sm" v-model="newTask.statIndicators" placeholder="t-test, ANOVA">
+            </div>
+        </div>
+        <div class="row g-2 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Статистический p-value</label>
+                <input type="number" step="0.001" class="form-control form-control-sm" v-model="newTask.statPValue" min="0" max="1">
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" id="hypConfirmed" v-model="newTask.hypConfirmed">
+                    <label class="form-check-label small fw-bold" for="hypConfirmed">Гипотеза подтверждена</label>
                 </div>
             </div>
         </div>
     </div>
+</div>
+<!-- ======= КОНЕЦ УМНОГО БЛОКА ======= -->
+                    
+                    <!-- Исполнитель -->
+                    <div class="mb-3">
+                        <label for="taskAssignee" class="form-label fw-bold">Исполнитель</label>
+                        <div class="input-group">
+                            <select class="form-select" id="taskAssignee" v-model="newTask.assigneeId">
+                                <option :value="null">Выберите исполнителя...</option>
+                                <option v-for="user in users" :key="user.id" :value="user.id">{{ user.full_name }}</option>
+                            </select>
+                            <button class="btn btn-outline-secondary" type="button" @click="assignToCurrentUser">Назначить себе</button>
+                        </div>
+                    </div>
+
+                    <!-- Приоритет -->
+                    <div class="mb-3">
+                        <label for="taskPriority" class="form-label fw-bold">Приоритет</label>
+                        <select class="form-select" id="taskPriority" v-model="newTask.priority">
+                            <option value="Lowest">Lowest</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                            <option value="Highest">Highest</option>
+                        </select>
+                    </div>
+
+                    <!-- Срок выполнения -->
+                    <div class="mb-3">
+                        <label for="taskDueDate" class="form-label fw-bold">Срок выполнения</label>
+                        <input type="date" class="form-control" id="taskDueDate" v-model="newTask.dueDate">
+                    </div>
+
+                    <!-- Теги -->
+                    <div class="mb-3">
+                        <label for="taskTags" class="form-label fw-bold">Теги (через запятую)</label>
+                        <input type="text" class="form-control" id="taskTags" v-model="newTask.tags" placeholder="например: дизайн, фронтенд, баг">
+                    </div>
+
+                    <!-- Вложение -->
+                    <div class="mb-3">
+                        <label for="taskFile" class="form-label fw-bold">Прикрепить файл</label>
+                        <input type="file" class="form-control" id="taskFile" @change="handleTaskFileSelect">
+                    </div>
+
+                    <!-- Ошибка и успех -->
+                    <div class="alert alert-danger mt-3" id="createTaskError" :class="{ 'd-none': !taskError }" v-text="taskError"></div>
+                    <div class="alert alert-success mt-3" id="createTaskSuccess" :class="{ 'd-none': !taskSuccess }" v-text="taskSuccess"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="submitCreateTaskButton" :disabled="isTaskSubmitting" @click="createTaskFromModal">
+                    {{ taskSubmitButtonText }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Модальное окно запуска спринта -->
 <div class="modal fade" id="startSprintModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -2059,6 +2570,211 @@ body.dark-theme .jira-tag {
     </div>
 </div>
 
+<!-- Окно: Создание/редактирование гранта -->
+<div class="modal fade" id="createGrantModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">{{ grantForm.id ? 'Редактирование гранта' : 'Создание гранта' }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createGrantForm" class="needs-validation" novalidate>
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold">Название гранта <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" v-model="grantForm.title" required maxlength="255">
+                            <div class="invalid-feedback">Введите название</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Рег. номер</label>
+                            <input type="text" class="form-control" v-model="grantForm.code" maxlength="100">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Грантодатель <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" v-model="grantForm.funding_organization" required maxlength="255">
+                            <div class="invalid-feedback">Укажите организацию</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Страна</label>
+                            <input type="text" class="form-control" v-model="grantForm.country" maxlength="100">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Валюта</label>
+                            <select class="form-select" v-model="grantForm.currency">
+                                <option value="RUB">RUB</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="CNY">CNY</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Описание</label>
+                            <textarea class="form-control" rows="3" v-model="grantForm.description"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Научное направление</label>
+                            <input type="text" class="form-control" v-model="grantForm.scientific_direction" maxlength="255">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Тип гранта</label>
+                            <select class="form-select" v-model="grantForm.grant_type">
+                                <option value="state">Государственный</option>
+                                <option value="university">Университетский</option>
+                                <option value="international">Международный</option>
+                                <option value="corporate">Корпоративный</option>
+                                <option value="internal">Внутренний</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Статус</label>
+                            <select class="form-select" v-model="grantForm.status">
+                                <option value="draft">Черновик</option>
+                                <option value="submitted">Подан</option>
+                                <option value="under_review">На рассмотрении</option>
+                                <option value="approved">Одобрен</option>
+                                <option value="rejected">Отклонен</option>
+                                <option value="active">Активен</option>
+                                <option value="completed">Завершен</option>
+                                <option value="suspended">Приостановлен</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Общая сумма</label>
+                            <input type="number" class="form-control" v-model="grantForm.total_amount" min="0" step="0.01">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Начало</label>
+                            <input type="date" class="form-control" v-model="grantForm.start_date">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Окончание</label>
+                            <input type="date" class="form-control" v-model="grantForm.end_date">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Дедлайн подачи</label>
+                            <input type="date" class="form-control" v-model="grantForm.application_deadline">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Руководитель (ID)</label>
+                            <input type="number" class="form-control" v-model="grantForm.principal_investigator_id" min="1">
+                        </div>
+                    </div>
+                    <div class="alert alert-danger mt-3" :class="{ 'd-none': !grantError }" v-text="grantError"></div>
+                    <div class="alert alert-success mt-3" :class="{ 'd-none': !grantSuccess }" v-text="grantSuccess"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" :disabled="isGrantSubmitting" @click="createGrantFromModal">
+                    {{ isGrantSubmitting ? 'Сохранение...' : (grantForm.id ? 'Сохранить' : 'Создать') }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Окно: Прикрепление проекта к гранту -->
+<div class="modal fade" id="addProjectToGrantModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Прикрепить проект к гранту</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addProjectToGrantForm" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Проект <span class="text-danger">*</span></label>
+                        <select class="form-select" v-model="grantProjectForm.project_id" required>
+                            <option value="">Выберите проект...</option>
+                            <option v-for="proj in projects" :key="proj.id" :value="proj.id">
+                                {{ proj.name }} ({{ proj.key }})
+                            </option>
+                        </select>
+                        <div class="invalid-feedback">Выберите проект</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Сумма финансирования <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" v-model="grantProjectForm.allocated_amount" min="0" step="0.01" required>
+                        <div class="invalid-feedback">Введите сумму</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Цель финансирования</label>
+                        <input type="text" class="form-control" v-model="grantProjectForm.funding_purpose" placeholder="Например, закупка оборудования">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Начало финансирования</label>
+                            <input type="date" class="form-control" v-model="grantProjectForm.funding_start_date">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Окончание финансирования</label>
+                            <input type="date" class="form-control" v-model="grantProjectForm.funding_end_date">
+                        </div>
+                    </div>
+                    <div class="alert alert-danger mt-3" :class="{ 'd-none': !grantProjectError }" v-text="grantProjectError"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" @click="createGrantProjectFunding">Прикрепить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Окно: Управление участниками проекта -->
+<div class="modal fade" id="manageMembersModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Управление участниками проекта</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div v-if="currentProjectMembers && currentProjectMembers.length > 0">
+                    <table class="table table-sm align-middle">
+                        <thead class="table-light">
+                            <tr><th>Участник</th><th>Email</th><th>Текущая роль</th><th>Назначить роль</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="m in currentProjectMembers" :key="m.user_id">
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar-circle bg-primary text-white" style="width: 32px; height: 32px; font-size: 0.8rem;">{{ m.full_name ? m.full_name.charAt(0) : '?' }}</div>
+                                        <div class="fw-semibold">{{ m.full_name }}</div>
+                                    </div>
+                                </td>
+                                <td class="text-muted small">{{ m.email }}</td>
+                                <td>
+                                    <span v-if="m.role_name" class="badge bg-info text-dark">{{ getRoleLabel(m.role_name) }}</span>
+                                    <span v-else class="badge bg-secondary">Участник</span>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm" @change="assignMemberRole(currentProject.id, m.user_id, $event.target.value)">
+                                        <option value="">-- Роль --</option>
+                                        <option v-for="role in projectRoles.filter(r => !r.is_system)" :key="role.id" :value="role.id" :selected="m.role_id == role.id">
+                                            {{ getRoleLabel(role.name) }}
+                                        </option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div v-else class="text-center text-muted py-4">
+                    <i class="fas fa-users fa-2x mb-2 opacity-25"></i>
+                    <p>Участники не найдены</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Окно: Управление командой -->
 <div class="modal fade" id="manageTeamModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -2118,13 +2834,13 @@ body.dark-theme .jira-tag {
                         
                         <div class="d-flex align-items-center gap-3">
                             <!-- Выбор роли -->
-                            <select class="role-select form-select-sm" 
-                                    :disabled="m.email === profile.email"
-                                    v-model="m.role" 
-                                    @change="changeMemberRole(m)">
-                                <option value="member">Member</option>
-                                <option value="admin">Admin</option>
-                            </select>
+<select class="role-select form-select-sm" v-model="m.role" @change="changeMemberRole(m)">
+    <option value="researcher">Исследователь</option>
+    <option value="supervisor">Научный руководитель</option>
+    <option value="analyst">Аналитик</option>
+    <option value="reviewer">Рецензент</option>
+    <option value="watcher">Наблюдатель</option>
+</select>
 
                             <!-- Удаление -->
                             <button v-if="m.email !== profile.email" class="btn btn-link text-danger p-0" @click="removeMember(m)">
@@ -2171,6 +2887,7 @@ const clickOutside = {
 const app = createApp({
             data() {
                 return {
+                    currentUserProjectRole: '', 
                     profile: {
                         full_name: "",
                         email: "",
@@ -2191,24 +2908,73 @@ const app = createApp({
                     isSubmitting: false,
                     createProjectModal: null,
                     createTaskModal: null,
-                    newTask: {
-                        projectId: "",
-                        type: "task",
-                        status: "К выполнению",
-                        title: "",
-                        description: "",
-                        assigneeId: null,
-                        priority: "Medium",
-                        dueDate: "",
-                        tags: "",
-    // Новые поля для научного контекста задачи
-    researchContribution: "", // Вклад в гипотезу
-    researchMethod: "",       // Метод исследования
-    expectedScientificResult: "", // Ожидаемый научный результат
-    parameters: "",   
-    conclusion: "",   
-                        doi: "" // Для публикаций
-                    },
+newTask: {
+    // --- БАЗОВЫЕ ПОЛЯ ---
+    projectId: "",
+    type: "research",
+    status: "К выполнению",
+    title: "",
+    description: "",
+    assigneeId: null,
+    priority: "Medium",
+    dueDate: "",
+    tags: "",
+
+    // --- ОБЩИЙ НАУЧНЫЙ ПАСПОРТ ---
+    researchContribution: "",
+    researchMethod: "",
+    expectedScientificResult: "",
+    conclusion: "",
+    doi: "",
+
+    // --- ИССЛЕДОВАНИЕ ---
+    resQuestion: "",
+    resObject: "",
+    resSubject: "",
+    resSources: [{ title: '', authors: '', year: '', doi: '' }],
+    resPubCount: "",
+    resDatabases: "",
+    resApproach: "",
+
+    // --- ЭКСПЕРИМЕНТ ---
+    expGoal: "",
+    expVariables: [{ type: 'Independent', name: '', value: '' }],
+    expControls: "",
+    expInputData: "",
+    expSampleSize: "",
+    expMetrics: "",
+    expResults: "",
+    expStatSignificance: "",
+
+    // --- СБОР ДАННЫХ ---
+    dsSourceType: "",
+    dsMethod: "",
+    dsLink: "",
+    dsFormat: "csv",
+    dsCompleteness: 100,
+    sampleSize: "",
+
+    // --- АНАЛИЗ ---
+    anTools: "",
+    anVisuals: "",
+    statIndicators: "",
+    statPValue: 0.05,
+    hypConfirmed: false,
+
+    // --- РАЗРАБОТКА ---
+    devComponent: "",
+    devStack: "",
+    devRepo: "",
+    devSwagger: "",
+    devTestCoverage: 0,
+    devVersion: "",
+
+    // --- ПУБЛИКАЦИЯ ---
+    docType: "article",
+    journal: "",
+    docStatus: "draft",
+    coAuthors: ""
+},
                     taskError: "",
                     taskSuccess: "",
                     isTaskSubmitting: false,
@@ -2241,7 +3007,6 @@ navFilters: {
 },
                     isSearchOpen: false,
                     displayedTasks: [],     // Фильтр по приоритету
-                    activeTags: [],            // Выбранные теги для фильтрации
                     expandedTaskId: null, 
                     selectedFile: null, 
                     users: [],
@@ -2259,7 +3024,6 @@ recentItems: [],
 flaggedItems: [],
                     currentPage: "sections",
                     activeSidebarTab: 'sections',
-                    sections: [],
                     selectedTemplate: {
                         id: "kanban",
                         title: "Kanban",
@@ -2291,16 +3055,13 @@ flaggedItems: [],
                             done: []
                         }
                     },
-                    sectionViewModes: {},
                     currentProject: null,
                     currentProjectView: "board",
-                    projectTasks: [],
                     projectBoardTasks: {
                         todo: [],
                         inProgress: [],
                         done: []
                     },
-                    draggedTask: null,
                     draggedFromStatus: null,
                     templates: [
                         {
@@ -2321,15 +3082,115 @@ flaggedItems: [],
                             description: "Начните с чистого листа и настройте всё под себя.",
                             previewClass: "template-preview-empty"
                         }
-                    ]
+                    ],
+                    grants: [],
+                    currentGrant: null,
+                    grantForm: {
+                        title: '',
+                        code: '',
+                        funding_organization: '',
+                        country: '',
+                        description: '',
+                        scientific_direction: '',
+                        grant_type: 'state',
+                        status: 'draft',
+                        total_amount: 0,
+                        currency: 'RUB',
+                        start_date: '',
+                        end_date: '',
+                        application_deadline: '',
+                        principal_investigator_id: null
+                    },
+                    grantFilters: {
+                        status: '',
+                        type: '',
+                        search: ''
+                    },
+                    grantError: '',
+                    grantSuccess: '',
+                    isGrantSubmitting: false,
+                    createGrantModal: null,
+                    projectGrants: [],
+                    projectPermissions: [],
+                    projectRoles: [],
+                    auditLog: [],
+                    manageMembersModal: null,
+                    currentProjectMembers: [],
+                    grantProjectForm: {
+                        project_id: '',
+                        allocated_amount: 0,
+                        funding_purpose: '',
+                        funding_start_date: '',
+                        funding_end_date: ''
+                    },
+                    addProjectToGrantModal: null,
+                    grantProjectError: ''
                 };
             },
             computed: {
                 submitButtonText() {
                     return this.isSubmitting ? "Создание..." : "Создать";
                 },
+                taskTypeLabel() {
+                    const labels = {
+                        research: 'Исследование',
+                        experiment: 'Эксперимент',
+                        data_collection: 'Сбор данных',
+                        analysis: 'Анализ результатов',
+                        dev: 'Разработка',
+                        doc: 'Публикация / Отчёт'
+                    };
+                    return labels[this.newTask?.type] || 'Задача';
+                },
+                grantStatusBadgeClass() {
+                    const map = {
+                        draft: 'bg-secondary',
+                        submitted: 'bg-info',
+                        under_review: 'bg-warning text-dark',
+                        approved: 'bg-success',
+                        rejected: 'bg-danger',
+                        active: 'bg-primary',
+                        completed: 'bg-success',
+                        suspended: 'bg-dark'
+                    };
+                    return map[this.currentGrant?.status] || 'bg-secondary';
+                },
+                grantStatusLabel() {
+                    const map = {
+                        draft: 'Черновик',
+                        submitted: 'Подан',
+                        under_review: 'На рассмотрении',
+                        approved: 'Одобрен',
+                        rejected: 'Отклонен',
+                        active: 'Активен',
+                        completed: 'Завершен',
+                        suspended: 'Приостановлен'
+                    };
+                    return map[this.currentGrant?.status] || this.currentGrant?.status;
+                },
                 taskSubmitButtonText() {
                     return this.isTaskSubmitting ? "Создание..." : "Создать";
+                },
+                canEditProject() {
+                    return this.projectPermissions.includes('project.edit');
+                },
+                canManageMembers() {
+                    return this.projectPermissions.includes('project.manage_members');
+                },
+                canCreateTask() {
+                    return this.projectPermissions.includes('task.create');
+                },
+                canDeleteTask() {
+                    return this.projectPermissions.includes('task.delete');
+                },
+                canApproveExperiment() {
+                    return this.projectPermissions.includes('experiment.approve');
+                },
+                canValidateResults() {
+                    return this.projectPermissions.includes('results.validate');
+                },
+                canViewAudit() {
+                    return this.projectPermissions.includes('audit.view');
                 },
                 filteredManageUsers() {
     if (!this.manageInviteEmail || this.manageInviteEmail.length < 1) return [];
@@ -2444,9 +3305,13 @@ async openTaskFromNavigator(task) {
     }
 },
 // 1. Загрузка фильтров из памяти браузера
+storageKey(base) {
+    const userId = localStorage.getItem('currentUserId') || 'anonymous';
+    return `scifi_${base}_${userId}`;
+},
 loadSavedFilters() {
     try {
-        const saved = localStorage.getItem('scifi_saved_filters');
+        const saved = localStorage.getItem(this.storageKey('saved_filters'));
         this.userFilters = saved ? JSON.parse(saved) : [];
     } catch (e) {
         console.error("Ошибка загрузки фильтров:", e);
@@ -2469,7 +3334,7 @@ applySavedFilter(f) {
 deleteFilter(id) {
     if (!confirm("Удалить этот фильтр?")) return;
     this.userFilters = this.userFilters.filter(f => f.id !== id);
-    localStorage.setItem('scifi_saved_filters', JSON.stringify(this.userFilters));
+    localStorage.setItem(this.storageKey('saved_filters'), JSON.stringify(this.userFilters));
 },
 // Метод для кнопки "Просмотреть все задачи" в поиске
 openIssueNavigator() {
@@ -2509,15 +3374,15 @@ saveFilterFromNav() {
         ...this.navFilters
     };
     
-    let saved = JSON.parse(localStorage.getItem('scifi_saved_filters') || '[]');
+    let saved = JSON.parse(localStorage.getItem(this.storageKey('saved_filters')) || '[]');
     saved.push(newFilter);
-    localStorage.setItem('scifi_saved_filters', JSON.stringify(saved));
+    localStorage.setItem(this.storageKey('saved_filters'), JSON.stringify(saved));
     this.userFilters = saved;
     alert("Фильтр сохранен!");
 },
 // Переключить статус (добавить/удалить из избранного)
 toggleFlag(item, type) {
-    let flagged = JSON.parse(localStorage.getItem('scifi_flagged') || '[]');
+    let flagged = JSON.parse(localStorage.getItem(this.storageKey('flagged')) || '[]');
     
     const index = flagged.findIndex(f => f.id === item.id && f.type === type);
     
@@ -2535,7 +3400,7 @@ toggleFlag(item, type) {
         });
     }
     
-    localStorage.setItem('scifi_flagged', JSON.stringify(flagged));
+    localStorage.setItem(this.storageKey('flagged'), JSON.stringify(flagged));
     this.flaggedItems = flagged;
 },
 
@@ -2546,7 +3411,7 @@ isFlagged(id, type) {
 
 // Загрузка из памяти
 loadFlaggedFromStorage() {
-    this.flaggedItems = JSON.parse(localStorage.getItem('scifi_flagged') || '[]');
+    this.flaggedItems = JSON.parse(localStorage.getItem(this.storageKey('flagged')) || '[]');
 },
 openProjectById(id) {
     const project = this.projects.find(p => p.id === id);
@@ -2574,7 +3439,7 @@ async openTaskById(item) {
 },
 // Сохранить элемент в список недавних
 addToRecent(item, type) {
-    let recent = JSON.parse(localStorage.getItem('scifi_recent') || '[]');
+    let recent = JSON.parse(localStorage.getItem(this.storageKey('recent')) || '[]');
     
     // Создаем компактный объект для хранения
     const entry = {
@@ -2595,13 +3460,13 @@ addToRecent(item, type) {
     // Оставляем только последние 10
     recent = recent.slice(0, 10);
     
-    localStorage.setItem('scifi_recent', JSON.stringify(recent));
+    localStorage.setItem(this.storageKey('recent'), JSON.stringify(recent));
     this.recentItems = recent;
 },
 
 // Загрузить список недавних из памяти
 loadRecentFromStorage() {
-    this.recentItems = JSON.parse(localStorage.getItem('scifi_recent') || '[]');
+    this.recentItems = JSON.parse(localStorage.getItem(this.storageKey('recent')) || '[]');
 },
 // Функция, которая срабатывает при клике на подсказку (исправляет вашу ошибку)
 selectUserForExistingTeam(user) {
@@ -2778,12 +3643,14 @@ selectSidebarTab(tabName) {
     this.currentProject = null;
     this.currentPage = 'sections';
     this.filterSubPage = 'list';
+    this.currentGrant = null;
     
     if (tabName === 'filters') {
-        this.loadSavedFilters(); // Было loadUserFilters
-        this.loadAllTasks();    // Загружаем список всех задач
+        this.loadSavedFilters();
+        this.loadAllTasks();
     }
     if (tabName === 'teams') this.loadUserTeams();
+    if (tabName === 'grants') this.loadGrants();
 },
 async loadUserTeams() {
     const currentUserId = Number(localStorage.getItem('currentUserId'));
@@ -2813,13 +3680,7 @@ startProjectCreation() {
     this.selectedTemplate = mainTemplate;
     this.currentPage = "kanbanSetup";
 },
-                getStatusBadgeClass(status) {
-                    const s = status.toLowerCase();
-                    if (s === 'todo' || s === 'к выполнению') return 'badge bg-primary text-white';
-                    if (s === 'in_progress' || s === 'в работе') return 'badge bg-warning text-dark';
-                    if (s === 'done' || s === 'готово') return 'badge bg-success text-white';
-                    return 'badge bg-secondary';
-                },
+
                 openTemplatesPage() {
                     this.currentPage = "templates";
                 },
@@ -2830,7 +3691,7 @@ startProjectCreation() {
                     this.currentPage = "templates";
                     this.kanbanWizard.step = 1;
                 },
-openProject(project) {
+async openProject(project) {
     this.addToRecent(project, 'project');
     console.log("Данные открытого проекта:", project);
     this.currentProject = project;
@@ -2840,10 +3701,48 @@ openProject(project) {
     this.projectTasks = [];
     this.projectAttachments = []; 
     this.sprints = [];
+    this.projectGrants = [];
+
+        // Получаем список участников проекта, чтобы узнать свою роль
+    try {
+        const response = await fetch(`/projects/${project.id}/members`);
+        if (response.ok) {
+            const members = await response.json();
+            const currentUserId = Number(localStorage.getItem('currentUserId'));
+            const myMemberEntry = members.find(m => m.user_id === currentUserId);
+            
+            // Сохраняем роль (если не нашли - значит watcher по умолчанию)
+            this.currentUserProjectRole = myMemberEntry ? myMemberEntry.role : 'watcher';
+            console.log("Моя роль в проекте:", this.currentUserProjectRole);
+        }
+    } catch (e) {
+        console.error("Не удалось получить роль в проекте", e);
+    }
 
     this.loadProjectTasks(project.id);
     this.loadProjectSprints(project.id);
     this.loadProjectAttachments(project.id);
+    this.loadProjectGrants(project.id);
+    this.loadProjectPermissions(project.id);
+    this.loadAuditLog(project.id);
+},
+async approveResearchTask(task) {
+    if (!confirm("Вы подтверждаете научную достоверность результатов этого этапа?")) return;
+    
+    try {
+        const response = await fetch(`/tasks/${task.id}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'done' }) // Переводим в "ГОТОВО"
+        });
+        
+        if (response.ok) {
+            alert("Результаты исследования утверждены.");
+            this.loadProjectTasks(this.currentProject.id); // Обновляем список
+        }
+    } catch (e) {
+        alert("Ошибка при сохранении утверждения");
+    }
 },
                 getSprintTasks(sprintId) {
     // Если массив задач пуст, возвращаем пустой список
@@ -3054,8 +3953,8 @@ handleTaskFileSelect(event) {
         alert("Не удалось связаться с сервером");
     }
 },
-// 1. Когда начинаем тянуть задачу
-startDrag(event, task) {
+// 1. Когда начинаем тянуть задачу для спринта
+startSprintDrag(event, task) {
     this.draggedTask = task;
     event.dataTransfer.effectAllowed = 'move';
 },
@@ -3297,6 +4196,7 @@ async finishKanbanSetup() {
             main_hypothesis: this.kanbanWizard.main_hypothesis,
             novelty: this.kanbanWizard.novelty,
             expected_result: this.kanbanWizard.expected_result,
+            visibility: this.kanbanWizard.access,
         };
 
     try {
@@ -3373,7 +4273,8 @@ applyTheme(theme) {
                         main_hypothesis: this.project.main_hypothesis.trim(),
                         novelty: this.project.novelty.trim(),
                         expected_result: this.project.expected_result.trim(),
-                        created_by: Number(localStorage.getItem('currentUserId') || 1)
+                        created_by: Number(localStorage.getItem('currentUserId') || 1),
+                        visibility: this.project.visibility || 'closed'
                     };
 
                     this.isSubmitting = true;
@@ -3403,6 +4304,16 @@ applyTheme(theme) {
                         this.isSubmitting = false;
                     }
                 },
+                async logout() {
+    try {
+        await fetch('/logout'); // Сервер удалит куку
+        localStorage.removeItem('currentUserId');
+        // replace заменяет текущую запись в истории, "назад" не сработает
+        window.location.replace('/login');
+    } catch (e) {
+        window.location.href = '/login';
+    }
+},
                 async loadCurrentUser() {
                     try {
                         const response = await fetch('/me');
@@ -3421,9 +4332,15 @@ applyTheme(theme) {
                                 initials
                             };
                             localStorage.setItem('currentUserId', String(user.id));
+                            this.loadRecentFromStorage();
+                            this.loadFlaggedFromStorage();
+                            this.loadSavedFilters();
+                        } else if (response.status === 401) {
+                            window.location.replace('/login');
                         }
                     } catch (err) {
                         console.error('Failed to load user profile:', err);
+                        window.location.replace('/login');
                     }
                 },
                 async loadProjects() {
@@ -3462,27 +4379,84 @@ applyTheme(theme) {
                         this.newTask.assigneeId = userId;
                     }
                 },
-                resetTaskForm() {
-                    this.newTask = {
-                        projectId: "",
-                        type: "task",
-                        status: "К выполнению",
-                        title: "",
-                        description: "",
-                        assigneeId: null,
-                        priority: "Medium",
-                        dueDate: "",
-                        tags: "",
-                        researchContribution: "",
-                        researchMethod: "",
-                        expectedScientificResult: "",
-                        parameters: "",
-                        conclusion: "",
-                        doi: ""
-                    };
-                    this.taskError = "";
-                    this.taskSuccess = "";
-                },
+resetTaskForm() {
+    this.newTask = {
+        // --- БАЗОВЫЕ ПОЛЯ ---
+        projectId: this.currentProject ? this.currentProject.id : "", // сохраняем проект, если мы внутри него
+        type: "research",
+        status: "К выполнению",
+        title: "",
+        description: "",
+        assigneeId: null,
+        priority: "Medium",
+        dueDate: "",
+        tags: "",
+
+        // --- ОБЩИЙ НАУЧНЫЙ ПАСПОРТ ---
+        researchContribution: "",
+        researchMethod: "",
+        expectedScientificResult: "",
+        conclusion: "",
+        doi: "",
+
+        // --- ИССЛЕДОВАНИЕ ---
+        resQuestion: "",
+        resObject: "",
+        resSubject: "",
+        resSources: [{ title: '', authors: '', year: '', doi: '' }],
+        resPubCount: "",
+        resDatabases: "",
+        resApproach: "",
+
+        // --- ЭКСПЕРИМЕНТ ---
+        expGoal: "",
+        expVariables: [{ type: 'Independent', name: '', value: '' }],
+        expControls: "",
+        expInputData: "",
+        expSampleSize: "",
+        expMetrics: "",
+        expResults: "",
+        expStatSignificance: "",
+
+        // --- СБОР ДАННЫХ ---
+        dsSourceType: "",
+        dsMethod: "",
+        dsLink: "",
+        dsFormat: "csv",
+        dsCompleteness: 100,
+        sampleSize: "",
+
+        // --- АНАЛИЗ ---
+        anTools: "",
+        anVisuals: "",
+        statIndicators: "",
+        statPValue: 0.05,
+        hypConfirmed: false,
+
+        // --- РАЗРАБОТКА ---
+        devComponent: "",
+        devStack: "",
+        devRepo: "",
+        devSwagger: "",
+        devTestCoverage: 0,
+        devVersion: "",
+
+        // --- ПУБЛИКАЦИЯ ---
+        docType: "article",
+        journal: "",
+        docStatus: "draft",
+        coAuthors: ""
+    };
+
+    // Очистка системных уведомлений
+    this.taskError = "";
+    this.taskSuccess = "";
+
+    // Сброс поля выбора файла (физически в DOM)
+    const fileInput = document.getElementById('taskFile');
+    if (fileInput) fileInput.value = '';
+    this.selectedFile = null;
+},
                 splitTags(tags) {
     if (!tags) return [];
     if (Array.isArray(tags)) return tags;
@@ -3528,23 +4502,80 @@ async createTaskFromModal() {
 
     const currentUserId = Number(localStorage.getItem('currentUserId') || 1);
 
-const taskPayload = {
-    project_id: Number(this.newTask.projectId),
-    title: this.newTask.title.trim(),
-    description: this.newTask.description.trim(),
-    status: this.newTask.status,
-    priority: this.newTask.priority,
-    due_date: this.newTask.dueDate || null,
-    assignee_id: this.newTask.assigneeId || null,
-    created_by: currentUserId,
-    tags: this.newTask.tags,
-    type: this.newTask.type,
-    research_contribution: this.newTask.researchContribution,
-    research_method: this.newTask.researchMethod,
-    expected_result: this.newTask.expectedScientificResult,
-    parameters: this.newTask.parameters,
-    conclusion: this.newTask.conclusion || ""
-};
+    // 1. Упаковываем ВСЕ специфические поля в один объект (для колонки JSONB "parameters")
+    const researchParams = {
+        // Общее
+        expected_result: this.newTask.expectedScientificResult,
+        
+        // Исследование
+        res_question: this.newTask.resQuestion,
+        res_object: this.newTask.resObject,
+        res_subject: this.newTask.resSubject,
+        res_sources: this.newTask.resSources,
+        res_pub_count: this.newTask.resPubCount,
+        res_databases: this.newTask.resDatabases,
+        res_approach: this.newTask.resApproach,
+        
+        // Эксперимент
+        exp_goal: this.newTask.expGoal,
+        exp_variables: this.newTask.expVariables,
+        exp_controls: this.newTask.expControls,
+        exp_input: this.newTask.expInputData,
+        exp_sample_size: this.newTask.expSampleSize,
+        exp_metrics: this.newTask.expMetrics,
+        exp_results: this.newTask.expResults,
+        exp_stat_significance: this.newTask.expStatSignificance,
+        
+        // Сбор данных
+        ds_source_type: this.newTask.dsSourceType,
+        ds_method: this.newTask.dsMethod,
+        ds_link: this.newTask.dsLink,
+        ds_format: this.newTask.dsFormat,
+        ds_completeness: this.newTask.dsCompleteness,
+        sample_size: this.newTask.sampleSize,
+        
+        // Анализ
+        an_tools: this.newTask.anTools,
+        an_visuals: this.newTask.anVisuals,
+        stat_indicators: this.newTask.statIndicators,
+        stat_p_value: this.newTask.statPValue,
+        hyp_confirmed: this.newTask.hypConfirmed,
+        
+        // Разработка
+        dev_component: this.newTask.devComponent,
+        dev_stack: this.newTask.devStack,
+        dev_repo: this.newTask.devRepo,
+        dev_swagger: this.newTask.devSwagger,
+        dev_test_coverage: this.newTask.devTestCoverage,
+        dev_version: this.newTask.devVersion,
+        
+        // Публикация
+        doc_type: this.newTask.docType,
+        doc_journal: this.newTask.journal,
+        doc_status: this.newTask.docStatus,
+        doc_coauthors: this.newTask.coAuthors
+    };
+
+    // 2. Формируем итоговый объект для отправки на Go-бэкенд
+    const payload = {
+        project_id: Number(this.newTask.projectId),
+        title: this.newTask.title.trim(),
+        description: this.newTask.description.trim(),
+        status: this.newTask.status,
+        priority: this.newTask.priority,
+        type: this.newTask.type, 
+        due_date: this.newTask.dueDate || null,
+        assignee_id: this.newTask.assigneeId || null,
+        created_by: currentUserId,
+        tags: this.newTask.tags,
+        research_contribution: this.newTask.researchContribution,
+        research_method: this.newTask.researchMethod,
+        doi: this.newTask.doi,
+        conclusion: this.newTask.conclusion || "",
+        // Передаем объект — Go-бэкенд сам запишет его в JSONB колонку
+        parameters: researchParams, 
+        metrics: { goal: this.newTask.expMetrics }
+    };
 
     this.isTaskSubmitting = true;
 
@@ -3553,41 +4584,27 @@ const taskPayload = {
         const response = await fetch('/tasks', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(taskPayload)
+            body: JSON.stringify(payload) // Используем наш payload
         });
 
         if (!response.ok) throw new Error('Не удалось создать задачу');
         
-        const createdTask = await response.json(); // Получаем созданную задачу с её ID
+        const createdTask = await response.json();
         console.log("Задача создана успешно, ID:", createdTask.id);
 
-        // ШАГ 2: Если пользователь выбрал файл, загружаем его СРАЗУ
+        // ШАГ 2: Загрузка файла (если выбран)
         if (this.selectedFile) {
             const formData = new FormData();
             formData.append('file', this.selectedFile);
-
-            // Используем ID только что созданной задачи!
-            const uploadResponse = await fetch(`/tasks/${createdTask.id}/attachments`, {
+            await fetch(`/tasks/${createdTask.id}/attachments`, {
                 method: 'POST',
                 body: formData
             });
-
-            if (!uploadResponse.ok) {
-                console.error("Задача создана, но файл не загрузился");
-            } else {
-                console.log("Файл успешно привязан к задаче", createdTask.id);
-            }
         }
 
         this.taskSuccess = 'Задача создана успешно';
-        
-        // Очищаем форму
         this.resetTaskForm();
-        this.selectedFile = null; 
-        const fileInput = document.getElementById('taskFile');
-        if (fileInput) fileInput.value = ''; 
-
-        // Обновляем списки на главной
+        
         if (this.currentProject) {
             this.loadProjectTasks(this.currentProject.id);
             this.loadProjectAttachments(this.currentProject.id);
@@ -3602,6 +4619,334 @@ const taskPayload = {
         this.taskError = error.message;
     } finally {
         this.isTaskSubmitting = false;
+    }
+},
+
+// ==================== GRANTS ====================
+async loadGrants() {
+    try {
+        const params = new URLSearchParams();
+        if (this.grantFilters.status) params.append('status', this.grantFilters.status);
+        if (this.grantFilters.type) params.append('type', this.grantFilters.type);
+        if (this.grantFilters.search) params.append('search', this.grantFilters.search);
+        const response = await fetch('/grants?' + params.toString(), { credentials: 'include' });
+        if (response.ok) {
+            const data = await response.json();
+            this.grants = data.grants || [];
+        }
+    } catch (err) {
+        console.error('Failed to load grants:', err);
+    }
+},
+openGrant(grant) {
+    this.currentGrant = grant;
+    this.loadGrantProjects(grant.id);
+    this.loadGrantBudget(grant.id);
+},
+goBackToGrants() {
+    this.currentGrant = null;
+},
+async loadGrantProjects(grantId) {
+    try {
+        const response = await fetch(`/grants/${grantId}/projects`, { credentials: 'include' });
+        if (response.ok) {
+            this.currentGrant.projects = await response.json();
+        }
+    } catch (err) {
+        console.error('Failed to load grant projects:', err);
+    }
+},
+async loadGrantBudget(grantId) {
+    try {
+        const response = await fetch(`/grants/${grantId}/budget`, { credentials: 'include' });
+        if (response.ok) {
+            this.currentGrant.budget = await response.json();
+        }
+    } catch (err) {
+        console.error('Failed to load grant budget:', err);
+    }
+},
+prepareCreateGrant() {
+    this.grantForm = {
+        title: '',
+        code: '',
+        funding_organization: '',
+        country: '',
+        description: '',
+        scientific_direction: '',
+        grant_type: 'state',
+        status: 'draft',
+        total_amount: 0,
+        currency: 'RUB',
+        start_date: '',
+        end_date: '',
+        application_deadline: '',
+        principal_investigator_id: null
+    };
+    this.grantError = '';
+    this.grantSuccess = '';
+    this.createGrantModal.show();
+},
+prepareEditGrant(grant) {
+    this.grantForm = {
+        id: grant.id,
+        title: grant.title,
+        code: grant.code || '',
+        funding_organization: grant.funding_organization,
+        country: grant.country || '',
+        description: grant.description || '',
+        scientific_direction: grant.scientific_direction || '',
+        grant_type: grant.grant_type,
+        status: grant.status,
+        total_amount: grant.total_amount,
+        currency: grant.currency || 'RUB',
+        start_date: grant.start_date ? grant.start_date.substring(0, 10) : '',
+        end_date: grant.end_date ? grant.end_date.substring(0, 10) : '',
+        application_deadline: grant.application_deadline ? grant.application_deadline.substring(0, 10) : '',
+        principal_investigator_id: grant.principal_investigator_id
+    };
+    this.grantError = '';
+    this.grantSuccess = '';
+    this.createGrantModal.show();
+},
+async createGrantFromModal() {
+    const form = document.getElementById('createGrantForm');
+    this.grantError = '';
+    this.grantSuccess = '';
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
+    }
+    const payload = {
+        title: this.grantForm.title.trim(),
+        code: this.grantForm.code.trim(),
+        funding_organization: this.grantForm.funding_organization.trim(),
+        country: this.grantForm.country.trim(),
+        description: this.grantForm.description.trim(),
+        scientific_direction: this.grantForm.scientific_direction.trim(),
+        grant_type: this.grantForm.grant_type,
+        status: this.grantForm.status,
+        total_amount: Number(this.grantForm.total_amount) || 0,
+        currency: this.grantForm.currency.trim() || 'RUB',
+        start_date: this.grantForm.start_date || null,
+        end_date: this.grantForm.end_date || null,
+        application_deadline: this.grantForm.application_deadline || null,
+        principal_investigator_id: this.grantForm.principal_investigator_id || null
+    };
+    this.isGrantSubmitting = true;
+    try {
+        const isEdit = !!this.grantForm.id;
+        const url = isEdit ? `/grants/${this.grantForm.id}` : '/grants';
+        const method = isEdit ? 'PATCH' : 'POST';
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || 'Ошибка при сохранении гранта');
+        }
+        this.grantSuccess = isEdit ? 'Грант обновлен' : 'Грант создан';
+        form.classList.remove('was-validated');
+        setTimeout(() => {
+            this.createGrantModal.hide();
+            this.loadGrants();
+        }, 800);
+    } catch (error) {
+        this.grantError = error.message || 'Ошибка';
+    } finally {
+        this.isGrantSubmitting = false;
+    }
+},
+async deleteGrant(grantId) {
+    if (!confirm('Удалить грант? Это также удалит все связанные распределения финансирования.')) return;
+    try {
+        const response = await fetch(`/grants/${grantId}`, { method: 'DELETE', credentials: 'include' });
+        if (!response.ok) throw new Error('Не удалось удалить');
+        this.loadGrants();
+        if (this.currentGrant && this.currentGrant.id === grantId) {
+            this.currentGrant = null;
+        }
+    } catch (err) {
+        alert(err.message);
+    }
+},
+getGrantStatusBadgeClass(status) {
+    const map = {
+        draft: 'bg-secondary',
+        submitted: 'bg-info',
+        under_review: 'bg-warning text-dark',
+        approved: 'bg-success',
+        rejected: 'bg-danger',
+        active: 'bg-primary',
+        completed: 'bg-success',
+        suspended: 'bg-dark'
+    };
+    return map[status] || 'bg-secondary';
+},
+getGrantStatusLabel(status) {
+    const map = {
+        draft: 'Черновик', submitted: 'Подан', under_review: 'На рассмотрении',
+        approved: 'Одобрен', rejected: 'Отклонен', active: 'Активен',
+        completed: 'Завершен', suspended: 'Приостановлен'
+    };
+    return map[status] || status;
+},
+getGrantTypeLabel(type) {
+    const map = {
+        state: 'Государственный', university: 'Университетский',
+        international: 'Международный', corporate: 'Корпоративный', internal: 'Внутренний'
+    };
+    return map[type] || type;
+},
+async loadProjectGrants(projectId) {
+    try {
+        const response = await fetch(`/projects/${projectId}/grants`, { credentials: 'include' });
+        if (response.ok) {
+            this.projectGrants = await response.json();
+        }
+    } catch (err) {
+        console.error('Failed to load project grants:', err);
+    }
+},
+async loadProjectPermissions(projectId) {
+    try {
+        const response = await fetch(`/projects/${projectId}/my-permissions`, { credentials: 'include' });
+        if (response.ok) {
+            const data = await response.json();
+            this.projectPermissions = data.permissions || [];
+        }
+    } catch (err) {
+        console.error('Failed to load permissions:', err);
+        this.projectPermissions = [];
+    }
+},
+async loadProjectRoles() {
+    try {
+        const response = await fetch('/roles', { credentials: 'include' });
+        if (response.ok) {
+            this.projectRoles = await response.json();
+        }
+    } catch (err) {
+        console.error('Failed to load roles:', err);
+    }
+},
+async loadAuditLog(projectId) {
+    try {
+        const response = await fetch(`/projects/${projectId}/audit-log`, { credentials: 'include' });
+        if (response.ok) {
+            this.auditLog = await response.json();
+        }
+    } catch (err) {
+        console.error('Failed to load audit log:', err);
+    }
+},
+async assignMemberRole(projectId, userId, roleId) {
+    try {
+        const response = await fetch(`/projects/${projectId}/members/${userId}/role`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role_id: roleId }),
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Не удалось назначить роль');
+        this.loadProjectMembers(projectId);
+    } catch (err) {
+        alert(err.message);
+    }
+},
+openManageMembers() {
+    this.loadProjectRoles();
+    this.loadProjectMembers(this.currentProject.id);
+    this.manageMembersModal.show();
+},
+getRoleLabel(roleName) {
+    const map = {
+        project_lead: 'Руководитель проекта',
+        scientific_supervisor: 'Научный руководитель',
+        researcher: 'Исследователь',
+        analyst: 'Аналитик',
+        developer: 'Разработчик',
+        reviewer: 'Рецензент',
+        viewer: 'Наблюдатель',
+        admin: 'Администратор',
+        user: 'Пользователь',
+        guest: 'Гость'
+    };
+    return map[roleName] || roleName;
+},
+async loadProjectMembers(projectId) {
+    try {
+        const response = await fetch(`/projects/${projectId}/members`, { credentials: 'include' });
+        if (response.ok) {
+            this.currentProjectMembers = await response.json();
+        }
+    } catch (err) {
+        console.error('Failed to load project members:', err);
+    }
+},
+prepareAddProjectToGrant() {
+    this.grantProjectForm = {
+        project_id: '',
+        allocated_amount: 0,
+        funding_purpose: '',
+        funding_start_date: '',
+        funding_end_date: ''
+    };
+    this.grantProjectError = '';
+    // Загружаем проекты если еще не загружены
+    if (!this.projects || this.projects.length === 0) {
+        this.loadProjects();
+    }
+    this.addProjectToGrantModal.show();
+},
+async createGrantProjectFunding() {
+    const form = document.getElementById('addProjectToGrantForm');
+    this.grantProjectError = '';
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
+    }
+    if (!this.currentGrant || !this.currentGrant.id) return;
+    try {
+        const response = await fetch(`/grants/${this.currentGrant.id}/projects`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                project_id: Number(this.grantProjectForm.project_id),
+                allocated_amount: Number(this.grantProjectForm.allocated_amount) || 0,
+                funding_purpose: this.grantProjectForm.funding_purpose || 'Финансирование проекта',
+                funding_start_date: this.grantProjectForm.funding_start_date || null,
+                funding_end_date: this.grantProjectForm.funding_end_date || null
+            }),
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || 'Ошибка при прикреплении проекта');
+        }
+        form.classList.remove('was-validated');
+        this.addProjectToGrantModal.hide();
+        this.loadGrantProjects(this.currentGrant.id);
+        this.loadGrantBudget(this.currentGrant.id);
+    } catch (err) {
+        this.grantProjectError = err.message || 'Ошибка';
+    }
+},
+async removeProjectFromGrant(fundingId) {
+    if (!confirm('Удалить связь финансирования?')) return;
+    try {
+        const response = await fetch(`/grants/${this.currentGrant.id}/projects/${fundingId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Не удалось удалить');
+        this.loadGrantProjects(this.currentGrant.id);
+        this.loadGrantBudget(this.currentGrant.id);
+    } catch (err) {
+        alert(err.message);
     }
 },
             },
@@ -3632,6 +4977,21 @@ mounted() {
         this.createTeamModal = new bootstrap.Modal(teamModalElement);
     }
     this.manageTeamModal = new bootstrap.Modal(document.getElementById('manageTeamModal'));
+
+    const grantModalElement = document.getElementById('createGrantModal');
+    if (grantModalElement) {
+        this.createGrantModal = new bootstrap.Modal(grantModalElement);
+    }
+
+    const addProjectModalElement = document.getElementById('addProjectToGrantModal');
+    if (addProjectModalElement) {
+        this.addProjectToGrantModal = new bootstrap.Modal(addProjectModalElement);
+    }
+
+    const manageMembersModalElement = document.getElementById('manageMembersModal');
+    if (manageMembersModalElement) {
+        this.manageMembersModal = new bootstrap.Modal(manageMembersModalElement);
+    }
 }
         });
         app.directive("click-outside", clickOutside);

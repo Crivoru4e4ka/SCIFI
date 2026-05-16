@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"project-MVP/db"
 	"project-MVP/models"
 	"project-MVP/services"
 	"strconv"
@@ -36,10 +35,26 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 
 // POST /projects/{id}/tasks
 func CreateTaskInProject(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session")
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	userID, err := strconv.Atoi(cookie.Value)
+	if err != nil {
+		http.Error(w, "invalid session", http.StatusUnauthorized)
+		return
+	}
+
 	vars := mux.Vars(r)
 	projectID, err := strconv.Atoi(vars["id"])
 	if err != nil || projectID <= 0 {
 		http.Error(w, "invalid project id", http.StatusBadRequest)
+		return
+	}
+
+	if err := services.CheckPermission(userID, projectID, "task.create"); err != nil {
+		http.Error(w, "insufficient permissions", http.StatusForbidden)
 		return
 	}
 
@@ -60,6 +75,7 @@ func CreateTaskInProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	services.LogAudit(userID, projectID, "task_created", "task", created.Id, "Создана задача")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(created)
 }
@@ -73,7 +89,6 @@ func UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ДОБАВЛЕНО: Получаем ID пользователя из сессии
 	cookie, err := r.Cookie("session")
 	if err != nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -93,7 +108,19 @@ func UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ИСПРАВЛЕНО: Теперь передаем три аргумента
+	// Получаем задачу для проверки project_id
+	task, err := services.GetTaskByID(id)
+	if err != nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+
+	// Проверяем права на изменение статуса
+	if err := services.CheckPermission(currentUserID, task.ProjectId, "task.change_status"); err != nil {
+		http.Error(w, "insufficient permissions", http.StatusForbidden)
+		return
+	}
+
 	if err := services.UpdateTaskStatus(id, currentUserID, data.Status); err != nil {
 		if err == services.ErrNotFound {
 			http.Error(w, "task not found", http.StatusNotFound)
@@ -103,6 +130,8 @@ func UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	services.LogAudit(currentUserID, task.ProjectId, "task_status_changed", "task", id,
+		fmt.Sprintf("Статус изменен на %s", data.Status))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -144,48 +173,6 @@ func GetAllUserTasksHandler(w http.ResponseWriter, r *http.Request) {
 	// 3. Отправляем JSON
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tasks)
-}
-
-func GetProjectReportData(projectID int) (string, error) {
-	var projectName string
-	var projectDesc string
-	// Получаем данные проекта
-	err := db.DB.QueryRow("SELECT name, description FROM projects WHERE id = $1", projectID).Scan(&projectName, &projectDesc)
-	if err != nil {
-		return "", err
-	}
-
-	// Получаем все завершенные задачи
-	query := `SELECT task_num, title, COALESCE(description, ''), COALESCE(conclusion, '') 
-	          FROM tasks WHERE project_id = $1 AND status IN ('done', 'ГОТОВО') ORDER BY task_num`
-	rows, err := db.DB.Query(query, projectID)
-	if err != nil {
-		return "", err
-	}
-	defer rows.Close()
-
-	// Формируем текст по структуре ГОСТ 7.32
-	report := "ОТЧЕТ О НАУЧНО-ИССЛЕДОВАТЕЛЬСКОЙ РАБОТЕ\n"
-	report += "Тема: " + projectName + "\n\n"
-	report += "1. ВВЕДЕНИЕ\n"
-	report += projectDesc + "\n\n"
-	report += "2. ОСНОВНАЯ ЧАСТЬ (РЕЗУЛЬТАТЫ ЭТАПОВ)\n"
-
-	for rows.Next() {
-		var num int
-		var title, desc, conc string
-		rows.Scan(&num, &title, &desc, &conc)
-		report += fmt.Sprintf("\nЭтап %d: %s\n", num, title)
-		report += "Описание работ: " + desc + "\n"
-		if conc != "" {
-			report += "Научный вывод: " + conc + "\n"
-		}
-	}
-
-	report += "\n\n3. ЗАКЛЮЧЕНИЕ\n"
-	report += "Задачи этапа НИР выполнены в полном объеме."
-
-	return report, nil
 }
 
 // POST /projects/{id}/hypotheses

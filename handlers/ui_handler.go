@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"path/filepath"
 	"strconv"
 )
 
@@ -23,7 +22,7 @@ func ServeIndex(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	http.ServeFile(w, r, filepath.Join("web", "index.html"))
+	http.ServeFile(w, r, "web/index.html")
 }
 
 func ServeLogin(w http.ResponseWriter, r *http.Request) {
@@ -31,5 +30,5 @@ func ServeLogin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	http.ServeFile(w, r, filepath.Join("web", "login.html"))
+	http.ServeFile(w, r, "web/login.html")
 }

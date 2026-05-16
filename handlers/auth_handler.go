@@ -17,6 +17,7 @@ type authRequest struct {
 type registerRequest struct {
 	Email    string `json:"email"`
 	FullName string `json:"full_name"`
+	Role     string `json:"role"`
 	Password string `json:"password"`
 }
 
@@ -27,7 +28,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := services.RegisterUser(req.Email, req.FullName, "researcher", req.Password)
+	user, err := services.RegisterUser(req.Email, req.FullName, req.Role, req.Password)
 	if err != nil {
 		if err == services.ErrInvalidRole || err == services.ErrDuplicateUser {
 			http.Error(w, err.Error(), http.StatusBadRequest)

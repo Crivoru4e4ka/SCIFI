@@ -53,7 +53,7 @@ func CreateTeam(t models.Team) (models.Team, error) {
 	for _, email := range t.MemberEmails {
 		var invitedID int
 		// Ищем ID пользователя
-		err := db.DB.QueryRow("SELECT id FROM users WHERE email = $1", strings.TrimSpace(email)).Scan(&invitedID)
+		err := tx.QueryRow("SELECT id FROM users WHERE email = $1", strings.TrimSpace(email)).Scan(&invitedID)
 		if err != nil {
 			continue // Если почта не найдена, просто идем дальше
 		}
@@ -143,9 +143,13 @@ func DeleteTeam(teamID int) error {
 	defer tx.Rollback()
 
 	// Сначала удаляем участников
-	tx.Exec("DELETE FROM team_members WHERE team_id = $1", teamID)
+	if _, err = tx.Exec("DELETE FROM team_members WHERE team_id = $1", teamID); err != nil {
+		return err
+	}
 	// Потом команду
-	tx.Exec("DELETE FROM teams WHERE id = $1", teamID)
+	if _, err = tx.Exec("DELETE FROM teams WHERE id = $1", teamID); err != nil {
+		return err
+	}
 
 	return tx.Commit()
 }

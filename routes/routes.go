@@ -7,8 +7,21 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// NoCacheMiddleware добавляет заголовки, запрещающие браузеру кэшировать страницы.
+// Это критически важно для безопасности личного кабинета.
+func NoCacheMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func InitRoutes() *mux.Router {
 	r := mux.NewRouter()
+
+	r.Use(NoCacheMiddleware)
 
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
@@ -51,7 +64,7 @@ func InitRoutes() *mux.Router {
 
 	// --- Project Members ---
 	r.HandleFunc("/project-members", handlers.CreateProjectMember).Methods("POST")
-	r.HandleFunc("/projects/{id}/members", handlers.GetProjectMembersByProject).Methods("GET")
+	r.HandleFunc("/projects/{id}/members", handlers.GetProjectMembersWithRolesHandler).Methods("GET")
 
 	// --- Команды ---
 	r.HandleFunc("/user/{id}/teams", handlers.GetUserTeamsHandler).Methods("GET")
@@ -67,7 +80,25 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/", handlers.ServeIndex).Methods("GET")
 	r.HandleFunc("/login", handlers.ServeLogin).Methods("GET")
 	r.HandleFunc("/logout", handlers.Logout).Methods("GET")
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("web"))))
+
+	// --- Grants ---
+	r.HandleFunc("/grants", handlers.CreateGrant).Methods("POST")
+	r.HandleFunc("/grants", handlers.ListGrants).Methods("GET")
+	r.HandleFunc("/grants/{id}", handlers.GetGrant).Methods("GET")
+	r.HandleFunc("/grants/{id}", handlers.UpdateGrant).Methods("PATCH")
+	r.HandleFunc("/grants/{id}", handlers.DeleteGrant).Methods("DELETE")
+	r.HandleFunc("/grants/{id}/projects", handlers.GetGrantProjects).Methods("GET")
+	r.HandleFunc("/grants/{id}/projects", handlers.AddProjectToGrant).Methods("POST")
+	r.HandleFunc("/grants/{id}/budget", handlers.GetGrantBudget).Methods("GET")
+	r.HandleFunc("/grants/{grantId}/projects/{fundingId}", handlers.RemoveProjectFromGrant).Methods("DELETE")
+	r.HandleFunc("/projects/{id}/grants", handlers.GetProjectGrants).Methods("GET")
+
+	// --- RBAC ---
+	r.HandleFunc("/roles", handlers.GetRoles).Methods("GET")
+	r.HandleFunc("/permissions", handlers.GetPermissions).Methods("GET")
+	r.HandleFunc("/projects/{id}/members/{userID}/role", handlers.AssignProjectRoleHandler).Methods("POST")
+	r.HandleFunc("/projects/{id}/my-permissions", handlers.GetMyProjectPermissions).Methods("GET")
+	r.HandleFunc("/projects/{id}/audit-log", handlers.GetProjectAuditLog).Methods("GET")
 
 	// --- Отчеты ---
 	r.HandleFunc("/projects/{id}/report", handlers.GenerateGostReport).Methods("GET")

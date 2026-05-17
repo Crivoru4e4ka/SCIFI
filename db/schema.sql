@@ -3,6 +3,19 @@
 BEGIN;
 
 
+CREATE TABLE IF NOT EXISTS public.activities
+(
+    id serial NOT NULL,
+    user_id integer,
+    project_id integer,
+    entity_type character varying(50) COLLATE pg_catalog."default",
+    entity_id integer,
+    action character varying(100) COLLATE pg_catalog."default",
+    details text COLLATE pg_catalog."default",
+    created_at timestamp without time zone DEFAULT now(),
+    CONSTRAINT activities_pkey PRIMARY KEY (id)
+);
+
 CREATE TABLE IF NOT EXISTS public.attachments
 (
     id serial NOT NULL,
@@ -270,6 +283,22 @@ CREATE TABLE IF NOT EXISTS public.users
     CONSTRAINT users_pkey PRIMARY KEY (id),
     CONSTRAINT users_email_key UNIQUE (email)
 );
+
+ALTER TABLE IF EXISTS public.activities
+    ADD CONSTRAINT activities_project_id_fkey FOREIGN KEY (project_id)
+    REFERENCES public.projects (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+CREATE INDEX IF NOT EXISTS idx_activities_project_id
+    ON public.activities(project_id);
+
+
+ALTER TABLE IF EXISTS public.activities
+    ADD CONSTRAINT activities_user_id_fkey FOREIGN KEY (user_id)
+    REFERENCES public.users (id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE NO ACTION;
+
 
 ALTER TABLE IF EXISTS public.attachments
     ADD CONSTRAINT attachments_task_id_fkey FOREIGN KEY (task_id)

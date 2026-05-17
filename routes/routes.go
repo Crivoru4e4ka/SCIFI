@@ -86,6 +86,9 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/login", handlers.ServeLogin).Methods("GET")
 	r.HandleFunc("/logout", handlers.Logout).Methods("GET")
 
+	// --- Активности ---
+	r.HandleFunc("/activities", handlers.GetActivitiesHandler).Methods("GET")
+
 	// --- Grants ---
 	r.HandleFunc("/grants", handlers.CreateGrant).Methods("POST")
 	r.HandleFunc("/grants", handlers.ListGrants).Methods("GET")

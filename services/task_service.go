@@ -83,6 +83,8 @@ func CreateTask(task models.Task) (models.Task, error) {
 		return models.Task{}, err
 	}
 
+	LogActivity(task.CreatedBy, task.ProjectId, "task", newId, "created", "Создал научную задачу: "+task.Title)
+
 	task.Id = newId
 	task.TaskNum = newTaskNum
 	task.CreatedAt = time.Now()
@@ -123,6 +125,8 @@ func UpdateTaskStatus(taskId int, userId int, newStatus string) error {
 	if err != nil {
 		return err
 	}
+
+	LogActivity(userId, taskId, "task", taskId, "status_changed", "Сменил статус задачи на "+newStatus)
 
 	// 3. АВТОМАТИЧЕСКАЯ ЗАПИСЬ В ИСТОРИЮ (Важно для диплома!)
 	queryHistory := `INSERT INTO task_history (task_id, changed_by, field_name, old_value, new_value) VALUES ($1, $2, $3, $4, $5)`

@@ -709,6 +709,10 @@ body.dark-theme .jira-tag {
                 <img src="/static/projectsbadge.png" alt="Projects badge" class="nav-sidebar-badge">
                 <span class="nav-link-text">Разделы</span>
             </a>
+            <!-- <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'activity'}" @click.prevent="selectSidebarTab('activity')">
+                <i class="fas fa-bolt nav-sidebar-badge text-warning" style="font-size: 18px; width: 24px; text-align: center;"></i>
+                <span class="nav-link-text">Активность</span>
+            </a> -->
         </nav>
     </div>
     <div class="sidebar-section">
@@ -856,6 +860,46 @@ body.dark-theme .jira-tag {
           </div>
         </div>
     </div>
+
+    <!-- ВКЛАДКА: АКТИВНОСТЬ -->
+<div v-else-if="activeSidebarTab === 'activity'">
+    <h2 class="mb-4">Лента активности</h2>
+    
+    <div v-if="activities.length > 0" class="timeline-container">
+        <div v-for="act in activities" :key="act.id" class="card mb-2 border-0 shadow-sm">
+            <div class="card-body d-flex align-items-start gap-3">
+                <div class="avatar-circle bg-light text-primary border shadow-sm" style="width: 40px; height: 40px;">
+                    {{ act.user_name[0] }}
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-bold">{{ act.user_name }}</span>
+                        <small class="text-muted">{{ formatRelativeTime(act.created_at) }}</small>
+                    </div>
+                    <div class="text-secondary small">
+                        {{ act.details }} в разделе 
+                        <a href="#" @click.prevent="openProjectById(act.project_id)" class="text-decoration-none fw-bold">
+                            "{{ act.project_name }}"
+                        </a>
+                    </div>
+                    <div class="mt-2">
+                        <!-- Иконки в зависимости от типа -->
+                        <span v-if="act.entity_type === 'task'" class="badge bg-primary-soft text-primary">
+                            <i class="fas fa-check-square me-1"></i> Задача #{{ act.entity_id }}
+                        </span>
+                        <span v-else-if="act.entity_type === 'file'" class="badge bg-success-soft text-success">
+                            <i class="fas fa-file-alt me-1"></i> Файл
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div v-else class="text-center py-5">
+        <i class="fas fa-stream fa-4x mb-3 text-muted opacity-25"></i>
+        <h5>Событий пока нет</h5>
+    </div>
+</div>
 
     <!-- РАЗДЕЛ: ФИЛЬТРЫ -->
 <div v-else-if="activeSidebarTab === 'filters'">
@@ -1615,7 +1659,7 @@ body.dark-theme .jira-tag {
 <!-- Колонка: На проверке -->
 <div class="col-12 col-md-6 col-lg-3"> <!-- Поменяли на col-lg-3 для 4-х колонок -->
   <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'review')" data-status="review" style="background-color: #f3e8ff;"> <!-- Новый цвет фона: светло-фиолетовый -->
-    <div class="small text-muted mb-2 fw-semibold">На проверке ({{ projectBoardTasks.review.length }})</div>
+    <div class="small text-muted mb-2 fw-semibold">На проверке ({{ projectBoardTasks.review.length || 0 }})</div>
     
     <div 
       v-for="task in projectBoardTasks.review" 
@@ -1938,7 +1982,20 @@ body.dark-theme .jira-tag {
                             </div>
                             <div class="text-muted small">{{ entry.details }}</div>
                             <div v-if="entry.entity_type" class="mt-1">
-                                <span class="badge bg-light text-dark" style="font-size: 0.7rem;">{{ entry.entity_type }} #{{ entry.entity_id }}</span>
+                                <!-- Если это задача, выводим Ключ -->
+                                <span v-if="entry.entity_type === 'task'" class="badge bg-light text-dark" style="font-size: 0.7rem;">
+                                    <i class="fas fa-check-square me-1"></i> {{ getTaskFormattedKey(entry.entity_id, entry.entity_type) }}
+                                </span>
+                                
+                                <!-- Если это файл, выводим просто текст Файл -->
+                                <span v-else-if="entry.entity_type === 'file'" class="badge bg-light text-dark" style="font-size: 0.7rem;">
+                                    <i class="fas fa-file-alt me-1"></i> Файл
+                                </span>
+                                
+                                <!-- Для остальных типов (если будут) -->
+                                <span v-else class="badge bg-light text-dark" style="font-size: 0.7rem;">
+                                    {{ entry.entity_type }}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -2349,29 +2406,37 @@ body.dark-theme .jira-tag {
                         <textarea class="form-control" id="taskDescription" v-model="newTask.description" rows="5" placeholder="Введите описание задачи"></textarea>
                     </div>
 
+            <!-- ОБЩИЕ НАУЧНЫЕ ПОЛЯ (ДЛЯ ВСЕХ ТИПОВ) -->
+            <div class="scientific-meta-section mb-4">
+                <!-- Поле на всю ширину (как Описание) -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Вклад в проверку гипотезы <span class="text-danger">*</span></label>
+                    <textarea class="form-control" v-model="newTask.researchContribution" 
+                            rows="2" placeholder="Как эта задача приближает к подтверждению основной гипотезы?"></textarea>
+                </div>
+
+                <!-- Два поля в ряд (как Приоритет и Срок) -->
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Метод исследования</label>
+                        <input type="text" class="form-control" v-model="newTask.researchMethod" 
+                            placeholder="Например: Сравнительный анализ">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Ожидаемый научный результат</label>
+                        <input type="text" class="form-control" v-model="newTask.expectedScientificResult" 
+                            placeholder="Что будет получено?">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Тонкая линия-разделитель перед специфическими полями типа -->
+            <hr class="my-4 opacity-5">
+
 <!-- ======= НАЧАЛО УМНОГО НАУЧНОГО КОНТЕКСТА ======= -->
 <div v-if="newTask.projectId" class="p-3 mb-4 border-start border-info border-4 rounded-end shadow-sm" style="background: #f0f7ff;">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="fw-bold text-info small text-uppercase">Научный паспорт: {{ newTask.type }}</div>
-
-                <!-- ОБЩИЕ НАУЧНЫЕ ПОЛЯ (ДЛЯ ВСЕХ ТИПОВ) -->
-        <div class="row g-2 mb-3 border-bottom pb-3">
-            <div class="col-md-12">
-                <label class="form-label small fw-bold text-primary">Вклад в проверку гипотезы *</label>
-                <textarea class="form-control form-control-sm" v-model="newTask.researchContribution" 
-                        rows="2" placeholder="Как эта задача приближает к подтверждению основной гипотезы?"></textarea>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label small fw-bold text-primary">Метод исследования</label>
-                <input type="text" class="form-control form-control-sm" v-model="newTask.researchMethod" 
-                    placeholder="Например: Сравнительный анализ, A/B тест...">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label small fw-bold text-primary">Ожидаемый научный результат</label>
-                <input type="text" class="form-control form-control-sm" v-model="newTask.expectedScientificResult" 
-                    placeholder="Что конкретно будет получено?">
-            </div>
-        </div>
 
         <div v-if="newTask.type === 'analysis' && newTask.statPValue !== '' && newTask.statPValue !== null" class="badge" :class="newTask.statPValue < 0.05 ? 'bg-success' : 'bg-danger'">
             p-value: {{ newTask.statPValue }} ({{ newTask.statPValue < 0.05 ? 'Значимо' : 'Незначимо' }})
@@ -3246,6 +3311,7 @@ recentItems: [],
 flaggedItems: [],
                     currentPage: "sections",
                     activeSidebarTab: 'sections',
+                    activities: [],
                     selectedTemplate: {
                         id: "kanban",
                         title: "Kanban",
@@ -3500,6 +3566,37 @@ filteredUsers() {
         }
     } catch (e) { console.error(e); }
 },
+
+getTaskFormattedKey(entityId, entityType) {
+    if (entityType !== 'task') return ''; // Если это не задача, не выводим ключ задачи
+    
+    // Ищем задачу среди загруженных задач проекта
+    const task = this.projectTasks.find(t => t.id === entityId);
+    
+    if (task) {
+        const pKey = this.getProjectKey(task.project_id);
+        return `${pKey}-${task.task_num}`;
+    }
+    
+    // Если задача не найдена в списке (например, архивирована), 
+    // возвращаем заглушку, чтобы не показывать системный ID
+    return "Задача"; 
+},
+
+async loadActivities() {
+    try {
+        const response = await fetch('/activities', { credentials: 'include' });
+        if (response.ok) {
+            this.activities = await response.json();
+        }
+    } catch (e) { console.error(e); }
+},
+
+formatRelativeTime(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+},
+
 // Фильтр пользователей для конкретной строки поиска
 filterWizardUsers(text) {
     if (!text || text.length < 1) return [];
@@ -3912,6 +4009,8 @@ selectSidebarTab(tabName) {
     this.currentPage = 'sections';
     this.filterSubPage = 'list';
     this.currentGrant = null;
+
+    if (tabName === 'activity') this.loadActivities();
     
     if (tabName === 'filters') {
         this.loadSavedFilters();
@@ -4171,6 +4270,7 @@ handleTaskFileSelect(event) {
                     this.projectBoardTasks = {
                         todo: [],
                         inProgress: [],
+                        review: [],
                         done: []
                     };
                 },
@@ -4272,7 +4372,7 @@ async onDropToSprint(event, sprintId) {
     }
 },
 organizeTasksByStatus() {
-    const taskSource = this.currentProject ? this.projectTasks : this.allTasks;
+    const taskSource = (this.currentProject ? this.projectTasks : this.allTasks) || [];
     if (!this.projectTasks) return;
 
     const currentUserId = Number(localStorage.getItem('currentUserId'));

@@ -5,41 +5,77 @@ import (
 	"project-MVP/models"
 )
 
-func CreateComment(comment models.Comment) (models.Comment, error) {
-	if _, err := GetTaskByID(comment.TaskId); err != nil {
-		return models.Comment{}, err
-	}
-	if _, err := GetUserByID(comment.UserId); err != nil {
-		return models.Comment{}, err
-	}
+func AddComment(c *models.Comment) (int, error) {
+	var id int
+	query := `
+		INSERT INTO comments (entity_id, entity_type, user_id, parent_id, content)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id`
 
-	query := `INSERT INTO comments (task_id, user_id, content, created_at) VALUES ($1,$2,$3,$4) RETURNING id`
-	if err := db.DB.QueryRow(query, comment.TaskId, comment.UserId, comment.Content, comment.CreatedAt).Scan(&comment.Id); err != nil {
-		return models.Comment{}, err
-	}
-
-	return comment, nil
+	err := db.DB.QueryRow(query, c.EntityId, c.EntityType, c.UserId, c.ParentId, c.Content).Scan(&id)
+	return id, err
 }
 
-func GetCommentsByTask(taskId int) ([]models.Comment, error) {
-	if _, err := GetTaskByID(taskId); err != nil {
-		return nil, err
-	}
+func GetCommentsByEntity(entityType string, entityId int) ([]models.Comment, error) {
+	query := `
+		SELECT c.id, c.entity_type, c.entity_id, c.user_id, u.full_name, 
+		       c.parent_id, COALESCE(c.content, '') as content, -- ДОБАВЛЕНО COALESCE
+               c.created_at, c.updated_at, c.deleted_at
+		FROM comments c
+		JOIN users u ON c.user_id = u.id
+		WHERE c.entity_type = $1 AND c.entity_id = $2
+		ORDER BY c.created_at ASC`
 
-	rows, err := db.DB.Query(`SELECT id, task_id, user_id, content, created_at FROM comments WHERE task_id=$1 ORDER BY created_at`, taskId)
+	rows, err := db.DB.Query(query, entityType, entityId)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var comments []models.Comment
+	all := []models.Comment{}
 	for rows.Next() {
 		var c models.Comment
-		if err := rows.Scan(&c.Id, &c.TaskId, &c.UserId, &c.Content, &c.CreatedAt); err != nil {
+		err := rows.Scan(&c.Id, &c.EntityType, &c.EntityId, &c.UserId, &c.UserName,
+			&c.ParentId, &c.Content, &c.CreatedAt, &c.UpdatedAt, &c.DeletedAt)
+		if err != nil {
 			return nil, err
 		}
-		comments = append(comments, c)
+		if c.DeletedAt != nil {
+			c.Content = "Комментарий удален"
+		}
+		all = append(all, c)
 	}
 
-	return comments, nil
+	// Построение дерева (1 уровень вложенности)
+	roots := []models.Comment{}
+	commentMap := make(map[int]*models.Comment)
+
+	for i := range all {
+		if all[i].ParentId == nil {
+			roots = append(roots, all[i])
+			commentMap[all[i].Id] = &roots[len(roots)-1]
+		}
+	}
+
+	for i := range all {
+		if all[i].ParentId != nil {
+			if parent, ok := commentMap[*all[i].ParentId]; ok {
+				parent.Replies = append(parent.Replies, all[i])
+			}
+		}
+	}
+	return roots, nil
+}
+
+func SoftDeleteComment(id int) error {
+	query := `UPDATE comments SET deleted_at = NOW(), content = NULL WHERE id = $1`
+	_, err := db.DB.Exec(query, id)
+	return err
+}
+
+func GetCommentRaw(id int) (*models.Comment, error) {
+	var c models.Comment
+	err := db.DB.QueryRow("SELECT id, user_id, entity_id, entity_type FROM comments WHERE id = $1", id).
+		Scan(&c.Id, &c.UserId, &c.EntityId, &c.EntityType)
+	return &c, err
 }

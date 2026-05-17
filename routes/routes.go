@@ -49,8 +49,6 @@ func InitRoutes() *mux.Router {
 	// --- Tasks ---
 	r.HandleFunc("/tasks", handlers.CreateTask).Methods("POST")
 	r.HandleFunc("/tasks/{id}/status", handlers.UpdateTaskStatus).Methods("PATCH")
-	r.HandleFunc("/tasks/{id}/comments", handlers.CreateComment).Methods("POST")
-	r.HandleFunc("/tasks/{id}/comments", handlers.GetCommentsByTask).Methods("GET")
 	r.HandleFunc("/tasks/{id}/sprint", handlers.UpdateTaskSprintHandler).Methods("PATCH")
 	r.HandleFunc("/user/tasks", handlers.GetAllUserTasksHandler).Methods("GET")
 
@@ -88,6 +86,11 @@ func InitRoutes() *mux.Router {
 
 	// --- Активности ---
 	r.HandleFunc("/activities", handlers.GetActivitiesHandler).Methods("GET")
+
+	// --- Комментарии ---
+	r.HandleFunc("/comments", handlers.CreateCommentHandler).Methods("POST")
+	r.HandleFunc("/comments/{type}/{id}", handlers.GetCommentsHandler).Methods("GET")
+	r.HandleFunc("/comments/{id}", handlers.DeleteCommentHandler).Methods("DELETE")
 
 	// --- Grants ---
 	r.HandleFunc("/grants", handlers.CreateGrant).Methods("POST")

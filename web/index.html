@@ -26,6 +26,65 @@
 .role-developer { background-color: #e0f7fa; color: #006064; }
 .role-reviewer { background-color: #fff4e5; color: #ff8b00; }
 .role-viewer { background-color: #f4f5f7; color: #42526e; }
+
+/* Стили для комментариев */
+.comments-section {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+}
+.comment-card {
+    background: white;
+    border: 1px solid #e4e7eb;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+.comment-reply {
+    margin-left: 45px;
+    border-left: 2px solid #dfe1e6;
+    padding-left: 15px;
+}
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+.comment-author {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #172b4d;
+}
+.comment-date {
+    font-size: 0.75rem;
+    color: #6b778c;
+}
+.comment-body {
+    font-size: 0.9rem;
+    color: #172b4d;
+}
+.comment-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 15px;
+}
+.comment-actions a {
+    font-size: 0.75rem;
+    text-decoration: none;
+    color: #0052cc;
+    cursor: pointer;
+}
+.comment-actions a:hover {
+    text-decoration: underline;
+}
+.comment-actions a.text-danger {
+    color: #de350b !important;
+}
+.italic-deleted {
+    font-style: italic;
+    color: #8993a4;
+}
+
 /* Подсказки в командах */
 .email-suggestions {
     position: absolute;
@@ -1382,8 +1441,16 @@ body.dark-theme .jira-tag {
         <button class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'funding' }" @click="currentProjectView = 'funding'">
             <i class="fas fa-hand-holding-dollar me-2"></i>Финансирование
         </button>
-        <button v-if="canViewAudit" class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'audit' }" @click="currentProjectView = 'audit'">
-            <i class="fas fa-shield-halved me-2"></i>Аудит
+        <button v-if="canViewAudit" class="btn btn-link text-decoration-none p-2 fw-semibold" 
+                :class="{ 'active text-primary': currentProjectView === 'audit' }" 
+                @click="openProjectActivity">
+            <i class="fas fa-shield-halved me-2"></i>Активность
+        </button>
+        <!-- Ищи блок кнопок и добавь эту в конец -->
+        <button class="btn btn-link text-decoration-none p-2 fw-semibold" 
+                :class="{ 'active text-primary': currentProjectView === 'discussion' }" 
+                @click="openProjectDiscussion">
+            <i class="fas fa-comments me-2"></i>Обсуждение
         </button>
     </div>
     <!-- Содержимое Списка (Таблица задач) -->
@@ -1553,7 +1620,67 @@ body.dark-theme .jira-tag {
         <span v-else>не указан</span>
     </div>
 </div>
-                            </div>
+
+<!-- БЛОК КОММЕНТАРИЕВ ЗАДАЧИ -->
+<div class="mt-4 pt-4 border-top">
+    <h6 class="text-muted small text-uppercase fw-bold mb-3"><i class="fas fa-comments me-2"></i>Обсуждение задачи</h6>
+    
+    <!-- Список существующих комментариев -->
+    <div class="mb-3">
+        <div v-for="comment in activeComments" :key="comment.id" class="mb-3">
+            <div class="d-flex gap-2">
+                <div class="avatar-circle bg-secondary text-white" style="width: 32px; height: 32px; font-size: 0.7rem;">{{ comment.user_name[0] }}</div>
+                <div class="flex-grow-1 bg-light rounded p-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="fw-bold small">{{ comment.user_name }}</span>
+                        <span class="text-muted" style="font-size: 0.7rem;">{{ formatDate(comment.created_at) }}</span>
+                    </div>
+                    <div v-if="comment.deleted_at" class="text-muted small italic">Комментарий удален</div>
+                    <div v-else class="small">{{ comment.content }}</div>
+                    
+                    <!-- Кнопки ответа и удаления -->
+                    <div class="mt-1 d-flex gap-3" v-if="!comment.deleted_at">
+                        <a href="#" class="text-primary small" style="font-size: 0.65rem; text-decoration:none;" @click.prevent="replyToId = comment.id">Ответить</a>
+                        <a href="#" class="text-danger small" style="font-size: 0.65rem; text-decoration:none;" 
+                           v-if="comment.user_id == profile.id || currentUserProjectRole === 'project_lead'" 
+                           @click.prevent="deleteComment(comment.id)">Удалить</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Поле ответа -->
+            <div class="ms-5 mt-2" v-if="replyToId === comment.id">
+                <textarea class="form-control form-control-sm mb-1" v-model="replyText" placeholder="Ваш ответ..."></textarea>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary btn-xs" style="font-size: 0.6rem;" @click="postComment(task.id, 'task', comment.id)">Ответить</button>
+                    <button class="btn btn-link btn-xs text-muted" style="font-size: 0.6rem;" @click="replyToId = null">Отмена</button>
+                </div>
+            </div>
+
+            <!-- Вложенные ответы -->
+            <div v-for="reply in comment.replies" :key="reply.id" class="ms-5 mt-2 border-start ps-2">
+                <div class="d-flex gap-2">
+                    <div class="avatar-circle bg-white border text-muted" style="width: 24px; height: 24px; font-size: 0.6rem;">{{ reply.user_name[0] }}</div>
+                    <div class="flex-grow-1 p-2 border rounded">
+                        <div class="fw-bold" style="font-size: 0.7rem;">{{ reply.user_name }}</div>
+                        <div v-if="reply.deleted_at" class="text-muted italic" style="font-size: 0.7rem;">Удалено</div>
+                        <div v-else style="font-size: 0.75rem;">{{ reply.content }}</div>
+                        <a href="#" class="text-danger" style="font-size: 0.6rem;" v-if="!reply.deleted_at && (reply.user_id == profile.id || currentUserProjectRole === 'project_lead')" @click.prevent="deleteComment(reply.id)">Удалить</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Форма нового комментария -->
+    <div class="d-flex gap-2" v-if="currentUserProjectRole !== 'guest'">
+        <div class="avatar-circle bg-primary text-white" style="width: 32px; height: 32px; font-size: 0.8rem;">{{ profile.initials }}</div>
+        <div class="flex-grow-1">
+            <textarea class="form-control form-control-sm mb-2" rows="2" v-model="newCommentText" placeholder="Добавить замечание к задаче..."></textarea>
+            <button class="btn btn-primary btn-sm" @click="postComment(task.id, 'task')">Отправить</button>
+        </div>
+    </div>
+</div>
                             <div class="col-md-4 border-start">
                                 <div class="mb-3">
                                     <span class="text-muted small d-block">Создана:</span>
@@ -1962,11 +2089,11 @@ body.dark-theme .jira-tag {
     </div>
 </div>
 
-<!-- Содержимое: Аудит -->
+<!-- Содержимое: Активность -->
 <div v-if="currentProjectView === 'audit'" class="mt-4">
     <div class="card shadow-sm border-0">
         <div class="card-body">
-            <h5 class="card-title mb-4 fw-bold">Аудит действий</h5>
+            <h5 class="card-title mb-4 fw-bold">Активность</h5>
             <div v-if="auditLog && auditLog.length > 0">
                 <div class="timeline">
                     <div v-for="entry in auditLog" :key="entry.id" class="d-flex mb-3 pb-3 border-bottom">
@@ -1982,15 +2109,22 @@ body.dark-theme .jira-tag {
                             </div>
                             <div class="text-muted small">{{ entry.details }}</div>
                             <div v-if="entry.entity_type" class="mt-1">
-                                <!-- Если это задача, выводим Ключ -->
-                                <span v-if="entry.entity_type === 'task'" class="badge bg-light text-dark" style="font-size: 0.7rem;">
-                                    <i class="fas fa-check-square me-1"></i> {{ getTaskFormattedKey(entry.entity_id, entry.entity_type) }}
-                                </span>
-                                
-                                <!-- Если это файл, выводим просто текст Файл -->
-                                <span v-else-if="entry.entity_type === 'file'" class="badge bg-light text-dark" style="font-size: 0.7rem;">
-                                    <i class="fas fa-file-alt me-1"></i> Файл
-                                </span>
+                            <!-- Если это задача, выводим Ключ -->
+                            <span v-if="entry.entity_type === 'task'" class="badge bg-light text-dark border" style="font-size: 0.7rem;">
+                                <i class="fas fa-check-square me-1"></i> {{ getTaskFormattedKey(entry.entity_id, entry.entity_type) }}
+                            </span>
+
+                            <!-- Если это комментарий (к задаче или к проекту) -->
+                            <span v-else-if="entry.entity_type === 'comment' || entry.action.includes('comment')" 
+                                class="badge bg-info text-white" 
+                                style="font-size: 0.7rem; border-radius: 4px; padding: 2px 8px;">
+                                <i class="fas fa-comment-dots me-1"></i> Обсуждение
+                            </span>
+
+                            <!-- Если это файл -->
+                            <span v-else-if="entry.entity_type === 'file'" class="badge bg-light text-dark" style="font-size: 0.7rem;">
+                                <i class="fas fa-file-alt me-1"></i> Файл
+                            </span>
                                 
                                 <!-- Для остальных типов (если будут) -->
                                 <span v-else class="badge bg-light text-dark" style="font-size: 0.7rem;">
@@ -2003,7 +2137,94 @@ body.dark-theme .jira-tag {
             </div>
             <div v-else class="text-center py-5 text-muted">
                 <i class="fas fa-shield-halved fa-3x mb-3 opacity-25"></i>
-                <p>Записи аудита отсутствуют.</p>
+                <p>Записи активности отсутствуют.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Содержимое вкладки: Обсуждение проекта -->
+<div v-if="currentProjectView === 'discussion'" class="mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <h5 class="card-title mb-3 fw-bold">Обсуждение раздела</h5>
+            <p class="text-muted small mb-4">
+                <i class="fas fa-info-circle me-1"></i> 
+                Здесь обсуждаются общие научные вопросы, методология и стратегические цели этого раздела.
+            </p>
+
+            <!-- Форма отправки (для проекта) -->
+            <div class="mb-4" v-if="currentUserProjectRole !== 'guest'">
+                <div class="d-flex gap-3">
+                    <div class="avatar-circle bg-primary text-white" style="width: 40px; height: 40px;">
+                        {{ profile.initials }}
+                    </div>
+                    <div class="flex-grow-1">
+                        <textarea class="form-control mb-2" rows="3" 
+                                  v-model="newCommentText" 
+                                  placeholder="Напишите замечание по методологии или общий вопрос..."></textarea>
+                        <button class="btn btn-primary px-4" @click="postComment(currentProject.id, 'project')">
+                            Опубликовать
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Список комментариев проекта -->
+            <div class="comments-list">
+                <div v-for="comment in activeComments" :key="comment.id" class="mb-4">
+                    <div class="d-flex gap-3">
+                        <div class="avatar-circle bg-secondary text-white" style="width: 40px; height: 40px;">
+                            {{ comment.user_name ? comment.user_name[0] : '?' }}
+                        </div>
+                        <div class="flex-grow-1 border rounded p-3 bg-white shadow-sm">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="fw-bold">{{ comment.user_name }}</span>
+                                <span class="text-muted small">{{ formatDate(comment.created_at) }}</span>
+                            </div>
+                            
+                            <div v-if="comment.deleted_at" class="text-muted italic">
+                                Сообщение удалено
+                            </div>
+                            <div v-else class="text-dark" style="white-space: pre-wrap;">
+                                {{ comment.content }}
+                            </div>
+
+                            <div class="mt-2 d-flex gap-3" v-if="!comment.deleted_at">
+                                <a href="#" class="small text-primary text-decoration-none" @click.prevent="replyToId = comment.id; replyText = ''">Ответить</a>
+                                <a href="#" class="small text-danger text-decoration-none" 
+                                   v-if="comment.user_id == profile.id || currentUserProjectRole === 'project_lead'" 
+                                   @click.prevent="deleteComment(comment.id)">Удалить</a>
+                            </div>
+
+                            <!-- Поле ответа для проекта -->
+                            <div class="mt-3" v-if="replyToId === comment.id">
+                                <textarea class="form-control form-control-sm mb-2" v-model="replyText"></textarea>
+                                <button class="btn btn-primary btn-sm" @click="postComment(currentProject.id, 'project', comment.id)">Отправить ответ</button>
+                            </div>
+
+                            <!-- Вложенные ответы проекта -->
+                            <div v-for="reply in comment.replies" :key="reply.id" class="mt-3 pt-3 border-top">
+                                <div class="d-flex gap-2">
+                                    <div class="avatar-circle bg-light text-muted border" style="width: 30px; height: 30px; font-size: 0.7rem;">
+                                        {{ reply.user_name[0] }}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between">
+                                            <span class="fw-bold small">{{ reply.user_name }}</span>
+                                            <span class="text-muted" style="font-size: 0.7rem;">{{ formatDate(reply.created_at) }}</span>
+                                        </div>
+                                        <div v-if="reply.deleted_at" class="text-muted small italic">Удалено</div>
+                                        <div v-else class="small">{{ reply.content }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div v-if="activeComments.length === 0" class="text-center py-5 text-muted">
+                    здесь еще нет обсуждений.
+                </div>
             </div>
         </div>
     </div>
@@ -3275,6 +3496,10 @@ newTask: {
     endDate: '',
     goal: ''
 },
+newCommentText: '',
+replyText: '',
+replyToId: null,
+activeComments: [],
 sprintTaskCount: 0,
 startSprintModal: null,
                     draggedTask: null,
@@ -3565,6 +3790,85 @@ filteredUsers() {
             this.manageTeamModal.show();
         }
     } catch (e) { console.error(e); }
+},
+
+openProjectActivity() {
+    this.currentProjectView = 'audit';
+    this.auditLog = []; // Очищаем старое
+    if (this.currentProject) {
+        this.loadAuditLog(this.currentProject.id);
+        // Загружаем задачи, чтобы метод getTaskFormattedKey мог найти Ключи
+        this.loadProjectTasks(this.currentProject.id); 
+    }
+},
+
+openProjectDiscussion() {
+    this.currentProjectView = 'discussion'; // Переключаем вкладку
+    this.loadComments(this.currentProject.id, 'project'); // Загружаем комменты проекта
+},
+
+// Универсальная загрузка
+async loadComments(entityId, entityType) {
+    try {
+        const response = await fetch(`/comments/${entityType}/${entityId}`);
+        if (response.ok) {
+            this.activeComments = await response.json();
+        }
+    } catch (e) { console.error(e); }
+},
+
+// Универсальная отправка
+async postComment(entityId, entityType, parentId = null) {
+    const text = parentId ? this.replyText : this.newCommentText;
+    if (!text.trim()) return;
+
+    try {
+        const response = await fetch('/comments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                entity_id: entityId,
+                entity_type: entityType,
+                parent_id: parentId,
+                content: text
+            })
+        });
+        if (response.ok) {
+            this.newCommentText = '';
+            this.replyText = '';
+            this.replyToId = null;
+            this.loadComments(entityId, entityType);
+            // Обновляем ленту активности проекта
+            if (this.currentProject) {
+                this.loadAuditLog(this.currentProject.id);
+            }
+        }
+    } catch (e) { alert("Ошибка отправки"); }
+},
+
+// Удаление комментария (Soft Delete)
+async deleteComment(commentId) {
+    if (!confirm("Вы действительно хотите удалить этот комментарий?")) return;
+
+    try {
+        const response = await fetch(`/comments/${commentId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            // Если мы внутри задачи — обновляем комменты задачи, если в проекте — проекта
+            const entityType = this.currentProjectView === 'discussion' ? 'project' : 'task';
+            const entityId = entityType === 'project' ? this.currentProject.id : this.expandedTaskId;
+            // Обновляем список в текущей открытой задаче
+            this.loadComments(this.expandedTaskId, 'task');
+            // Обновляем ленту активности
+            if (this.currentProject) {
+                this.loadAuditLog(this.currentProject.id);
+            }
+        }
+    } catch (e) {
+        console.error("Ошибка при удалении:", e);
+    }
 },
 
 getTaskFormattedKey(entityId, entityType) {
@@ -4920,7 +5224,10 @@ toggleTask(taskId) {
     this.expandedTaskId = this.expandedTaskId === taskId ? null : taskId;
     if (this.expandedTaskId) {
         const task = this.projectTasks.find(t => t.id === taskId);
-        if (task) this.addToRecent(task, 'task'); // ЗАПОМИНАЕМ ЗАДАЧУ
+        if (task) {
+            this.addToRecent(task, 'task');
+            this.loadComments(taskId, 'task'); 
+        }
     }
 },
 prepareCreateTask() {

@@ -237,3 +237,65 @@ func GetProjectHypothesesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
 }
+
+// PATCH /tasks/{id}
+func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, _ := strconv.Atoi(vars["id"])
+	userID, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	var t models.Task
+	json.NewDecoder(r.Body).Decode(&t)
+
+	oldTask, err := services.GetTaskByID(id)
+	if err != nil {
+		http.Error(w, "Task not found", 404)
+		return
+	}
+
+	if !RequirePermission(w, r, oldTask.ProjectId, "task.edit") {
+		return
+	}
+
+	if err := services.UpdateTask(id, t); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	services.LogAudit(userID, oldTask.ProjectId, "task_updated", "task", id, "Обновлена информация о задаче")
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DELETE /tasks/{id}
+func DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, _ := strconv.Atoi(vars["id"])
+	userID, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	task, err := services.GetTaskByID(id)
+	if err != nil {
+		http.Error(w, "Task not found", 404)
+		return
+	}
+
+	// Удалять может автор или Lead
+	isLead := services.CheckPermission(userID, task.ProjectId, "project.manage_members") == nil
+	if task.CreatedBy != userID && !isLead {
+		http.Error(w, "Forbidden", 403)
+		return
+	}
+
+	if err := services.DeleteTask(id); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	services.LogAudit(userID, task.ProjectId, "task_deleted", "task", id, "Задача удалена")
+	w.WriteHeader(http.StatusNoContent)
+}

@@ -45,12 +45,16 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/projects/{id}/progress", handlers.GetProjectProgress).Methods("GET")
 	r.HandleFunc("/projects/{id}/hypotheses", handlers.GetProjectHypothesesHandler).Methods("GET")
 	r.HandleFunc("/projects/{id}/hypotheses", handlers.CreateHypothesisHandler).Methods("POST")
+	r.HandleFunc("/projects/{id}", handlers.UpdateProjectHandler).Methods("PATCH")
+	r.HandleFunc("/projects/{id}", handlers.DeleteProjectHandler).Methods("DELETE")
 
 	// --- Tasks ---
 	r.HandleFunc("/tasks", handlers.CreateTask).Methods("POST")
 	r.HandleFunc("/tasks/{id}/status", handlers.UpdateTaskStatus).Methods("PATCH")
 	r.HandleFunc("/tasks/{id}/sprint", handlers.UpdateTaskSprintHandler).Methods("PATCH")
 	r.HandleFunc("/user/tasks", handlers.GetAllUserTasksHandler).Methods("GET")
+	r.HandleFunc("/tasks/{id}", handlers.UpdateTaskHandler).Methods("PATCH")
+	r.HandleFunc("/tasks/{id}", handlers.DeleteTaskHandler).Methods("DELETE")
 
 	// --- Sprints ---
 	r.HandleFunc("/projects/{id}/sprints", handlers.GetProjectSprintsHandler).Methods("GET")
@@ -91,6 +95,7 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/comments", handlers.CreateCommentHandler).Methods("POST")
 	r.HandleFunc("/comments/{type}/{id}", handlers.GetCommentsHandler).Methods("GET")
 	r.HandleFunc("/comments/{id}", handlers.DeleteCommentHandler).Methods("DELETE")
+	r.HandleFunc("/comments/{id}", handlers.UpdateCommentHandler).Methods("PATCH")
 
 	// --- Grants ---
 	r.HandleFunc("/grants", handlers.CreateGrant).Methods("POST")

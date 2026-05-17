@@ -430,3 +430,31 @@ func GetProjectHypotheses(projectID int) ([]models.Hypothesis, error) {
 	}
 	return list, nil
 }
+
+// UpdateTask обновляет данные задачи
+func UpdateTask(taskId int, task models.Task) error {
+	query := `UPDATE tasks SET 
+		title = $1, description = $2, priority = $3, assignee_id = $4, 
+		due_date = $5, type = $6, research_contribution = $7, research_method = $8,
+		updated_at = NOW() 
+		WHERE id = $9`
+
+	_, err := db.DB.Exec(query,
+		task.Title, task.Description, strings.ToLower(task.Priority),
+		task.AssigneeId, task.DueDate, task.Type,
+		task.ResearchContribution, task.ResearchMethod, taskId)
+	return err
+}
+
+// DeleteTask полностью удаляет задачу
+func DeleteTask(taskId int) error {
+	// Сначала удаляем теги задачи (связи)
+	_, _ = db.DB.Exec("DELETE FROM task_tags WHERE task_id = $1", taskId)
+	// Потом историю
+	_, _ = db.DB.Exec("DELETE FROM task_history WHERE task_id = $1", taskId)
+	// Потом комменты (или они удалятся по каскаду, если настроено)
+	_, _ = db.DB.Exec("DELETE FROM comments WHERE entity_type = 'task' AND entity_id = $1", taskId)
+
+	_, err := db.DB.Exec("DELETE FROM tasks WHERE id = $1", taskId)
+	return err
+}

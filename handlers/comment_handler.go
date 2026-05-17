@@ -122,3 +122,27 @@ func DeleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// PATCH /comments/{id}
+func UpdateCommentHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, _ := strconv.Atoi(vars["id"])
+	userID, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	comment, _ := services.GetCommentRaw(id)
+	if comment.UserId != userID {
+		http.Error(w, "Not your comment", 403)
+		return
+	}
+
+	var data struct {
+		Content string `json:"content"`
+	}
+	json.NewDecoder(r.Body).Decode(&data)
+
+	services.UpdateComment(id, data.Content)
+	w.WriteHeader(200)
+}

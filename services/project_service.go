@@ -331,3 +331,31 @@ func GetProjectAssignableUsers(projectID int) ([]models.User, error) {
 	}
 	return users, nil
 }
+
+func UpdateProject(id int, p models.Project) error {
+	query := `UPDATE projects SET 
+		name = $1, description = $2, research_goal = $3, 
+		main_hypothesis = $4, novelty = $5, expected_result = $6,
+		status = $7, end_date = $8, visibility = $9
+		WHERE id = $10`
+	_, err := db.DB.Exec(query, p.Name, p.Description, p.ResearchGoal,
+		p.MainHypothesis, p.Novelty, p.ExpectedResult,
+		p.Status, p.EndDate, p.Visibility, id)
+	return err
+}
+
+func DeleteProject(id int) error {
+	// Каскадное удаление обычно настраивается в БД, но для надежности:
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	tx.Exec("DELETE FROM tasks WHERE project_id = $1", id)
+	tx.Exec("DELETE FROM project_members WHERE project_id = $1", id)
+	tx.Exec("DELETE FROM audit_log WHERE project_id = $1", id)
+	tx.Exec("DELETE FROM projects WHERE id = $1", id)
+
+	return tx.Commit()
+}

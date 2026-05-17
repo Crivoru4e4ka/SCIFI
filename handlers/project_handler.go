@@ -165,3 +165,51 @@ func GetProjectAssignableUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(users)
 }
+
+// PATCH /projects/{id}
+func UpdateProjectHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, _ := strconv.Atoi(vars["id"])
+	userID, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	if !RequirePermission(w, r, id, "project.edit") {
+		return
+	}
+
+	var p models.Project
+	json.NewDecoder(r.Body).Decode(&p)
+
+	if err := services.UpdateProject(id, p); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	services.LogAudit(userID, id, "project_updated", "project", id, "Изменены настройки проекта")
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DELETE /projects/{id}
+func DeleteProjectHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, _ := strconv.Atoi(vars["id"])
+	userID, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	// Только Lead или Admin
+	if !RequirePermission(w, r, id, "project.manage_members") {
+		return
+	}
+
+	if err := services.DeleteProject(id); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	services.LogActivity(userID, 0, "project", id, "deleted", "Проект удален")
+	w.WriteHeader(http.StatusNoContent)
+}

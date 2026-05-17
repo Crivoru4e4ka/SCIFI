@@ -1370,6 +1370,11 @@ body.dark-theme .jira-tag {
         <a :href="'/projects/' + currentProject.id + '/report'" class="btn btn-outline-primary btn-sm">
             <i class="fas fa-file-download me-2"></i>Отчет по ГОСТ 7.32
         </a>
+        <button v-if="currentUserProjectRole === 'project_lead'" 
+                class="btn btn-outline-danger btn-sm" 
+                @click="deleteProject(currentProject.id)">
+            <i class="fas fa-trash-alt me-2"></i>Удалить раздел
+        </button>
       </div>
     </div>
 
@@ -1466,6 +1471,7 @@ body.dark-theme .jira-tag {
                         <th>Исполнитель</th>
                         <th>Приоритет</th>
                         <th>Срок</th>
+                        <th class="text-end pe-3">Действия</th>
                     </tr>
                 </thead>
 <tbody>
@@ -1518,11 +1524,29 @@ body.dark-theme .jira-tag {
             <td>{{ task.assignee_id ? getUserName(task.assignee_id) : '—' }}</td>
             <td>{{ task.priority }}</td>
             <td class="small text-muted">{{ task.due_date ? formatDate(task.due_date) : '—' }}</td>
+            <td class="text-end pe-3">
+                <div class="d-flex justify-content-end gap-2">
+                    <!-- Кнопка редактирования (доступна всем участникам с правом task.edit) -->
+                    <button class="btn btn-link btn-sm text-primary p-0" 
+                            title="Редактировать"
+                            @click.stop="prepareEditTask(task)">
+                        <i class="fas fa-pen"></i>
+                    </button>
+
+                    <!-- Кнопка удаления (только для автора или лида) -->
+                    <button v-if="task.created_by === profile.id || currentUserProjectRole === 'project_lead'" 
+                            class="btn btn-link btn-sm text-danger p-0" 
+                            title="Удалить"
+                            @click.stop="deleteTask(task.id)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
         </tr>
 
         <!-- РАЗВЕРНУТАЯ СТРОКА (выпадет при клике) -->
         <tr v-if="expandedTaskId === task.id" class="bg-light shadow-inner">
-            <td colspan="6" class="p-4">
+            <td colspan="7" class="p-4">
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
                         <div class="row">
@@ -2111,7 +2135,8 @@ body.dark-theme .jira-tag {
                             <div v-if="entry.entity_type" class="mt-1">
                             <!-- Если это задача, выводим Ключ -->
                             <span v-if="entry.entity_type === 'task'" class="badge bg-light text-dark border" style="font-size: 0.7rem;">
-                                <i class="fas fa-check-square me-1"></i> {{ getTaskFormattedKey(entry.entity_id, entry.entity_type) }}
+                                <i class="fas fa-check-square me-1"></i> 
+                                {{ currentProject.key.toUpperCase() }}-{{ projectTasks.find(t => t.id === entry.entity_id)?.task_num || entry.entity_id }}
                             </span>
 
                             <!-- Если это комментарий (к задаче или к проекту) -->
@@ -3792,13 +3817,56 @@ filteredUsers() {
     } catch (e) { console.error(e); }
 },
 
+async deleteTask(taskId) {
+    if (!confirm("Вы уверены, что хотите удалить эту задачу? Это действие необратимо.")) return;
+    try {
+        const response = await fetch(`/tasks/${taskId}`, { method: 'DELETE' });
+        if (response.ok) {
+            this.loadProjectTasks(this.currentProject.id); // Обновляем список
+        } else {
+            alert("Ошибка при удалении задачи");
+        }
+    } catch (e) { console.error(e); }
+},
+
+async deleteProject(projectId) {
+    if (!confirm("ВНИМАНИЕ! Вы удаляете весь раздел со всеми задачами, файлами и обсуждениями. Продолжить?")) return;
+    try {
+        const response = await fetch(`/projects/${projectId}`, { method: 'DELETE' });
+        if (response.ok) {
+            this.currentProject = null; // Закрываем вид проекта
+            this.loadProjects();        // Обновляем список на главной
+            this.activeSidebarTab = 'sections';
+        } else {
+            alert("Ошибка при удалении раздела");
+        }
+    } catch (e) { console.error(e); }
+},
+
+// Подготовка редактирования (открыть ту же модалку создания, но заполненную)
+prepareEditTask(task) {
+    this.newTask = {
+        id: task.id,
+        projectId: task.project_id,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        type: task.type,
+        assigneeId: task.assignee_id,
+        dueDate: task.due_date ? task.due_date.substring(0, 10) : ''
+    };
+    this.taskSubmitButtonText = "Сохранить изменения"; 
+    this.createTaskModal.show();
+},
+
 openProjectActivity() {
     this.currentProjectView = 'audit';
     this.auditLog = []; // Очищаем старое
     if (this.currentProject) {
-        this.loadAuditLog(this.currentProject.id);
         // Загружаем задачи, чтобы метод getTaskFormattedKey мог найти Ключи
-        this.loadProjectTasks(this.currentProject.id); 
+        this.loadProjectTasks(this.currentProject.id);
+        this.loadAuditLog(this.currentProject.id); 
     }
 },
 

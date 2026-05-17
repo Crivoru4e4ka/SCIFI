@@ -1437,36 +1437,41 @@ body.dark-theme .jira-tag {
         <div class="mt-1 text-secondary">{{ task.research_contribution || 'Не указано' }}</div>
     </div>
 
-    <!-- Динамические параметры из JSON -->
-        <div class="col-12 border-top pt-2">
-            <span class="text-muted small">Специфические параметры ({{ task.type }}):</span>
-            <div class="mt-1 text-dark small">
-                <!-- Если это Эксперимент -->
-                <div v-if="task.type === 'experiment' && task.parameters">
-                    <strong>Цель:</strong> {{ task.parameters.exp_goal || '—' }} | 
-                    <strong>Выборка:</strong> {{ task.parameters.exp_sample_size || '—' }} |
-                    <strong>Метрики:</strong> {{ task.parameters.exp_metrics || '—' }}
-                </div>
+        <!-- Улучшенные Динамические параметры из JSON -->
+        <div class="col-12 border-top pt-3 mb-3"> <!-- Увеличили pt-3 и добавили mb-3 -->
+            <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                Специфические параметры ({{ task.type }})
+            </span>
+            
+            <div class="mt-2 p-2 bg-light rounded border-start border-3 border-secondary shadow-sm">
+                <div class="text-dark small">
+                    <!-- Если это Эксперимент -->
+                    <div v-if="task.type === 'experiment' && task.parameters" class="d-flex flex-wrap gap-3">
+                        <span><strong>Цель:</strong> {{ task.parameters.exp_goal || '—' }}</span>
+                        <span><strong>Выборка:</strong> {{ task.parameters.exp_sample_size || '—' }}</span>
+                        <span><strong>Метрики:</strong> {{ task.parameters.exp_metrics || '—' }}</span>
+                    </div>
 
-                <!-- Если это Исследование/Литературный обзор -->
-                <div v-else-if="task.type === 'research' && task.parameters">
-                    <strong>Вопрос:</strong> {{ task.parameters.res_question || '—' }} |
-                    <strong>Объект:</strong> {{ task.parameters.res_object || '—' }}
-                </div>
+                    <!-- Если это Исследование/Литературный обзор -->
+                    <div v-else-if="task.type === 'research' && task.parameters" class="d-flex flex-wrap gap-3">
+                        <span><strong>Вопрос:</strong> {{ task.parameters.res_question || '—' }}</span>
+                        <span><strong>Объект:</strong> {{ task.parameters.res_object || '—' }}</span>
+                    </div>
 
-                <!-- Если это Публикация -->
-                <div v-else-if="task.type === 'doc' && task.parameters">
-                    <strong>Журнал:</strong> {{ task.parameters.doc_journal || '—' }} |
-                    <strong>Статус:</strong> {{ task.parameters.doc_status || '—' }}
-                </div>
+                    <!-- Если это Публикация -->
+                    <div v-else-if="task.type === 'doc' && task.parameters" class="d-flex flex-wrap gap-3">
+                        <span><strong>Журнал:</strong> {{ task.parameters.doc_journal || '—' }}</span>
+                        <span><strong>Статус:</strong> <span class="badge bg-white text-primary border border-primary">{{ task.parameters.doc_status || '—' }}</span></span>
+                    </div>
 
-                <!-- Если это Анализ -->
-                <div v-else-if="task.type === 'analysis' && task.parameters">
-                    <strong>P-value:</strong> {{ task.parameters.stat_p_value || '—' }} |
-                    <strong>Инструменты:</strong> {{ task.parameters.an_tools || '—' }}
-                </div>
+                    <!-- Если это Анализ -->
+                    <div v-else-if="task.type === 'analysis' && task.parameters" class="d-flex flex-wrap gap-3">
+                        <span><strong>P-value:</strong> <code class="text-danger">{{ task.parameters.stat_p_value || '—' }}</code></span>
+                        <span><strong>Инструменты:</strong> {{ task.parameters.an_tools || '—' }}</span>
+                    </div>
 
-                <div v-else class="text-muted italic">Дополнительные параметры не заданы</div>
+                    <div v-else class="text-muted italic">Дополнительные параметры не заданы</div>
+                </div>
             </div>
         </div>
 

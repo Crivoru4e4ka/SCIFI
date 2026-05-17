@@ -12,14 +12,8 @@ import (
 
 // POST /project-members
 func CreateProjectMember(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	userID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "invalid session", http.StatusUnauthorized)
+	userID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -29,8 +23,7 @@ func CreateProjectMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := services.CheckPermission(userID, pm.ProjectId, "project.manage_members"); err != nil {
-		http.Error(w, "insufficient permissions", http.StatusForbidden)
+	if !RequirePermission(w, r, pm.ProjectId, "project.manage_members") {
 		return
 	}
 
@@ -51,14 +44,8 @@ func CreateProjectMember(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /projects/{id}/members/{userID}
 func RemoveProjectMemberHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	currentUserID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "invalid session", http.StatusUnauthorized)
+	currentUserID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -74,8 +61,7 @@ func RemoveProjectMemberHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := services.CheckPermission(currentUserID, projectID, "project.manage_members"); err != nil {
-		http.Error(w, "insufficient permissions", http.StatusForbidden)
+	if !RequirePermission(w, r, projectID, "project.manage_members") {
 		return
 	}
 
@@ -90,14 +76,8 @@ func RemoveProjectMemberHandler(w http.ResponseWriter, r *http.Request) {
 
 // PATCH /projects/{id}/members/{userID}/role
 func UpdateProjectMemberRoleHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	currentUserID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "invalid session", http.StatusUnauthorized)
+	currentUserID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -113,8 +93,7 @@ func UpdateProjectMemberRoleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := services.CheckPermission(currentUserID, projectID, "project.manage_members"); err != nil {
-		http.Error(w, "insufficient permissions", http.StatusForbidden)
+	if !RequirePermission(w, r, projectID, "project.manage_members") {
 		return
 	}
 
@@ -133,9 +112,9 @@ func UpdateProjectMemberRoleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var roleName string
-	for _, r := range roles {
-		if r.Id == payload.RoleID {
-			roleName = r.Name
+	for _, role := range roles {
+		if role.Id == payload.RoleID {
+			roleName = role.Name
 			break
 		}
 	}

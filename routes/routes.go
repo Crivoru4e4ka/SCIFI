@@ -3,6 +3,7 @@ package routes
 import (
 	"net/http"
 	"project-MVP/handlers"
+	"project-MVP/middleware"
 
 	"github.com/gorilla/mux"
 )
@@ -21,6 +22,7 @@ func NoCacheMiddleware(next http.Handler) http.Handler {
 func InitRoutes() *mux.Router {
 	r := mux.NewRouter()
 
+	r.Use(middleware.AuthMiddleware)
 	r.Use(NoCacheMiddleware)
 
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))

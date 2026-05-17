@@ -9,6 +9,11 @@ import (
 
 // POST /tags
 func CreateTag(w http.ResponseWriter, r *http.Request) {
+	_, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	var t models.Tag
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

@@ -13,11 +13,19 @@ import (
 
 // POST /projects
 func CreateProject(w http.ResponseWriter, r *http.Request) {
+	userID, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	var p models.Project
 	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	// Принудительно ставим создателя из сессии
+	p.CreatedBy = userID
 
 	created, err := services.CreateProject(p)
 	if err != nil {
@@ -54,17 +62,8 @@ func GetProjects(w http.ResponseWriter, r *http.Request) {
 
 // GET /user/projects - получить проекты текущего пользователя
 func GetUserProjects(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		log.Println("GetUserProjects: No session cookie found")
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	userID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		log.Printf("GetUserProjects: Invalid session value: %s\n", cookie.Value)
-		http.Error(w, "invalid session", http.StatusUnauthorized)
+	userID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -96,6 +95,10 @@ func GetProjectProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !RequirePermission(w, r, id, "project.view") {
+		return
+	}
+
 	progress, err := services.GetProjectProgress(id)
 	if err != nil {
 		if err == services.ErrNotFound {
@@ -122,6 +125,10 @@ func GetProjectTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !RequirePermission(w, r, id, "project.view") {
+		return
+	}
+
 	tasks, err := services.GetTasksByProject(id)
 	if err != nil {
 		if err == services.ErrNotFound {
@@ -142,6 +149,10 @@ func GetProjectAssignableUsers(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil || id <= 0 {
 		http.Error(w, "invalid project id", http.StatusBadRequest)
+		return
+	}
+
+	if !RequirePermission(w, r, id, "project.view") {
 		return
 	}
 

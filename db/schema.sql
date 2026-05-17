@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS public.project_members
     id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
     project_id integer NOT NULL,
     user_id integer NOT NULL,
-    role character varying(20) COLLATE pg_catalog."default" DEFAULT 'participant'::character varying,
+    role character varying(50) COLLATE pg_catalog."default" DEFAULT 'participant'::character varying,
     role_id integer,
     CONSTRAINT project_members_pkey PRIMARY KEY (id),
     CONSTRAINT unique_member UNIQUE (project_id, user_id)
@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS public.projects
     expected_result text COLLATE pg_catalog."default" DEFAULT ''::text,
     visibility text COLLATE pg_catalog."default" DEFAULT 'closed'::text,
     team_id integer,
+    execution_type character varying(20) COLLATE pg_catalog."default" DEFAULT 'manual'::character varying,
     CONSTRAINT projects_pkey PRIMARY KEY (id)
 );
 
@@ -263,7 +264,7 @@ CREATE TABLE IF NOT EXISTS public.users
     email character varying(255) COLLATE pg_catalog."default" NOT NULL,
     password_hash character varying(255) COLLATE pg_catalog."default" NOT NULL,
     full_name character varying(255) COLLATE pg_catalog."default",
-    role character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    role character varying(50) COLLATE pg_catalog."default" NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     is_active boolean DEFAULT false,
     CONSTRAINT users_pkey PRIMARY KEY (id),

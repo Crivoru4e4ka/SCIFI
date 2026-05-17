@@ -17,6 +17,10 @@ func GetProjectAttachmentsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectID, _ := strconv.Atoi(vars["id"])
 
+	if !RequirePermission(w, r, projectID, "project.view") {
+		return
+	}
+
 	files, err := services.GetProjectAttachments(projectID)
 	if err != nil {
 		http.Error(w, "Ошибка при получении файлов", http.StatusInternalServerError)
@@ -31,15 +35,24 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskID, _ := strconv.Atoi(vars["id"])
 
-	// 1. Получаем ID текущего пользователя из сессии
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "Нужна авторизация", http.StatusUnauthorized)
+	// Получаем ID текущего пользователя из контекста
+	userID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
-	userID, _ := strconv.Atoi(cookie.Value)
 
-	// 2. Читаем файл
+	// Получаем задачу для проверки project_id
+	task, err := services.GetTaskByID(taskID)
+	if err != nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+
+	if !RequirePermission(w, r, task.ProjectId, "attachment.upload") {
+		return
+	}
+
+	// Читаем файл
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		http.Error(w, "Ошибка чтения файла", http.StatusBadRequest)
@@ -47,22 +60,22 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// 3. Создаем папку, если её вдруг нет (защита от ошибки 500)
+	// Создаем папку, если её вдруг нет
 	uploadDir := "./static/uploads"
 	os.MkdirAll(uploadDir, os.ModePerm)
 
-	// 4. Формируем путь и сохраняем файл
+	// Формируем путь и сохраняем файл
 	filePath := uploadDir + "/" + header.Filename
 	out, err := os.Create(filePath)
 	if err != nil {
-		log.Printf("Ошибка при создании файла: %v", err) // Это появится в консоли Go
+		log.Printf("Ошибка при создании файла: %v", err)
 		http.Error(w, "Не удалось сохранить файл на диске", http.StatusInternalServerError)
 		return
 	}
 	defer out.Close()
 	io.Copy(out, file)
 
-	// 5. Записываем в базу
+	// Записываем в базу
 	attachment := models.Attachment{
 		TaskId:   taskID,
 		UserId:   userID,
@@ -84,6 +97,10 @@ func GenerateGostReport(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
 	projectID, _ := strconv.Atoi(idStr)
+
+	if !RequirePermission(w, r, projectID, "project.view") {
+		return
+	}
 
 	reportText, err := services.GetProjectReportData(projectID)
 	if err != nil {

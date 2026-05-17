@@ -27,12 +27,18 @@ func GetUserSystemRole(userID int) (string, error) {
 	return role, nil
 }
 
-// GetUserProjectRoleID возвращает ID проектной роли пользователя
+// GetUserProjectRoleID возвращает ID проектной роли пользователя.
+// Если role_id NULL, пытается резолвить по строковой роли role.
 func GetUserProjectRoleID(userID, projectID int) (*int, error) {
 	var roleID sql.NullInt64
-	err := db.DB.QueryRow(`SELECT role_id FROM project_members WHERE user_id = $1 AND project_id = $2`, userID, projectID).Scan(&roleID)
+	var roleName string
+	err := db.DB.QueryRow(`
+		SELECT role_id, COALESCE(role, '') 
+		FROM project_members 
+		WHERE user_id = $1 AND project_id = $2`, userID, projectID).Scan(&roleID, &roleName)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			log.Printf("[RBAC] User %d не является участником проекта %d", userID, projectID)
 			return nil, nil // Пользователь не участник проекта
 		}
 		return nil, err
@@ -41,6 +47,15 @@ func GetUserProjectRoleID(userID, projectID int) (*int, error) {
 		v := int(roleID.Int64)
 		return &v, nil
 	}
+	// Fallback: резолвим role_id по строковой роли
+	if roleName != "" {
+		id, err := getRoleIDByName(roleName)
+		if err == nil && id > 0 {
+			log.Printf("[RBAC] Fallback: разрешён доступ по строковой роли '%s' (id=%d) для user %d в проекте %d", roleName, id, userID, projectID)
+			return &id, nil
+		}
+	}
+	log.Printf("[RBAC] User %d в проекте %d: role_id NULL и строковая роль '%s' не резолвится", userID, projectID, roleName)
 	return nil, nil
 }
 
@@ -77,6 +92,7 @@ func GetUserPermissions(userID, projectID int) ([]string, error) {
 
 	// Admin имеет все права
 	if sysRole == "admin" {
+		log.Printf("[RBAC] User %d — системный admin, выданы все права", userID)
 		return getAllPermissionCodes(), nil
 	}
 
@@ -115,7 +131,7 @@ func GetUserPermissions(userID, projectID int) ([]string, error) {
 func HasPermission(userID, projectID int, permissionCode string) bool {
 	perms, err := GetUserPermissions(userID, projectID)
 	if err != nil {
-		log.Printf("HasPermission error: %v", err)
+		log.Printf("[RBAC] HasPermission error user=%d project=%d: %v", userID, projectID, err)
 		return false
 	}
 	for _, p := range perms {
@@ -126,9 +142,24 @@ func HasPermission(userID, projectID int, permissionCode string) bool {
 	return false
 }
 
-// CheckPermission возвращает ошибку если права нет
+// CheckPermission возвращает ошибку если права нет.
+// Добавляет подробное логирование для диагностики.
 func CheckPermission(userID, projectID int, permissionCode string) error {
-	if !HasPermission(userID, projectID, permissionCode) {
+	sysRole, _ := GetUserSystemRole(userID)
+	projRoleID, _ := GetUserProjectRoleID(userID, projectID)
+
+	var projRoleName string
+	if projRoleID != nil {
+		var rn string
+		db.DB.QueryRow(`SELECT name FROM roles WHERE id = $1`, *projRoleID).Scan(&rn)
+		projRoleName = rn
+	}
+
+	granted := HasPermission(userID, projectID, permissionCode)
+	log.Printf("[RBAC] User=%d | SysRole=%s | ProjRole=%s (id=%v) | Permission=%s | Granted=%v",
+		userID, sysRole, projRoleName, projRoleID, permissionCode, granted)
+
+	if !granted {
 		return ErrNoPermission
 	}
 	return nil
@@ -300,6 +331,27 @@ func GetAuditLog(projectID int, limit int) ([]models.AuditLog, error) {
 		logs = append(logs, l)
 	}
 	return logs, nil
+}
+
+// IsAdmin проверяет, является ли пользователь системным администратором
+func IsAdmin(userID int) bool {
+	role, err := GetUserSystemRole(userID)
+	if err != nil {
+		return false
+	}
+	return role == "admin"
+}
+
+// IsProjectMember проверяет, является ли пользователь участником проекта
+func IsProjectMember(userID, projectID int) bool {
+	var exists bool
+	err := db.DB.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM project_members WHERE user_id = $1 AND project_id = $2)
+	`, userID, projectID).Scan(&exists)
+	if err != nil {
+		return false
+	}
+	return exists
 }
 
 // Вспомогательные функции

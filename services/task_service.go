@@ -15,6 +15,7 @@ import (
 var allowedTaskStatuses = map[string]bool{
 	"todo":        true,
 	"in_progress": true,
+	"review":      true,
 	"done":        true,
 }
 

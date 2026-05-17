@@ -40,6 +40,10 @@ func GetProjectMembersWithRolesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !RequirePermission(w, r, projectID, "project.view") {
+		return
+	}
+
 	members, err := services.GetProjectMembersWithRoles(projectID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -51,14 +55,8 @@ func GetProjectMembersWithRolesHandler(w http.ResponseWriter, r *http.Request) {
 
 // POST /projects/{id}/members/{userID}/role
 func AssignProjectRoleHandler(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	currentUserID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "invalid session", http.StatusUnauthorized)
+	currentUserID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -75,8 +73,7 @@ func AssignProjectRoleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Проверяем право на управление участниками
-	if err := services.CheckPermission(currentUserID, projectID, "project.manage_members"); err != nil {
-		http.Error(w, "insufficient permissions", http.StatusForbidden)
+	if !RequirePermission(w, r, projectID, "project.manage_members") {
 		return
 	}
 
@@ -101,14 +98,8 @@ func AssignProjectRoleHandler(w http.ResponseWriter, r *http.Request) {
 
 // GET /projects/{id}/my-permissions
 func GetMyProjectPermissions(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	userID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "invalid session", http.StatusUnauthorized)
+	userID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -137,6 +128,10 @@ func GetProjectAuditLog(w http.ResponseWriter, r *http.Request) {
 	projectID, err := strconv.Atoi(vars["id"])
 	if err != nil || projectID <= 0 {
 		http.Error(w, "invalid project id", http.StatusBadRequest)
+		return
+	}
+
+	if !RequirePermission(w, r, projectID, "audit.view") {
 		return
 	}
 

@@ -11,16 +11,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// POST /tasks — устаревший endpoint, требует авторизации и перенаправляет на CreateTaskInProject
+// POST /tasks — устаревший endpoint, требует авторизации
 func CreateTask(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	userID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "invalid session", http.StatusUnauthorized)
+	userID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -35,8 +29,7 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := services.CheckPermission(userID, t.ProjectId, "task.create"); err != nil {
-		http.Error(w, "insufficient permissions", http.StatusForbidden)
+	if !RequirePermission(w, r, t.ProjectId, "task.create") {
 		return
 	}
 
@@ -57,14 +50,8 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 
 // POST /projects/{id}/tasks
 func CreateTaskInProject(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	userID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "invalid session", http.StatusUnauthorized)
+	userID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -75,8 +62,7 @@ func CreateTaskInProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := services.CheckPermission(userID, projectID, "task.create"); err != nil {
-		http.Error(w, "insufficient permissions", http.StatusForbidden)
+	if !RequirePermission(w, r, projectID, "task.create") {
 		return
 	}
 
@@ -111,14 +97,8 @@ func UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	currentUserID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "invalid session", http.StatusUnauthorized)
+	currentUserID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -138,8 +118,7 @@ func UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Проверяем права на изменение статуса
-	if err := services.CheckPermission(currentUserID, task.ProjectId, "task.change_status"); err != nil {
-		http.Error(w, "insufficient permissions", http.StatusForbidden)
+	if !RequirePermission(w, r, task.ProjectId, "task.change_status") {
 		return
 	}
 
@@ -157,9 +136,26 @@ func UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// PATCH /tasks/{id}/sprint
 func UpdateTaskSprintHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
+
+	_, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	// Получаем задачу для проверки project_id
+	task, err := services.GetTaskByID(id)
+	if err != nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+
+	if !RequirePermission(w, r, task.ProjectId, "task.edit") {
+		return
+	}
 
 	var data struct {
 		SprintId *int `json:"sprint_id"`
@@ -177,30 +173,34 @@ func UpdateTaskSprintHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetAllUserTasksHandler(w http.ResponseWriter, r *http.Request) {
-	// 1. Получаем сессию пользователя (как в ваших прошлых хендлерах)
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "Не авторизован", http.StatusUnauthorized)
+	userID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
-	userID, _ := strconv.Atoi(cookie.Value)
 
-	// 2. Вызываем сервис
 	tasks, err := services.GetAllUserTasks(userID)
 	if err != nil {
 		http.Error(w, "Ошибка при получении всех задач: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// 3. Отправляем JSON
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tasks)
 }
 
 // POST /projects/{id}/hypotheses
 func CreateHypothesisHandler(w http.ResponseWriter, r *http.Request) {
+	_, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	vars := mux.Vars(r)
 	projectID, _ := strconv.Atoi(vars["id"])
+
+	if !RequirePermission(w, r, projectID, "hypothesis.edit") {
+		return
+	}
 
 	var h models.Hypothesis
 	if err := json.NewDecoder(r.Body).Decode(&h); err != nil {
@@ -223,6 +223,10 @@ func CreateHypothesisHandler(w http.ResponseWriter, r *http.Request) {
 func GetProjectHypothesesHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectID, _ := strconv.Atoi(vars["id"])
+
+	if !RequirePermission(w, r, projectID, "project.view") {
+		return
+	}
 
 	list, err := services.GetProjectHypotheses(projectID)
 	if err != nil {

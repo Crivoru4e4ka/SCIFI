@@ -22,6 +22,8 @@ func main() {
 	db.Connect()
 
 	services.InitRoles()
+	services.InitPermissions()
+	services.InitRolePermissions()
 
 	r := routes.InitRoutes()
 

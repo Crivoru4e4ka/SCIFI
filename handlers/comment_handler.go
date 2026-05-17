@@ -25,6 +25,22 @@ func CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	// Получаем задачу для проверки project_id
+	task, err := services.GetTaskByID(taskId)
+	if err != nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+
+	if !RequirePermission(w, r, task.ProjectId, "comment.create") {
+		return
+	}
+
 	var req createCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -58,6 +74,17 @@ func GetCommentsByTask(w http.ResponseWriter, r *http.Request) {
 	taskId, err := strconv.Atoi(vars["id"])
 	if err != nil || taskId <= 0 {
 		http.Error(w, "invalid task id", http.StatusBadRequest)
+		return
+	}
+
+	// Получаем задачу для проверки project_id
+	task, err := services.GetTaskByID(taskId)
+	if err != nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+
+	if !RequirePermission(w, r, task.ProjectId, "project.view") {
 		return
 	}
 

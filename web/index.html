@@ -915,6 +915,7 @@ body.dark-theme .jira-tag {
                 <option value="all">Статус: Все</option>
                 <option value="todo">К выполнению</option>
                 <option value="in_progress">В работе</option>
+                <option value="review">На проверке</option>
                 <option value="done">Готово</option>
             </select>
 
@@ -1498,7 +1499,7 @@ body.dark-theme .jira-tag {
     <div v-if="currentProjectView === 'board'" class="mt-4">
       <div class="row g-3">
         <!-- Колонка: К выполнению -->
-        <div class="col-12 col-lg-4">
+        <div class="col-12 col-lg-3">
           <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'todo')" data-status="todo">
             <div class="small text-muted mb-2 fw-semibold">К выполнению ({{ projectBoardTasks.todo.length }})</div>
             <div 
@@ -1535,7 +1536,7 @@ body.dark-theme .jira-tag {
         </div>
 
         <!-- Колонка: В работе -->
-        <div class="col-12 col-lg-4">
+        <div class="col-12 col-lg-3">
           <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'in_progress')" data-status="in_progress" style="background-color: #fff8e5;">
             <div class="small text-muted mb-2 fw-semibold">В работе ({{ projectBoardTasks.inProgress.length }})</div>
             <div 
@@ -1571,8 +1572,49 @@ body.dark-theme .jira-tag {
           </div>
         </div>
 
+<!-- Колонка: На проверке -->
+<div class="col-12 col-md-6 col-lg-3"> <!-- Поменяли на col-lg-3 для 4-х колонок -->
+  <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'review')" data-status="review" style="background-color: #f3e8ff;"> <!-- Новый цвет фона: светло-фиолетовый -->
+    <div class="small text-muted mb-2 fw-semibold">На проверке ({{ projectBoardTasks.review.length }})</div>
+    
+    <div 
+      v-for="task in projectBoardTasks.review" 
+      :key="task.id"
+      class="kanban-task card p-2 mb-2"
+      draggable="true"
+      @dragstart="startDrag($event, task, 'review')"
+      @dragend="endDrag"
+      @dragenter.prevent
+      @dragover.prevent
+      style="cursor: grab; border-left: 3px solid #6f42c1;" 
+    > <!-- Цвет границы: фиолетовый -->
+      <div class="text-muted mb-1" style="font-size: 0.7rem; font-weight: bold;">
+        <i class="fas fa-star star-toggle me-1" 
+           :class="{active: isFlagged(task.id, 'task')}" 
+           @click.stop="toggleFlag(task, 'task')"></i>
+        {{ (currentProject.key || 'TASK').toUpperCase() }}-{{ task.task_num || task.id }}
+      </div>
+      <div class="fw-semibold small">{{ task.title }}</div>
+      <div class="small text-muted">{{ task.description }}</div>
+      
+      <div v-if="task.tags" class="d-flex flex-wrap mt-1">
+        <span v-for="tag in splitTags(task.tags)" :key="tag" class="jira-tag">
+            {{ tag }}
+        </span>
+      </div>
+      
+      <div v-if="task.assignee_id" class="small mt-2">
+        <span class="badge bg-light text-dark">{{ getUserName(task.assignee_id) }}</span>
+      </div>
+    </div>
+
+    <!-- Исправленная проверка длины именно для этой колонки -->
+    <div v-if="!projectBoardTasks.review.length" class="text-muted small text-center py-3">Нет задач</div>
+  </div>
+</div>
+
         <!-- Колонка: Готово -->
-        <div class="col-12 col-lg-4">
+        <div class="col-12 col-lg-3">
           <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'done')" data-status="done" style="background-color: #f0f7f0;">
             <div class="small text-muted mb-2 fw-semibold">Готово ({{ projectBoardTasks.done.length }})</div>
             <div 
@@ -2098,6 +2140,10 @@ body.dark-theme .jira-tag {
                         </div>
                         <div class="col-12 col-lg-4">
                             <div class="kanban-column p-3">
+                                <div class="small text-muted mb-2">На проверке</div>
+                            </div>
+                        <div class="col-12 col-lg-4">
+                            <div class="kanban-column p-3">
                                 <div class="small text-muted mb-2">Готово</div>
                             </div>
                         </div>
@@ -2242,9 +2288,10 @@ body.dark-theme .jira-tag {
                     <div class="mb-3">
                         <label for="taskStatus" class="form-label">Статус <span class="text-danger">*</span></label>
                         <select class="form-select" id="taskStatus" v-model="newTask.status" required>
-                            <option value="К выполнению">К выполнению</option>
-                            <option value="В РАБОТЕ">В РАБОТЕ</option>
-                            <option value="ГОТОВО">ГОТОВО</option>
+                            <option value="todo">К выполнению</option>
+                            <option value="in_progress">В работе</option>
+                            <option value="review">На проверке</option>
+                            <option value="done">Готово</option>
                         </select>
                         <div class="invalid-feedback">Выберите статус</div>
                     </div>
@@ -3027,7 +3074,7 @@ newTask: {
     // --- БАЗОВЫЕ ПОЛЯ ---
     projectId: "",
     type: "research",
-    status: "К выполнению",
+    status: "todo",
     title: "",
     description: "",
     assigneeId: null,
@@ -3174,6 +3221,7 @@ flaggedItems: [],
                     projectBoardTasks: {
                         todo: [],
                         inProgress: [],
+                        review: [],
                         done: []
                     },
                     draggedFromStatus: null,
@@ -4016,6 +4064,7 @@ async completeSprint(sprint) {
                     const s = status.toLowerCase();
                     if (s === 'todo' || s === 'к выполнению') return 'badge bg-primary';
                     if (s === 'in_progress' || s === 'в работе') return 'badge bg-warning text-dark';
+                    if (s === 'review' || s === 'на ревью' || s === 'на проверке') return 'badge bg-info text-dark';
                     if (s === 'done' || s === 'готово') return 'badge bg-success';
                     return 'badge bg-secondary';
                 },
@@ -4191,6 +4240,7 @@ organizeTasksByStatus() {
     this.projectBoardTasks = {
         todo: boardTasksSource.filter(t => ['todo', 'к выполнению'].includes((t.status || '').toLowerCase())),
         inProgress: boardTasksSource.filter(t => ['in_progress', 'в работе'].includes((t.status || '').toLowerCase())),
+        review: boardTasksSource.filter(t => ['review', 'на ревью', 'на проверке'].includes((t.status || '').toLowerCase())),
         done: boardTasksSource.filter(t => ['done', 'готово'].includes((t.status || '').toLowerCase()))
     };
     
@@ -4234,6 +4284,8 @@ resetFilters() {
                         this.projectBoardTasks.todo = this.projectBoardTasks.todo.filter(t => t.id !== task.id);
                     } else if (oldStatus === 'in_progress') {
                         this.projectBoardTasks.inProgress = this.projectBoardTasks.inProgress.filter(t => t.id !== task.id);
+                    } else if (oldStatus === 'review') { // Добавлено
+                        this.projectBoardTasks.review = this.projectBoardTasks.review.filter(t => t.id !== task.id);
                     } else if (oldStatus === 'done') {
                         this.projectBoardTasks.done = this.projectBoardTasks.done.filter(t => t.id !== task.id);
                     }
@@ -4241,11 +4293,13 @@ resetFilters() {
                     // Обновляем статус задачи
                     task.status = newStatus;
                     
-                    // Добавляем задачу в новый статус
+                    // И добавления в новый:
                     if (newStatus === 'todo') {
                         this.projectBoardTasks.todo.push(task);
                     } else if (newStatus === 'in_progress') {
                         this.projectBoardTasks.inProgress.push(task);
+                    } else if (newStatus === 'review') {
+                        this.projectBoardTasks.review.push(task);
                     } else if (newStatus === 'done') {
                         this.projectBoardTasks.done.push(task);
                     }
@@ -4614,7 +4668,7 @@ resetTaskForm() {
         // --- БАЗОВЫЕ ПОЛЯ ---
         projectId: this.currentProject ? this.currentProject.id : "", // сохраняем проект, если мы внутри него
         type: "research",
-        status: "К выполнению",
+        status: "todo",
         title: "",
         description: "",
         assigneeId: null,
@@ -4814,7 +4868,8 @@ async createTaskFromModal() {
         const response = await fetch('/tasks', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload) // Используем наш payload
+            body: JSON.stringify(payload), // Используем наш payload
+            credentials: 'include'
         });
 
         if (!response.ok) throw new Error('Не удалось создать задачу');

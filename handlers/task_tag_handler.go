@@ -20,6 +20,21 @@ func AddTagToTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	task, err := services.GetTaskByID(taskID)
+	if err != nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+
+	if !RequirePermission(w, r, task.ProjectId, "task.edit") {
+		return
+	}
+
 	var tag models.Tag
 	if err := json.NewDecoder(r.Body).Decode(&tag); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -46,6 +61,16 @@ func GetTagsForTask(w http.ResponseWriter, r *http.Request) {
 	taskID, err := strconv.Atoi(vars["id"])
 	if err != nil || taskID <= 0 {
 		http.Error(w, "invalid task id", http.StatusBadRequest)
+		return
+	}
+
+	task, err := services.GetTaskByID(taskID)
+	if err != nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+
+	if !RequirePermission(w, r, task.ProjectId, "project.view") {
 		return
 	}
 

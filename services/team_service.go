@@ -1,11 +1,26 @@
 package services
 
 import (
+	"database/sql"
 	"errors"
 	"project-MVP/db"
 	"project-MVP/models"
 	"strings"
 )
+
+// GetTeamByID возвращает команду по ID
+func GetTeamByID(teamID int) (models.Team, error) {
+	var t models.Team
+	query := `SELECT id, name, description, created_by FROM teams WHERE id = $1`
+	err := db.DB.QueryRow(query, teamID).Scan(&t.ID, &t.Name, &t.Description, &t.CreatedBy)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return t, ErrNotFound
+		}
+		return t, err
+	}
+	return t, nil
+}
 
 func GetUserTeams(userID int) ([]models.Team, error) {
 	query := `

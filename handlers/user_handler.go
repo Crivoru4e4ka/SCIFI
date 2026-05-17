@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"project-MVP/services"
-	"strconv"
 )
 
 type createUserRequest struct {
@@ -38,6 +37,11 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 
 // GET /users
 func GetUsers(w http.ResponseWriter, r *http.Request) {
+	_, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	users, err := services.GetUsers()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -50,15 +54,8 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 
 // GET /me
 func GetCurrentUser(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	userID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "invalid session", http.StatusUnauthorized)
+	userID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
 

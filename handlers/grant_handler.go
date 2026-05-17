@@ -16,14 +16,8 @@ import (
 
 // POST /grants
 func CreateGrant(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session")
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-	userID, err := strconv.Atoi(cookie.Value)
-	if err != nil {
-		http.Error(w, "invalid session", http.StatusUnauthorized)
+	userID, ok := RequireAuth(w, r)
+	if !ok {
 		return
 	}
 
@@ -46,6 +40,11 @@ func CreateGrant(w http.ResponseWriter, r *http.Request) {
 
 // GET /grants
 func ListGrants(w http.ResponseWriter, r *http.Request) {
+	_, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	query := r.URL.Query()
 	filters := services.ListGrantsFilters{
 		Status:       strings.TrimSpace(query.Get("status")),
@@ -90,6 +89,11 @@ func ListGrants(w http.ResponseWriter, r *http.Request) {
 
 // GET /grants/{id}
 func GetGrant(w http.ResponseWriter, r *http.Request) {
+	_, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil || id <= 0 {
@@ -113,10 +117,25 @@ func GetGrant(w http.ResponseWriter, r *http.Request) {
 
 // PATCH /grants/{id}
 func UpdateGrant(w http.ResponseWriter, r *http.Request) {
+	currentUserID, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil || id <= 0 {
 		http.Error(w, "invalid grant id", http.StatusBadRequest)
+		return
+	}
+
+	grant, err := services.GetGrantByID(id)
+	if err != nil {
+		http.Error(w, "grant not found", http.StatusNotFound)
+		return
+	}
+	if grant.CreatedBy != currentUserID && !services.IsAdmin(currentUserID) {
+		http.Error(w, "insufficient permissions", http.StatusForbidden)
 		return
 	}
 
@@ -142,10 +161,25 @@ func UpdateGrant(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /grants/{id}
 func DeleteGrant(w http.ResponseWriter, r *http.Request) {
+	currentUserID, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil || id <= 0 {
 		http.Error(w, "invalid grant id", http.StatusBadRequest)
+		return
+	}
+
+	grant, err := services.GetGrantByID(id)
+	if err != nil {
+		http.Error(w, "grant not found", http.StatusNotFound)
+		return
+	}
+	if grant.CreatedBy != currentUserID && !services.IsAdmin(currentUserID) {
+		http.Error(w, "insufficient permissions", http.StatusForbidden)
 		return
 	}
 
@@ -163,6 +197,11 @@ func DeleteGrant(w http.ResponseWriter, r *http.Request) {
 
 // GET /grants/{id}/projects
 func GetGrantProjects(w http.ResponseWriter, r *http.Request) {
+	_, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil || id <= 0 {
@@ -182,6 +221,11 @@ func GetGrantProjects(w http.ResponseWriter, r *http.Request) {
 
 // GET /grants/{id}/budget
 func GetGrantBudget(w http.ResponseWriter, r *http.Request) {
+	_, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil || id <= 0 {
@@ -218,10 +262,25 @@ func GetGrantBudget(w http.ResponseWriter, r *http.Request) {
 
 // POST /grants/{id}/projects
 func AddProjectToGrant(w http.ResponseWriter, r *http.Request) {
+	currentUserID, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	vars := mux.Vars(r)
 	grantID, err := strconv.Atoi(vars["id"])
 	if err != nil || grantID <= 0 {
 		http.Error(w, "invalid grant id", http.StatusBadRequest)
+		return
+	}
+
+	grant, err := services.GetGrantByID(grantID)
+	if err != nil {
+		http.Error(w, "grant not found", http.StatusNotFound)
+		return
+	}
+	if grant.CreatedBy != currentUserID && !services.IsAdmin(currentUserID) {
+		http.Error(w, "insufficient permissions", http.StatusForbidden)
 		return
 	}
 
@@ -244,7 +303,28 @@ func AddProjectToGrant(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /grants/{grantId}/projects/{fundingId}
 func RemoveProjectFromGrant(w http.ResponseWriter, r *http.Request) {
+	currentUserID, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
 	vars := mux.Vars(r)
+	grantID, err := strconv.Atoi(vars["grantId"])
+	if err != nil || grantID <= 0 {
+		http.Error(w, "invalid grant id", http.StatusBadRequest)
+		return
+	}
+
+	grant, err := services.GetGrantByID(grantID)
+	if err != nil {
+		http.Error(w, "grant not found", http.StatusNotFound)
+		return
+	}
+	if grant.CreatedBy != currentUserID && !services.IsAdmin(currentUserID) {
+		http.Error(w, "insufficient permissions", http.StatusForbidden)
+		return
+	}
+
 	fundingID, err := strconv.Atoi(vars["fundingId"])
 	if err != nil || fundingID <= 0 {
 		http.Error(w, "invalid funding id", http.StatusBadRequest)
@@ -269,6 +349,10 @@ func GetProjectGrants(w http.ResponseWriter, r *http.Request) {
 	projectID, err := strconv.Atoi(vars["id"])
 	if err != nil || projectID <= 0 {
 		http.Error(w, "invalid project id", http.StatusBadRequest)
+		return
+	}
+
+	if !RequirePermission(w, r, projectID, "project.view") {
 		return
 	}
 

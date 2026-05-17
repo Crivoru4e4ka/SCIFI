@@ -1,6 +1,8 @@
 package services
 
 import (
+	"database/sql"
+
 	"project-MVP/db"
 	"project-MVP/models"
 )
@@ -65,6 +67,20 @@ func CreateSprint(s *models.Sprint) error {
 	).Scan(&s.ID)
 
 	return err
+}
+
+// GetSprintByID возвращает спринт по ID
+func GetSprintByID(id int) (models.Sprint, error) {
+	var s models.Sprint
+	query := `SELECT id, project_id, name, status, start_date, end_date, goal FROM sprints WHERE id = $1`
+	err := db.DB.QueryRow(query, id).Scan(&s.ID, &s.ProjectID, &s.Name, &s.Status, &s.StartDate, &s.EndDate, &s.Goal)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return s, ErrNotFound
+		}
+		return s, err
+	}
+	return s, nil
 }
 
 func StartSprint(id int, s models.Sprint) error {

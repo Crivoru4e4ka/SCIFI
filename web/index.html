@@ -627,6 +627,19 @@ body.dark-theme .jira-tag {
     color: #bdc3c7;
     border-color: #444;
 }
+
+/* Цвета колонок доски */
+.kanban-column.todo { background-color: #e9f2ff; } /* Мягкий синий */
+.kanban-column.in-progress { background-color: #fff8e5; } /* Песочный/Желтый */
+.kanban-column.review { background-color: #f3e8ff; } /* Сиреневый */
+.kanban-column.done { background-color: #e3f9e5; } /* Светло-зеленый */
+
+/* Поддержка Тёмной темы (Dark Mode) */
+body.dark-theme .kanban-column.todo { background-color: #1a2b3c; }
+body.dark-theme .kanban-column.in-progress { background-color: #3d3322; }
+body.dark-theme .kanban-column.review { background-color: #332a40; }
+body.dark-theme .kanban-column.done { background-color: #1e331f; }
+
     </style>
 </head>
 <body>
@@ -1367,6 +1380,17 @@ body.dark-theme .jira-tag {
         <button v-if="canManageMembers" class="btn btn-outline-secondary btn-sm" @click="openManageMembers">
             <i class="fas fa-users-cog me-2"></i>Участники
         </button>
+
+                <!-- НОВАЯ: Кнопка Excel -->
+        <a :href="'/projects/' + currentProject.id + '/export/excel'" class="btn btn-outline-secondary btn-sm">
+            <i class="far fa-file-excel me-2 text-success"></i>Excel
+        </a>
+
+        <!-- НОВАЯ: Кнопка PDF -->
+        <a :href="'/projects/' + currentProject.id + '/export/pdf'" class="btn btn-outline-secondary btn-sm">
+            <i class="far fa-file-pdf me-2 text-danger"></i>PDF
+        </a>
+
         <a :href="'/projects/' + currentProject.id + '/report'" class="btn btn-outline-primary btn-sm">
             <i class="fas fa-file-download me-2"></i>Отчет по ГОСТ 7.32
         </a>
@@ -1735,7 +1759,7 @@ body.dark-theme .jira-tag {
       <div class="row g-3">
         <!-- Колонка: К выполнению -->
         <div class="col-12 col-lg-3">
-          <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'todo')" data-status="todo">
+          <div class="kanban-column todo p-3" @dragover.prevent @drop="moveTask($event, 'todo')" data-status="todo">
             <div class="small text-muted mb-2 fw-semibold">К выполнению ({{ projectBoardTasks.todo.length }})</div>
             <div 
               v-for="task in projectBoardTasks.todo" 
@@ -1772,7 +1796,7 @@ body.dark-theme .jira-tag {
 
         <!-- Колонка: В работе -->
         <div class="col-12 col-lg-3">
-          <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'in_progress')" data-status="in_progress" style="background-color: #fff8e5;">
+          <div class="kanban-column in-progress p-3" @dragover.prevent @drop="moveTask($event, 'in_progress')" data-status="in_progress">
             <div class="small text-muted mb-2 fw-semibold">В работе ({{ projectBoardTasks.inProgress.length }})</div>
             <div 
               v-for="task in projectBoardTasks.inProgress" 
@@ -1809,7 +1833,7 @@ body.dark-theme .jira-tag {
 
 <!-- Колонка: На проверке -->
 <div class="col-12 col-md-6 col-lg-3"> <!-- Поменяли на col-lg-3 для 4-х колонок -->
-  <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'review')" data-status="review" style="background-color: #f3e8ff;"> <!-- Новый цвет фона: светло-фиолетовый -->
+  <div class="kanban-column review p-3" @dragover.prevent @drop="moveTask($event, 'review')" data-status="review"> <!-- Новый цвет фона: светло-фиолетовый -->
     <div class="small text-muted mb-2 fw-semibold">На проверке ({{ projectBoardTasks.review.length || 0 }})</div>
     
     <div 
@@ -1850,7 +1874,7 @@ body.dark-theme .jira-tag {
 
         <!-- Колонка: Готово -->
         <div class="col-12 col-lg-3">
-          <div class="kanban-column p-3" @dragover.prevent @drop="moveTask($event, 'done')" data-status="done" style="background-color: #f0f7f0;">
+          <div class="kanban-column done p-3" @dragover.prevent @drop="moveTask($event, 'done')" data-status="done">
             <div class="small text-muted mb-2 fw-semibold">Готово ({{ projectBoardTasks.done.length }})</div>
             <div 
               v-for="task in projectBoardTasks.done" 

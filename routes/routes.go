@@ -118,6 +118,7 @@ func InitRoutes() *mux.Router {
 
 	// --- Отчеты ---
 	r.HandleFunc("/projects/{id}/report", handlers.GenerateGostReport).Methods("GET")
-
+	r.HandleFunc("/projects/{id}/export/excel", handlers.ExportProjectExcelHandler).Methods("GET")
+	r.HandleFunc("/projects/{id}/export/pdf", handlers.ExportProjectPDFHandler).Methods("GET")
 	return r
 }

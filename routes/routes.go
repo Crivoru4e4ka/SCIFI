@@ -7,6 +7,8 @@ import (
 
 	"github.com/gorilla/mux"
 
+	_ "project-MVP/docs"
+
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 

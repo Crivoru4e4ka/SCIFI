@@ -11,7 +11,16 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// POST /tasks — устаревший endpoint, требует авторизации
+// CreateTask godoc
+// @Summary Создать задачу (базовый метод)
+// @Description Создает задачу. Рекомендуется использовать CreateTaskInProject для привязки к разделу.
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param task body models.Task true "Объект задачи"
+// @Success 200 {object} models.Task
+// @Failure 400 {string} string "Bad request"
+// @Router /tasks [post]
 func CreateTask(w http.ResponseWriter, r *http.Request) {
 	userID, ok := RequireAuth(w, r)
 	if !ok {
@@ -48,7 +57,18 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(created)
 }
 
-// POST /projects/{id}/tasks
+// CreateTaskInProject godoc
+// @Summary Создать задачу в проекте
+// @Description Создает новую научную задачу, привязанную к конкретному разделу (проекту)
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path int true "Project ID"
+// @Param task body models.Task true "Данные задачи"
+// @Success 200 {object} models.Task
+// @Failure 400 {string} string "invalid project id"
+// @Failure 403 {string} string "forbidden"
+// @Router /projects/{id}/tasks [post]
 func CreateTaskInProject(w http.ResponseWriter, r *http.Request) {
 	userID, ok := RequireAuth(w, r)
 	if !ok {
@@ -88,7 +108,17 @@ func CreateTaskInProject(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(created)
 }
 
-// PATCH /tasks/{id}/status
+// UpdateTaskStatus godoc
+// @Summary Изменить статус задачи
+// @Description Позволяет перевести задачу в другой статус (например, из 'В работе' в 'На проверке')
+// @Tags tasks
+// @Accept json
+// @Param id path int true "Task ID"
+// @Param status body object{status=string} true "JSON со статусом"
+// @Success 204 "No Content"
+// @Failure 403 {string} string "forbidden"
+// @Failure 404 {string} string "task not found"
+// @Router /tasks/{id}/status [patch]
 func UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
@@ -136,7 +166,15 @@ func UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// PATCH /tasks/{id}/sprint
+// UpdateTaskSprintHandler godoc
+// @Summary Переместить задачу в спринт или бэклог
+// @Description Привязывает задачу к указанному спринту. Если передать null, задача вернется в бэклог проекта.
+// @Tags tasks
+// @Accept json
+// @Param id path int true "Task ID"
+// @Param body body object{sprint_id=int} true "ID Спринта"
+// @Success 204 "No Content"
+// @Router /tasks/{id}/sprint [patch]
 func UpdateTaskSprintHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
@@ -172,6 +210,13 @@ func UpdateTaskSprintHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// GetAllUserTasksHandler godoc
+// @Summary Получить все задачи текущего пользователя
+// @Description Список всех задач из всех проектов, где текущий пользователь является участником
+// @Tags tasks
+// @Produce json
+// @Success 200 {array} models.Task
+// @Router /user/tasks [get]
 func GetAllUserTasksHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := RequireAuth(w, r)
 	if !ok {
@@ -188,7 +233,16 @@ func GetAllUserTasksHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tasks)
 }
 
-// POST /projects/{id}/hypotheses
+// CreateHypothesisHandler godoc
+// @Summary Создать гипотезу в проекте
+// @Description Добавляет новую научную гипотезу, которую необходимо проверить в рамках исследования
+// @Tags hypotheses
+// @Accept json
+// @Produce json
+// @Param id path int true "Project ID"
+// @Param hypothesis body models.Hypothesis true "Данные гипотезы"
+// @Success 200 {object} models.Hypothesis
+// @Router /projects/{id}/hypotheses [post]
 func CreateHypothesisHandler(w http.ResponseWriter, r *http.Request) {
 	_, ok := RequireAuth(w, r)
 	if !ok {
@@ -219,7 +273,13 @@ func CreateHypothesisHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(newHypo)
 }
 
-// GET /projects/{id}/hypotheses
+// GetProjectHypothesesHandler godoc
+// @Summary Список гипотез проекта
+// @Tags hypotheses
+// @Produce json
+// @Param id path int true "Project ID"
+// @Success 200 {array} models.Hypothesis
+// @Router /projects/{id}/hypotheses [get]
 func GetProjectHypothesesHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectID, _ := strconv.Atoi(vars["id"])
@@ -238,7 +298,17 @@ func GetProjectHypothesesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(list)
 }
 
-// PATCH /tasks/{id}
+// UpdateTaskHandler godoc
+// @Summary Редактировать данные задачи
+// @Description Позволяет изменить описание, приоритет, тип и другие параметры задачи. Требует прав на редактирование.
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path int true "Task ID"
+// @Param task body models.Task true "Объект задачи с новыми данными"
+// @Success 204 "No Content"
+// @Failure 404 {string} string "Task not found"
+// @Router /tasks/{id} [patch]
 func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
@@ -269,7 +339,14 @@ func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// DELETE /tasks/{id}
+// DeleteTaskHandler godoc
+// @Summary Удалить задачу
+// @Description Полное удаление задачи. Доступно только автору или руководителю проекта.
+// @Tags tasks
+// @Param id path int true "Task ID"
+// @Success 204 "No Content"
+// @Failure 403 {string} string "Forbidden"
+// @Router /tasks/{id} [delete]
 func DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])

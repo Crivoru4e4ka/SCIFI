@@ -5,11 +5,19 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
 	"project-MVP/services"
+
+	"github.com/gorilla/mux"
 )
 
-// GET /roles
+// GetRoles godoc
+// @Summary Список всех ролей
+// @Description Возвращает список всех доступных системных и проектных ролей
+// @Tags rbac
+// @Produce json
+// @Success 200 {array} models.Role "Список ролей"
+// @Failure 500 {string} string "Internal server error"
+// @Router /roles [get]
 func GetRoles(w http.ResponseWriter, r *http.Request) {
 	roles, err := services.GetAllRoles()
 	if err != nil {
@@ -20,7 +28,14 @@ func GetRoles(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(roles)
 }
 
-// GET /permissions
+// GetPermissions godoc
+// @Summary Список всех прав
+// @Description Возвращает полный справочник всех прав доступа (permissions), существующих в системе
+// @Tags rbac
+// @Produce json
+// @Success 200 {array} models.Permission "Список прав"
+// @Failure 500 {string} string "Internal server error"
+// @Router /permissions [get]
 func GetPermissions(w http.ResponseWriter, r *http.Request) {
 	perms, err := services.GetAllPermissions()
 	if err != nil {
@@ -31,7 +46,16 @@ func GetPermissions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(perms)
 }
 
-// GET /projects/{id}/members
+// GetProjectMembersWithRolesHandler godoc
+// @Summary Участники проекта с ролями
+// @Description Возвращает список всех участников конкретного проекта с их подробными проектными ролями
+// @Tags rbac
+// @Produce json
+// @Param id path int true "Project ID"
+// @Success 200 {array} models.ProjectMemberWithRole
+// @Failure 400 {string} string "invalid project id"
+// @Failure 403 {string} string "insufficient permissions"
+// @Router /projects/{id}/members [get]
 func GetProjectMembersWithRolesHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectID, err := strconv.Atoi(vars["id"])
@@ -53,7 +77,18 @@ func GetProjectMembersWithRolesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(members)
 }
 
-// POST /projects/{id}/members/{userID}/role
+// AssignProjectRoleHandler godoc
+// @Summary Назначить роль участнику
+// @Description Изменяет роль пользователя внутри проекта. Требует прав администратора проекта.
+// @Tags rbac
+// @Accept json
+// @Param id path int true "Project ID"
+// @Param userID path int true "User ID"
+// @Param role body object{role_id=int} true "JSON с ID новой роли"
+// @Success 204 "No Content"
+// @Failure 400 {string} string "Bad request"
+// @Failure 403 {string} string "Forbidden"
+// @Router /projects/{id}/members/{userID}/role [post]
 func AssignProjectRoleHandler(w http.ResponseWriter, r *http.Request) {
 	currentUserID, ok := RequireAuth(w, r)
 	if !ok {
@@ -96,7 +131,14 @@ func AssignProjectRoleHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// GET /projects/{id}/my-permissions
+// GetMyProjectPermissions godoc
+// @Summary Мои права в проекте
+// @Description Возвращает список всех кодов прав (permissions), которыми обладает текущий пользователь в данном проекте
+// @Tags rbac
+// @Param id path int true "Project ID"
+// @Produce json
+// @Success 200 {object} map[string][]string "Пример: {'permissions': ['task.create', 'task.edit']}"
+// @Router /projects/{id}/my-permissions [get]
 func GetMyProjectPermissions(w http.ResponseWriter, r *http.Request) {
 	userID, ok := RequireAuth(w, r)
 	if !ok {
@@ -122,7 +164,16 @@ func GetMyProjectPermissions(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /projects/{id}/audit-log
+// GetProjectAuditLog godoc
+// @Summary История действий проекта (Аудит)
+// @Description Возвращает ленту всех важных событий внутри проекта (изменения статусов, ролей, удаление данных)
+// @Tags projects
+// @Param id path int true "Project ID"
+// @Param limit query int false "Количество записей (по умолчанию 50)"
+// @Produce json
+// @Success 200 {array} models.AuditLog "Список записей лога"
+// @Failure 403 {string} string "Insufficient permissions"
+// @Router /projects/{id}/audit-log [get]
 func GetProjectAuditLog(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectID, err := strconv.Atoi(vars["id"])

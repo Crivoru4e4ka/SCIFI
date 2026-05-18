@@ -11,6 +11,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// @title Scifi API
+// @version 1.0
+// @description API сервера для системы управления научными проектами Scifi.
+// @host localhost:8080
+// @BasePath /
 func main() {
 	// Загружаем переменные окружения из .env файла
 	// Если файл не найден или это продакшн сервер – это нормально

@@ -21,6 +21,17 @@ type registerRequest struct {
 	Password string `json:"password"`
 }
 
+// Register godoc
+// @Summary Регистрация пользователя
+// @Description Создает новый аккаунт пользователя в системе Scifi. Доступные роли: admin, user, guest.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body registerRequest true "Данные регистрации"
+// @Success 200 {object} map[string]interface{} "Данные созданного пользователя"
+// @Failure 400 {string} string "Ошибка валидации или дубликат пользователя"
+// @Failure 500 {string} string "Внутренняя ошибка сервера"
+// @Router /auth/register [post]
 func Register(w http.ResponseWriter, r *http.Request) {
 	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -47,6 +58,17 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Login godoc
+// @Summary Авторизация
+// @Description Аутентификация пользователя по Email и паролю. После успешного входа устанавливается сессионная кука 'session'.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body authRequest true "Данные входа"
+// @Success 200 {object} map[string]int "ID авторизованного пользователя"
+// @Failure 401 {string} string "Неверный логин или пароль"
+// @Failure 500 {string} string "Внутренняя ошибка сервера"
+// @Router /auth/login [post]
 func Login(w http.ResponseWriter, r *http.Request) {
 	var req authRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -80,6 +102,12 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Logout godoc
+// @Summary Выход из системы
+// @Description Удаляет сессионную куку и перенаправляет на страницу логина
+// @Tags auth
+// @Success 303 {string} string "Перенаправление на /login"
+// @Router /logout [get]
 func Logout(w http.ResponseWriter, r *http.Request) {
 	cookie := &http.Cookie{
 		Name:     "session",

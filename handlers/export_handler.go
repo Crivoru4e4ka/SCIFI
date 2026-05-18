@@ -9,6 +9,16 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// ExportProjectExcelHandler godoc
+// @Summary Выгрузить задачи в Excel
+// @Description Генерирует XLSX файл, содержащий подробный список всех задач проекта со всеми научными параметрами
+// @Tags export
+// @Produce application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// @Param id path int true "Project ID"
+// @Success 200 {file} binary "Файл отчета .xlsx"
+// @Failure 403 {string} string "insufficient permissions"
+// @Failure 500 {string} string "internal error"
+// @Router /projects/{id}/export/excel [get]
 func ExportProjectExcelHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectID, _ := strconv.Atoi(vars["id"])
@@ -36,6 +46,16 @@ func ExportProjectExcelHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(buffer.Bytes())
 }
 
+// ExportProjectPDFHandler godoc
+// @Summary Выгрузить отчет в PDF
+// @Description Формирует PDF документ с краткой информацией о проекте, его целях, гипотезах и таблицей задач
+// @Tags export
+// @Produce application/pdf
+// @Param id path int true "Project ID"
+// @Success 200 {file} binary "Файл отчета .pdf"
+// @Failure 403 {string} string "insufficient permissions"
+// @Failure 500 {string} string "internal error"
+// @Router /projects/{id}/export/pdf [get]
 func ExportProjectPDFHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectID, _ := strconv.Atoi(vars["id"])

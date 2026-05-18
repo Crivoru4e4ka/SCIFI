@@ -13,6 +13,17 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// GetProjectAttachmentsHandler godoc
+// @Summary Получить все вложения проекта
+// @Description Возвращает список всех файлов, прикрепленных к задачам внутри указанного проекта
+// @Tags attachments
+// @Produce json
+// @Param id path int true "Project ID"
+// @Success 200 {array} models.Attachment "Список файлов"
+// @Failure 401 {string} string "unauthorized"
+// @Failure 403 {string} string "insufficient permissions"
+// @Failure 500 {string} string "Ошибка при получении файлов"
+// @Router /projects/{id}/attachments [get]
 func GetProjectAttachmentsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectID, _ := strconv.Atoi(vars["id"])
@@ -31,6 +42,21 @@ func GetProjectAttachmentsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(files)
 }
 
+// UploadFileHandler godoc
+// @Summary Загрузить файл к задаче
+// @Description Сохраняет файл на сервере и привязывает его к конкретной научной задаче
+// @Tags attachments
+// @Accept multipart/form-data
+// @Produce json
+// @Param id path int true "Task ID"
+// @Param file formData file true "Выбрать файл для загрузки"
+// @Success 200 {object} models.Attachment "Данные о сохраненном файле"
+// @Failure 400 {string} string "Ошибка чтения файла"
+// @Failure 401 {string} string "unauthorized"
+// @Failure 403 {string} string "forbidden"
+// @Failure 404 {string} string "task not found"
+// @Failure 500 {string} string "Ошибка записи"
+// @Router /tasks/{id}/attachments [post]
 func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskID, _ := strconv.Atoi(vars["id"])
@@ -93,6 +119,17 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(attachment)
 }
 
+// GenerateGostReport godoc
+// @Summary Генерировать отчет по ГОСТ
+// @Description Генерирует отчет по ГОСТ для указанного проекта
+// @Tags reports
+// @Produce json
+// @Param id path int true "Project ID"
+// @Success 200 {string} string "Отчет в формате TXT"
+// @Failure 401 {string} string "unauthorized"
+// @Failure 403 {string} string "insufficient permissions"
+// @Failure 500 {string} string "Ошибка при генерации отчета"
+// @Router /projects/{id}/gost-report [get]
 func GenerateGostReport(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]

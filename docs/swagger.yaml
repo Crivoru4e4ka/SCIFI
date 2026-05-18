@@ -1,0 +1,1729 @@
+basePath: /
+definitions:
+  handlers.authRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  handlers.registerRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        type: string
+      role:
+        type: string
+    type: object
+  models.Activity:
+    properties:
+      action:
+        type: string
+      created_at:
+        type: string
+      details:
+        type: string
+      entity_id:
+        type: integer
+      entity_type:
+        type: string
+      id:
+        type: integer
+      project_id:
+        type: integer
+      project_name:
+        type: string
+      user_id:
+        type: integer
+      user_name:
+        type: string
+    type: object
+  models.Attachment:
+    properties:
+      created_at:
+        type: string
+      file_name:
+        type: string
+      file_url:
+        type: string
+      id:
+        type: integer
+      task_id:
+        type: integer
+      task_num:
+        type: integer
+      user_id:
+        type: integer
+    type: object
+  models.AuditLog:
+    properties:
+      action:
+        type: string
+      created_at:
+        type: string
+      details:
+        type: string
+      entity_id:
+        type: integer
+      entity_type:
+        type: string
+      id:
+        type: integer
+      project_id:
+        type: integer
+      user_id:
+        type: integer
+    type: object
+  models.Comment:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      entity_id:
+        type: integer
+      entity_type:
+        description: '"task" или "project"'
+        type: string
+      id:
+        type: integer
+      parent_id:
+        type: integer
+      replies:
+        items:
+          type: object
+        type: array
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+      user_name:
+        type: string
+    type: object
+  models.Grant:
+    properties:
+      application_deadline:
+        type: string
+      code:
+        type: string
+      country:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      currency:
+        type: string
+      description:
+        type: string
+      end_date:
+        type: string
+      funding_organization:
+        type: string
+      grant_type:
+        type: string
+      id:
+        type: integer
+      principal_investigator_id:
+        type: integer
+      scientific_direction:
+        type: string
+      start_date:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+    type: object
+  models.Hypothesis:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      description:
+        type: string
+      id:
+        type: integer
+      project_id:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+  models.Permission:
+    properties:
+      category:
+        type: string
+      code:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  models.Project:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      description:
+        type: string
+      end_date:
+        type: string
+      execution_type:
+        type: string
+      expected_result:
+        description: РЕЗУЛЬТАТ
+        type: string
+      id:
+        type: integer
+      key:
+        type: string
+      main_hypothesis:
+        description: ГИПОТЕЗА
+        type: string
+      name:
+        type: string
+      novelty:
+        description: НОВИЗНА
+        type: string
+      research_goal:
+        description: ЦЕЛЬ
+        type: string
+      start_date:
+        type: string
+      status:
+        type: string
+      team_id:
+        type: integer
+      visibility:
+        description: ВИДИМОСТЬ
+        type: string
+    type: object
+  models.ProjectGrantFunding:
+    properties:
+      allocated_amount:
+        type: number
+      created_at:
+        type: string
+      funding_end_date:
+        type: string
+      funding_purpose:
+        type: string
+      funding_start_date:
+        type: string
+      grant_id:
+        type: integer
+      id:
+        type: integer
+      notes:
+        type: string
+      project_id:
+        type: integer
+      section_id:
+        type: integer
+    type: object
+  models.ProjectGrantInfo:
+    properties:
+      allocated_amount:
+        type: number
+      created_at:
+        type: string
+      funding_end_date:
+        type: string
+      funding_purpose:
+        type: string
+      funding_start_date:
+        type: string
+      grant_code:
+        type: string
+      grant_id:
+        type: integer
+      grant_title:
+        type: string
+      id:
+        type: integer
+      notes:
+        type: string
+      project_id:
+        type: integer
+      project_key:
+        type: string
+      project_name:
+        type: string
+      section_id:
+        type: integer
+    type: object
+  models.ProjectMemberWithRole:
+    properties:
+      id:
+        type: integer
+      project_id:
+        type: integer
+      role_description:
+        type: string
+      role_id:
+        type: integer
+      role_name:
+        type: string
+      user_email:
+        type: string
+      user_id:
+        type: integer
+      user_name:
+        type: string
+    type: object
+  models.Role:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      is_system:
+        type: boolean
+      name:
+        type: string
+    type: object
+  models.Sprint:
+    properties:
+      end_date:
+        type: string
+      goal:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      project_id:
+        type: integer
+      start_date:
+        description: используем указатель, так как может быть null
+        type: string
+      status:
+        type: string
+    type: object
+  models.Task:
+    properties:
+      assignee_id:
+        type: integer
+      conclusion:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      description:
+        type: string
+      doi:
+        type: string
+      due_date:
+        type: string
+      hypothesis_id:
+        type: integer
+      id:
+        type: integer
+      local_id:
+        description: Это наше поле task_num из БД
+        type: integer
+      metrics:
+        type: object
+      parameters:
+        type: object
+      priority:
+        type: string
+      project_id:
+        type: integer
+      research_contribution:
+        description: Вклад в гипотезу
+        type: string
+      research_method:
+        description: Метод
+        type: string
+      resource_id:
+        type: integer
+      sprint_id:
+        type: integer
+      status:
+        type: string
+      tags:
+        type: string
+      task_num:
+        type: integer
+      title:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: integer
+      password_hash:
+        type: string
+      role:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API сервера для системы управления научными проектами Scifi.
+  title: Scifi API
+  version: "1.0"
+paths:
+  /activities:
+    get:
+      description: Возвращает список последних действий (создание задач, комментариев,
+        загрузка файлов) во всех проектах, где состоит текущий пользователь
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список событий активности
+          schema:
+            items:
+              $ref: '#/definitions/models.Activity'
+            type: array
+        "401":
+          description: Пользователь не авторизован
+          schema:
+            type: string
+        "500":
+          description: Ошибка при получении данных из базы
+          schema:
+            type: string
+      summary: Получить ленту активности
+      tags:
+      - activity
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Аутентификация пользователя по Email и паролю. После успешного
+        входа устанавливается сессионная кука 'session'.
+      parameters:
+      - description: Данные входа
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.authRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ID авторизованного пользователя
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "401":
+          description: Неверный логин или пароль
+          schema:
+            type: string
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            type: string
+      summary: Авторизация
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: 'Создает новый аккаунт пользователя в системе Scifi. Доступные
+        роли: admin, user, guest.'
+      parameters:
+      - description: Данные регистрации
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.registerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные созданного пользователя
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации или дубликат пользователя
+          schema:
+            type: string
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            type: string
+      summary: Регистрация пользователя
+      tags:
+      - auth
+  /comments:
+    post:
+      consumes:
+      - application/json
+      description: Создает новый основной комментарий или ответ на существующий (через
+        parent_id). Доступно только участникам проекта.
+      parameters:
+      - description: Объект комментария
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/models.Comment'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: ID созданного комментария
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: invalid request
+          schema:
+            type: string
+        "403":
+          description: no access to this project
+          schema:
+            type: string
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: Добавить комментарий
+      tags:
+      - comments
+  /comments/{id}:
+    delete:
+      description: Выполняет мягкое удаление (soft delete). Удалить может автор комментария
+        или руководитель проекта (project_lead).
+      parameters:
+      - description: ID комментария
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: unauthorized
+          schema:
+            type: string
+        "403":
+          description: forbidden
+          schema:
+            type: string
+        "404":
+          description: comment not found
+          schema:
+            type: string
+      summary: Удалить комментарий
+      tags:
+      - comments
+    patch:
+      consumes:
+      - application/json
+      description: Позволяет автору изменить текст своего комментария
+      parameters:
+      - description: ID комментария
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новое содержимое
+        in: body
+        name: content
+        required: true
+        schema:
+          properties:
+            content:
+              type: string
+          type: object
+      responses:
+        "200":
+          description: OK
+        "403":
+          description: Not your comment
+          schema:
+            type: string
+      summary: Редактировать комментарий
+      tags:
+      - comments
+  /comments/{type}/{id}:
+    get:
+      description: Возвращает иерархический список комментариев для конкретной задачи
+        или всего проекта
+      parameters:
+      - description: Тип сущности (task или project)
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: ID сущности
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Дерево комментариев
+          schema:
+            items:
+              $ref: '#/definitions/models.Comment'
+            type: array
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: Получить дерево комментариев
+      tags:
+      - comments
+  /grants:
+    get:
+      description: Получить список всех грантов с возможностью фильтрации по статусу,
+        типу и поисковому запросу
+      parameters:
+      - description: Фильтр по статусу (draft, active, completed...)
+        in: query
+        name: status
+        type: string
+      - description: Фильтр по типу (state, international...)
+        in: query
+        name: type
+        type: string
+      - description: Поиск по названию или организации
+        in: query
+        name: search
+        type: string
+      - description: Лимит записей
+        in: query
+        name: limit
+        type: integer
+      - description: Смещение
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Объект с массивом 'grants' и числом 'total'
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Список грантов
+      tags:
+      - grants
+    post:
+      consumes:
+      - application/json
+      description: Создает запись о гранте или источнике финансирования
+      parameters:
+      - description: Данные гранта
+        in: body
+        name: grant
+        required: true
+        schema:
+          $ref: '#/definitions/models.Grant'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Grant'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      summary: Создать новый грант
+      tags:
+      - grants
+  /grants/{grantId}/projects/{fundingId}:
+    delete:
+      parameters:
+      - description: ID гранта
+        in: path
+        name: grantId
+        required: true
+        type: integer
+      - description: ID записи финансирования
+        in: path
+        name: fundingId
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      summary: Удалить привязку проекта к гранту
+      tags:
+      - grants
+  /grants/{id}:
+    delete:
+      parameters:
+      - description: ID гранта
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+      summary: Удалить грант
+      tags:
+      - grants
+    get:
+      parameters:
+      - description: ID гранта
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Grant'
+        "404":
+          description: grant not found
+          schema:
+            type: string
+      summary: Детальная информация о гранте
+      tags:
+      - grants
+    patch:
+      consumes:
+      - application/json
+      description: Изменить описание, сроки или сумму гранта. Доступно автору или
+        админу.
+      parameters:
+      - description: ID гранта
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новые данные
+        in: body
+        name: grant
+        required: true
+        schema:
+          $ref: '#/definitions/models.Grant'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Grant'
+        "403":
+          description: insufficient permissions
+          schema:
+            type: string
+      summary: Обновить данные гранта
+      tags:
+      - grants
+  /grants/{id}/budget:
+    get:
+      description: Возвращает общую сумму, распределенную сумму и остаток
+      parameters:
+      - description: ID гранта
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Объект с полями total, allocated, remaining
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Состояние бюджета гранта
+      tags:
+      - grants
+  /grants/{id}/projects:
+    get:
+      parameters:
+      - description: ID гранта
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ProjectGrantFunding'
+            type: array
+      summary: Проекты, финансируемые данным грантом
+      tags:
+      - grants
+    post:
+      consumes:
+      - application/json
+      description: Выделяет определенную сумму из гранта на конкретный проект
+      parameters:
+      - description: ID гранта
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные финансирования
+        in: body
+        name: funding
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProjectGrantFunding'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ProjectGrantFunding'
+      summary: Привязать проект к гранту
+      tags:
+      - grants
+  /logout:
+    get:
+      description: Удаляет сессионную куку и перенаправляет на страницу логина
+      responses:
+        "303":
+          description: Перенаправление на /login
+          schema:
+            type: string
+      summary: Выход из системы
+      tags:
+      - auth
+  /permissions:
+    get:
+      description: Возвращает полный справочник всех прав доступа (permissions), существующих
+        в системе
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список прав
+          schema:
+            items:
+              $ref: '#/definitions/models.Permission'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Список всех прав
+      tags:
+      - rbac
+  /projects:
+    get:
+      description: Возвращает полный список всех существующих проектов (обычно используется
+        администратором)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Project'
+            type: array
+        "500":
+          description: Internal error
+          schema:
+            type: string
+      summary: Список всех проектов системы
+      tags:
+      - projects
+    post:
+      consumes:
+      - application/json
+      description: Создает научный раздел (проект). Создатель автоматически становится
+        руководителем (project_lead).
+      parameters:
+      - description: Данные проекта
+        in: body
+        name: project
+        required: true
+        schema:
+          $ref: '#/definitions/models.Project'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Project'
+        "400":
+          description: Ошибка валидации данных
+          schema:
+            type: string
+        "401":
+          description: Не авторизован
+          schema:
+            type: string
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            type: string
+      summary: Создать новый проект
+      tags:
+      - projects
+  /projects/{id}:
+    delete:
+      description: Полное удаление проекта со всеми задачами. Доступно только руководителю
+        проекта или админу.
+      parameters:
+      - description: ID проекта
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Insufficient permissions
+          schema:
+            type: string
+      summary: Удалить проект
+      tags:
+      - projects
+    patch:
+      consumes:
+      - application/json
+      description: Позволяет изменить название, описание, гипотезы и сроки проекта.
+        Требует прав на редактирование.
+      parameters:
+      - description: ID проекта
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Объект проекта с новыми данными
+        in: body
+        name: project
+        required: true
+        schema:
+          $ref: '#/definitions/models.Project'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Insufficient permissions
+          schema:
+            type: string
+      summary: Обновить настройки проекта
+      tags:
+      - projects
+  /projects/{id}/assignable-users:
+    get:
+      description: Список пользователей, которых можно назначить на задачи в данном
+        проекте
+      parameters:
+      - description: ID проекта
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.User'
+            type: array
+      summary: Доступные исполнители
+      tags:
+      - projects
+  /projects/{id}/attachments:
+    get:
+      description: Возвращает список всех файлов, прикрепленных к задачам внутри указанного
+        проекта
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список файлов
+          schema:
+            items:
+              $ref: '#/definitions/models.Attachment'
+            type: array
+        "401":
+          description: unauthorized
+          schema:
+            type: string
+        "403":
+          description: insufficient permissions
+          schema:
+            type: string
+        "500":
+          description: Ошибка при получении файлов
+          schema:
+            type: string
+      summary: Получить все вложения проекта
+      tags:
+      - attachments
+  /projects/{id}/audit-log:
+    get:
+      description: Возвращает ленту всех важных событий внутри проекта (изменения
+        статусов, ролей, удаление данных)
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Количество записей (по умолчанию 50)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список записей лога
+          schema:
+            items:
+              $ref: '#/definitions/models.AuditLog'
+            type: array
+        "403":
+          description: Insufficient permissions
+          schema:
+            type: string
+      summary: История действий проекта (Аудит)
+      tags:
+      - projects
+  /projects/{id}/export/excel:
+    get:
+      description: Генерирует XLSX файл, содержащий подробный список всех задач проекта
+        со всеми научными параметрами
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: Файл отчета .xlsx
+          schema:
+            type: file
+        "403":
+          description: insufficient permissions
+          schema:
+            type: string
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: Выгрузить задачи в Excel
+      tags:
+      - export
+  /projects/{id}/export/pdf:
+    get:
+      description: Формирует PDF документ с краткой информацией о проекте, его целях,
+        гипотезах и таблицей задач
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/pdf
+      responses:
+        "200":
+          description: Файл отчета .pdf
+          schema:
+            type: file
+        "403":
+          description: insufficient permissions
+          schema:
+            type: string
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: Выгрузить отчет в PDF
+      tags:
+      - export
+  /projects/{id}/gost-report:
+    get:
+      description: Генерирует отчет по ГОСТ для указанного проекта
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Отчет в формате TXT
+          schema:
+            type: string
+        "401":
+          description: unauthorized
+          schema:
+            type: string
+        "403":
+          description: insufficient permissions
+          schema:
+            type: string
+        "500":
+          description: Ошибка при генерации отчета
+          schema:
+            type: string
+      summary: Генерировать отчет по ГОСТ
+      tags:
+      - reports
+  /projects/{id}/grants:
+    get:
+      description: Получить список всех источников финансирования для конкретного
+        проекта
+      parameters:
+      - description: ID проекта
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ProjectGrantInfo'
+            type: array
+      summary: Гранты, привязанные к проекту
+      tags:
+      - projects
+  /projects/{id}/hypotheses:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Hypothesis'
+            type: array
+      summary: Список гипотез проекта
+      tags:
+      - hypotheses
+    post:
+      consumes:
+      - application/json
+      description: Добавляет новую научную гипотезу, которую необходимо проверить
+        в рамках исследования
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные гипотезы
+        in: body
+        name: hypothesis
+        required: true
+        schema:
+          $ref: '#/definitions/models.Hypothesis'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Hypothesis'
+      summary: Создать гипотезу в проекте
+      tags:
+      - hypotheses
+  /projects/{id}/members:
+    get:
+      description: Возвращает список всех участников конкретного проекта с их подробными
+        проектными ролями
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ProjectMemberWithRole'
+            type: array
+        "400":
+          description: invalid project id
+          schema:
+            type: string
+        "403":
+          description: insufficient permissions
+          schema:
+            type: string
+      summary: Участники проекта с ролями
+      tags:
+      - rbac
+  /projects/{id}/members/{userID}/role:
+    post:
+      consumes:
+      - application/json
+      description: Изменяет роль пользователя внутри проекта. Требует прав администратора
+        проекта.
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      - description: JSON с ID новой роли
+        in: body
+        name: role
+        required: true
+        schema:
+          properties:
+            role_id:
+              type: integer
+          type: object
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+      summary: Назначить роль участнику
+      tags:
+      - rbac
+  /projects/{id}/my-permissions:
+    get:
+      description: Возвращает список всех кодов прав (permissions), которыми обладает
+        текущий пользователь в данном проекте
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Пример: {''permissions'': [''task.create'', ''task.edit'']}'
+          schema:
+            additionalProperties:
+              items:
+                type: string
+              type: array
+            type: object
+      summary: Мои права в проекте
+      tags:
+      - rbac
+  /projects/{id}/progress:
+    get:
+      description: Возвращает процент завершенных задач в проекте
+      parameters:
+      - description: ID проекта
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Пример: {project_id: 1, progress: 75.5}'
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Прогресс выполнения проекта
+      tags:
+      - projects
+  /projects/{id}/sprints:
+    get:
+      description: Возвращает все спринты (запланированные, активные и завершенные)
+        для конкретного проекта
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список спринтов
+          schema:
+            items:
+              $ref: '#/definitions/models.Sprint'
+            type: array
+        "400":
+          description: Некорректный ID
+          schema:
+            type: string
+        "403":
+          description: Нет прав доступа
+          schema:
+            type: string
+      summary: Список спринтов проекта
+      tags:
+      - sprints
+    post:
+      consumes:
+      - application/json
+      description: Создает новый спринт в статусе 'planned' внутри указанного проекта
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные спринта (только имя)
+        in: body
+        name: sprint
+        required: true
+        schema:
+          $ref: '#/definitions/models.Sprint'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Созданный спринт
+          schema:
+            $ref: '#/definitions/models.Sprint'
+        "403":
+          description: Нет прав на управление спринтами
+          schema:
+            type: string
+      summary: Создать новый спринт
+      tags:
+      - sprints
+  /projects/{id}/tasks:
+    get:
+      description: Возвращает все задачи, относящиеся к конкретному проекту
+      parameters:
+      - description: ID проекта
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Task'
+            type: array
+        "404":
+          description: Project not found
+          schema:
+            type: string
+      summary: Список задач проекта
+      tags:
+      - projects
+    post:
+      consumes:
+      - application/json
+      description: Создает новую научную задачу, привязанную к конкретному разделу
+        (проекту)
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные задачи
+        in: body
+        name: task
+        required: true
+        schema:
+          $ref: '#/definitions/models.Task'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Task'
+        "400":
+          description: invalid project id
+          schema:
+            type: string
+        "403":
+          description: forbidden
+          schema:
+            type: string
+      summary: Создать задачу в проекте
+      tags:
+      - tasks
+  /roles:
+    get:
+      description: Возвращает список всех доступных системных и проектных ролей
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список ролей
+          schema:
+            items:
+              $ref: '#/definitions/models.Role'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Список всех ролей
+      tags:
+      - rbac
+  /sprints/{id}/complete:
+    patch:
+      description: Переводит спринт в статус 'completed'. Задачи, которые не были
+        выполнены, автоматически возвращаются в бэклог.
+      parameters:
+      - description: Sprint ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Sprint not found
+          schema:
+            type: string
+      summary: Завершить спринт
+      tags:
+      - sprints
+  /sprints/{id}/start:
+    patch:
+      consumes:
+      - application/json
+      description: Активирует спринт, устанавливая даты начала, окончания и цель исследования
+        на данный период
+      parameters:
+      - description: Sprint ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные запуска (Name, StartDate, EndDate, Goal)
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/models.Sprint'
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "404":
+          description: Sprint not found
+          schema:
+            type: string
+      summary: Запустить спринт
+      tags:
+      - sprints
+  /tasks:
+    post:
+      consumes:
+      - application/json
+      description: Создает задачу. Рекомендуется использовать CreateTaskInProject
+        для привязки к разделу.
+      parameters:
+      - description: Объект задачи
+        in: body
+        name: task
+        required: true
+        schema:
+          $ref: '#/definitions/models.Task'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Task'
+        "400":
+          description: Bad request
+          schema:
+            type: string
+      summary: Создать задачу (базовый метод)
+      tags:
+      - tasks
+  /tasks/{id}:
+    delete:
+      description: Полное удаление задачи. Доступно только автору или руководителю
+        проекта.
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+      summary: Удалить задачу
+      tags:
+      - tasks
+    patch:
+      consumes:
+      - application/json
+      description: Позволяет изменить описание, приоритет, тип и другие параметры
+        задачи. Требует прав на редактирование.
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Объект задачи с новыми данными
+        in: body
+        name: task
+        required: true
+        schema:
+          $ref: '#/definitions/models.Task'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Task not found
+          schema:
+            type: string
+      summary: Редактировать данные задачи
+      tags:
+      - tasks
+  /tasks/{id}/attachments:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Сохраняет файл на сервере и привязывает его к конкретной научной
+        задаче
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Выбрать файл для загрузки
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные о сохраненном файле
+          schema:
+            $ref: '#/definitions/models.Attachment'
+        "400":
+          description: Ошибка чтения файла
+          schema:
+            type: string
+        "401":
+          description: unauthorized
+          schema:
+            type: string
+        "403":
+          description: forbidden
+          schema:
+            type: string
+        "404":
+          description: task not found
+          schema:
+            type: string
+        "500":
+          description: Ошибка записи
+          schema:
+            type: string
+      summary: Загрузить файл к задаче
+      tags:
+      - attachments
+  /tasks/{id}/sprint:
+    patch:
+      consumes:
+      - application/json
+      description: Привязывает задачу к указанному спринту. Если передать null, задача
+        вернется в бэклог проекта.
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID Спринта
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            sprint_id:
+              type: integer
+          type: object
+      responses:
+        "204":
+          description: No Content
+      summary: Переместить задачу в спринт или бэклог
+      tags:
+      - tasks
+  /tasks/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Позволяет перевести задачу в другой статус (например, из 'В работе'
+        в 'На проверке')
+      parameters:
+      - description: Task ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: JSON со статусом
+        in: body
+        name: status
+        required: true
+        schema:
+          properties:
+            status:
+              type: string
+          type: object
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: forbidden
+          schema:
+            type: string
+        "404":
+          description: task not found
+          schema:
+            type: string
+      summary: Изменить статус задачи
+      tags:
+      - tasks
+  /user/projects:
+    get:
+      description: Возвращает список проектов, к которым у пользователя есть доступ
+        (созданные им, где он участник или открытые проекты)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Project'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      summary: Проекты текущего пользователя
+      tags:
+      - projects
+  /user/tasks:
+    get:
+      description: Список всех задач из всех проектов, где текущий пользователь является
+        участником
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Task'
+            type: array
+      summary: Получить все задачи текущего пользователя
+      tags:
+      - tasks
+swagger: "2.0"

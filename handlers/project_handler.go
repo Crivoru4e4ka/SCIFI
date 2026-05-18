@@ -11,7 +11,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// POST /projects
+// CreateProject godoc
+// @Summary Создать новый проект
+// @Description Создает научный раздел (проект). Создатель автоматически становится руководителем (project_lead).
+// @Tags projects
+// @Accept json
+// @Produce json
+// @Param project body models.Project true "Данные проекта"
+// @Success 200 {object} models.Project
+// @Failure 400 {string} string "Ошибка валидации данных"
+// @Failure 401 {string} string "Не авторизован"
+// @Failure 500 {string} string "Внутренняя ошибка сервера"
+// @Router /projects [post]
 func CreateProject(w http.ResponseWriter, r *http.Request) {
 	userID, ok := RequireAuth(w, r)
 	if !ok {
@@ -48,7 +59,14 @@ func CreateProject(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(created)
 }
 
-// GET /projects
+// GetProjects godoc
+// @Summary Список всех проектов системы
+// @Description Возвращает полный список всех существующих проектов (обычно используется администратором)
+// @Tags projects
+// @Produce json
+// @Success 200 {array} models.Project
+// @Failure 500 {string} string "Internal error"
+// @Router /projects [get]
 func GetProjects(w http.ResponseWriter, r *http.Request) {
 	projects, err := services.GetProjects()
 	if err != nil {
@@ -60,7 +78,14 @@ func GetProjects(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(projects)
 }
 
-// GET /user/projects - получить проекты текущего пользователя
+// GetUserProjects godoc
+// @Summary Проекты текущего пользователя
+// @Description Возвращает список проектов, к которым у пользователя есть доступ (созданные им, где он участник или открытые проекты)
+// @Tags projects
+// @Produce json
+// @Success 200 {array} models.Project
+// @Failure 401 {string} string "Unauthorized"
+// @Router /user/projects [get]
 func GetUserProjects(w http.ResponseWriter, r *http.Request) {
 	userID, ok := RequireAuth(w, r)
 	if !ok {
@@ -86,7 +111,14 @@ func GetUserProjects(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(projects)
 }
 
-// GET /projects/{id}/progress
+// GetProjectProgress godoc
+// @Summary Прогресс выполнения проекта
+// @Description Возвращает процент завершенных задач в проекте
+// @Tags projects
+// @Param id path int true "ID проекта"
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Пример: {project_id: 1, progress: 75.5}"
+// @Router /projects/{id}/progress [get]
 func GetProjectProgress(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
@@ -116,7 +148,15 @@ func GetProjectProgress(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /projects/{id}/tasks
+// GetProjectTasks godoc
+// @Summary Список задач проекта
+// @Description Возвращает все задачи, относящиеся к конкретному проекту
+// @Tags projects
+// @Param id path int true "ID проекта"
+// @Produce json
+// @Success 200 {array} models.Task
+// @Failure 404 {string} string "Project not found"
+// @Router /projects/{id}/tasks [get]
 func GetProjectTasks(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
@@ -143,7 +183,14 @@ func GetProjectTasks(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tasks)
 }
 
-// GET /projects/{id}/assignable-users — участники проекта, которых можно назначить исполнителями
+// GetProjectAssignableUsers godoc
+// @Summary Доступные исполнители
+// @Description Список пользователей, которых можно назначить на задачи в данном проекте
+// @Tags projects
+// @Param id path int true "ID проекта"
+// @Produce json
+// @Success 200 {array} models.User
+// @Router /projects/{id}/assignable-users [get]
 func GetProjectAssignableUsers(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
@@ -166,7 +213,17 @@ func GetProjectAssignableUsers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
-// PATCH /projects/{id}
+// UpdateProjectHandler godoc
+// @Summary Обновить настройки проекта
+// @Description Позволяет изменить название, описание, гипотезы и сроки проекта. Требует прав на редактирование.
+// @Tags projects
+// @Accept json
+// @Produce json
+// @Param id path int true "ID проекта"
+// @Param project body models.Project true "Объект проекта с новыми данными"
+// @Success 204 "No Content"
+// @Failure 403 {string} string "Insufficient permissions"
+// @Router /projects/{id} [patch]
 func UpdateProjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
@@ -180,7 +237,10 @@ func UpdateProjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var p models.Project
-	json.NewDecoder(r.Body).Decode(&p)
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	if err := services.UpdateProject(id, p); err != nil {
 		http.Error(w, err.Error(), 500)
@@ -191,7 +251,14 @@ func UpdateProjectHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// DELETE /projects/{id}
+// DeleteProjectHandler godoc
+// @Summary Удалить проект
+// @Description Полное удаление проекта со всеми задачами. Доступно только руководителю проекта или админу.
+// @Tags projects
+// @Param id path int true "ID проекта"
+// @Success 204 "No Content"
+// @Failure 403 {string} string "Insufficient permissions"
+// @Router /projects/{id} [delete]
 func DeleteProjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])

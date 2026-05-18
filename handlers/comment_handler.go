@@ -12,6 +12,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// CreateCommentHandler godoc
+// @Summary Добавить комментарий
+// @Description Создает новый основной комментарий или ответ на существующий (через parent_id). Доступно только участникам проекта.
+// @Tags comments
+// @Accept json
+// @Produce json
+// @Param comment body models.Comment true "Объект комментария"
+// @Success 201 {object} map[string]int "ID созданного комментария"
+// @Failure 400 {string} string "invalid request"
+// @Failure 403 {string} string "no access to this project"
+// @Failure 500 {string} string "internal error"
+// @Router /comments [post]
 func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := RequireAuth(w, r)
 	if !ok {
@@ -67,6 +79,16 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]int{"id": id})
 }
 
+// GetCommentsHandler godoc
+// @Summary Получить дерево комментариев
+// @Description Возвращает иерархический список комментариев для конкретной задачи или всего проекта
+// @Tags comments
+// @Param type path string true "Тип сущности (task или project)"
+// @Param id path int true "ID сущности"
+// @Produce json
+// @Success 200 {array} models.Comment "Дерево комментариев"
+// @Failure 500 {string} string "internal error"
+// @Router /comments/{type}/{id} [get]
 func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	eType := vars["type"] // "task" или "project"
@@ -82,6 +104,16 @@ func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(list)
 }
 
+// DeleteCommentHandler godoc
+// @Summary Удалить комментарий
+// @Description Выполняет мягкое удаление (soft delete). Удалить может автор комментария или руководитель проекта (project_lead).
+// @Tags comments
+// @Param id path int true "ID комментария"
+// @Success 204 "No Content"
+// @Failure 401 {string} string "unauthorized"
+// @Failure 403 {string} string "forbidden"
+// @Failure 404 {string} string "comment not found"
+// @Router /comments/{id} [delete]
 func DeleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := RequireAuth(w, r)
 	if !ok {
@@ -123,6 +155,16 @@ func DeleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// UpdateCommentHandler godoc
+// @Summary Редактировать комментарий
+// @Description Позволяет автору изменить текст своего комментария
+// @Tags comments
+// @Accept json
+// @Param id path int true "ID комментария"
+// @Param content body object{content=string} true "Новое содержимое"
+// @Success 200 "OK"
+// @Failure 403 {string} string "Not your comment"
+// @Router /comments/{id} [patch]
 // PATCH /comments/{id}
 func UpdateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)

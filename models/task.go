@@ -28,6 +28,6 @@ type Task struct {
 	ResearchContribution string          `json:"research_contribution"` // Вклад в гипотезу
 	ResearchMethod       string          `json:"research_method"`       // Метод
 	DOI                  string          `json:"doi"`
-	Parameters           json.RawMessage `json:"parameters"`
-	Metrics              json.RawMessage `json:"metrics"`
+	Parameters           json.RawMessage `json:"parameters" swaggertype:"object"`
+	Metrics              json.RawMessage `json:"metrics" swaggertype:"object"`
 }

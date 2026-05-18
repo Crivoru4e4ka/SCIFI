@@ -11,6 +11,16 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// GetProjectSprintsHandler godoc
+// @Summary Список спринтов проекта
+// @Description Возвращает все спринты (запланированные, активные и завершенные) для конкретного проекта
+// @Tags sprints
+// @Produce json
+// @Param id path int true "Project ID"
+// @Success 200 {array} models.Sprint "Список спринтов"
+// @Failure 400 {string} string "Некорректный ID"
+// @Failure 403 {string} string "Нет прав доступа"
+// @Router /projects/{id}/sprints [get]
 func GetProjectSprintsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectID, err := strconv.Atoi(vars["id"])
@@ -35,6 +45,17 @@ func GetProjectSprintsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// CreateSprintHandler godoc
+// @Summary Создать новый спринт
+// @Description Создает новый спринт в статусе 'planned' внутри указанного проекта
+// @Tags sprints
+// @Accept json
+// @Produce json
+// @Param id path int true "Project ID"
+// @Param sprint body models.Sprint true "Данные спринта (только имя)"
+// @Success 201 {object} models.Sprint "Созданный спринт"
+// @Failure 403 {string} string "Нет прав на управление спринтами"
+// @Router /projects/{id}/sprints [post]
 func CreateSprintHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectID, err := strconv.Atoi(vars["id"])
@@ -68,6 +89,16 @@ func CreateSprintHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(s)
 }
 
+// StartSprintHandler godoc
+// @Summary Запустить спринт
+// @Description Активирует спринт, устанавливая даты начала, окончания и цель исследования на данный период
+// @Tags sprints
+// @Accept json
+// @Param id path int true "Sprint ID"
+// @Param data body models.Sprint true "Данные запуска (Name, StartDate, EndDate, Goal)"
+// @Success 200 {string} string "OK"
+// @Failure 404 {string} string "Sprint not found"
+// @Router /sprints/{id}/start [patch]
 func StartSprintHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
@@ -98,9 +129,17 @@ func StartSprintHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusOK)
 }
 
+// CompleteSprintHandler godoc
+// @Summary Завершить спринт
+// @Description Переводит спринт в статус 'completed'. Задачи, которые не были выполнены, автоматически возвращаются в бэклог.
+// @Tags sprints
+// @Param id path int true "Sprint ID"
+// @Success 204 "No Content"
+// @Failure 404 {string} string "Sprint not found"
+// @Router /sprints/{id}/complete [patch]
 func CompleteSprintHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])

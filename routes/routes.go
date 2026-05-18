@@ -6,6 +6,8 @@ import (
 	"project-MVP/middleware"
 
 	"github.com/gorilla/mux"
+
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // NoCacheMiddleware добавляет заголовки, запрещающие браузеру кэшировать страницы.
@@ -120,5 +122,9 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/projects/{id}/report", handlers.GenerateGostReport).Methods("GET")
 	r.HandleFunc("/projects/{id}/export/excel", handlers.ExportProjectExcelHandler).Methods("GET")
 	r.HandleFunc("/projects/{id}/export/pdf", handlers.ExportProjectPDFHandler).Methods("GET")
+
+	// --- Swagger документация ---
+	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+
 	return r
 }

@@ -674,7 +674,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
                 </div>
                 <div v-if="displayedTasks.length === 0" class="p-3 text-muted small">Ничего не найдено</div>
 
-<div class="search-section-title">Разделы</div>
+<div class="search-section-title">Проекты</div>
 <div v-for="proj in filteredSearchProjects" :key="proj.id" class="search-item" @click="openProject(proj); isSearchOpen = false">
     <div class="avatar-circle bg-primary text-white me-2" style="width: 24px; height: 24px; font-size: 0.7rem; flex-shrink: 0;">
         {{ proj.name[0] }}
@@ -686,7 +686,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
 </div>
 <!-- Сообщение, если ничего не найдено -->
 <div v-if="searchQuery && filteredSearchProjects.length === 0" class="p-2 text-muted small ms-2">
-    Разделы не найдены
+    Проекты не найдены
 </div>
                 
 <hr>
@@ -779,7 +779,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
             </a>
             <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'sections'}" @click.prevent="selectSidebarTab('sections')">
                 <img src="/static/projectsbadge.png" alt="Projects badge" class="nav-sidebar-badge">
-                <span class="nav-link-text">Разделы</span>
+                <span class="nav-link-text">Проекты</span>
             </a>
             <!-- <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'activity'}" @click.prevent="selectSidebarTab('activity')">
                 <i class="fas fa-bolt nav-sidebar-badge text-warning" style="font-size: 18px; width: 24px; text-align: center;"></i>
@@ -833,7 +833,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
                                         {{ item.title }}
                                     </div>
                                     <div class="text-muted" style="font-size: 0.75rem;">
-                                        {{ item.type === 'project' ? 'Раздел' : 'Задача' }} 
+                                        {{ item.type === 'project' ? 'Проект' : 'Задача' }} 
                                     </div>
                                 </div>
                                 <i class="fas fa-chevron-right text-light"></i>
@@ -844,7 +844,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
                 <div v-else class="text-center py-5">
                     <i class="fas fa-history fa-4x mb-3 text-muted opacity-25"></i>
                     <h5>Здесь будет ваша история</h5>
-                    <p class="text-muted">Просматривайте разделы и задачи, и они появятся в этом списке.</p>
+                    <p class="text-muted">Просматривайте проекты и задачи, и они появятся в этом списке.</p>
                 </div>
             </div>
             <!-- ВКЛАДКА: ОТМЕЧЕННЫЕ -->
@@ -866,7 +866,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
                             {{ item.title }}
                         </div>
                         <div class="text-muted" style="font-size: 0.75rem;">
-                            {{ item.type === 'project' ? 'Раздел добавлен в избранное' : 'Задача отмечена флажком' }}
+                            {{ item.type === 'project' ? 'Проект добавлен в избранное' : 'Задача отмечена флажком' }}
                         </div>
                     </div>
 
@@ -882,19 +882,19 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
     <div v-else class="text-center py-5">
         <i class="far fa-star fa-4x mb-3 text-muted opacity-25"></i>
         <h5>У вас пока нет отмеченных элементов</h5>
-        <p class="text-muted">Нажимайте на звездочку у разделов или задач, чтобы они всегда были под рукой.</p>
+        <p class="text-muted">Нажимайте на звездочку у проектов или задач, чтобы они всегда были под рукой.</p>
     </div>
 </div>
     
-    <!-- 2. ВКЛАДКА: РАЗДЕЛЫ (Стандартный список проектов) -->
+    <!-- 2. ВКЛАДКА: ПРОЕКТЫ (Стандартный список проектов) -->
     <div v-else-if="activeSidebarTab === 'sections'">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
           <div>
-            <h2 class="mb-1">Разделы</h2>
+            <h2 class="mb-1">Проекты</h2>
           </div>
           <div class="d-flex align-items-center gap-2">
             <button class="btn btn-primary" type="button" id="createSectionButton" @click="startProjectCreation">
-              <i class="fas fa-plus me-2"></i>Создать раздел
+              <i class="fas fa-plus me-2"></i>Создать проект
             </button>
           </div>
         </div>
@@ -927,8 +927,8 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
           <div class="card-body">
             <div class="mb-4"><div class="display-1 text-primary opacity-25"><i class="fas fa-rocket"></i></div></div>
             <h3 class="fw-bold mb-3">Добро пожаловать в Scifi</h3>
-            <p class="text-muted mb-4 mx-auto" style="max-width: 500px;">Создайте свой первый рабочий раздел, чтобы начать планирование.</p>
-            <button class="btn btn-primary btn-lg shadow-sm px-5" type="button" @click="startProjectCreation">Создать раздел</button>
+            <p class="text-muted mb-4 mx-auto" style="max-width: 500px;">Создайте свой первый рабочий проект, чтобы начать планирование.</p>
+            <button class="btn btn-primary btn-lg shadow-sm px-5" type="button" @click="startProjectCreation">Создать проект</button>
           </div>
         </div>
     </div>
@@ -949,7 +949,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
                         <small class="text-muted">{{ formatRelativeTime(act.created_at) }}</small>
                     </div>
                     <div class="text-secondary small">
-                        {{ act.details }} в разделе 
+                        {{ act.details }} в проекте 
                         <a href="#" @click.prevent="openProjectById(act.project_id)" class="text-decoration-none fw-bold">
                             "{{ act.project_name }}"
                         </a>
@@ -1018,7 +1018,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
             
             <select class="jira-select-pill" v-model="navFilters.project">
-                <option value="all">Раздел: Все</option>
+                <option value="all">Проект: Все</option>
                 <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
             </select>
 
@@ -1353,7 +1353,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
   <template v-else>
     <div class="d-flex align-items-center gap-2 mb-4">
       <button class="btn btn-link text-decoration-none p-0" type="button" @click="goBackToProjects">
-        <i class="fas fa-arrow-left me-2"></i>Назад к разделам
+        <i class="fas fa-arrow-left me-2"></i>Назад к проектам
       </button>
     </div>
     
@@ -1397,7 +1397,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
         <button v-if="currentUserProjectRole === 'project_lead'" 
                 class="btn btn-outline-danger btn-sm" 
                 @click="deleteProject(currentProject.id)">
-            <i class="fas fa-trash-alt me-2"></i>Удалить раздел
+            <i class="fas fa-trash-alt me-2"></i>Удалить проект
         </button>
       </div>
     </div>
@@ -1747,7 +1747,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
         </tr>
     </template>
     <tr v-if="projectTasks.length === 0">
-        <td colspan="6" class="text-center py-4 text-muted">В этом разделе пока нет задач</td>
+        <td colspan="6" class="text-center py-4 text-muted">В этом проекте пока нет задач</td>
     </tr>
 </tbody>
             </table>
@@ -2196,10 +2196,10 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
 <div v-if="currentProjectView === 'discussion'" class="mt-4">
     <div class="card shadow-sm border-0">
         <div class="card-body">
-            <h5 class="card-title mb-3 fw-bold">Обсуждение раздела</h5>
+            <h5 class="card-title mb-3 fw-bold">Обсуждение проекта</h5>
             <p class="text-muted small mb-4">
                 <i class="fas fa-info-circle me-1"></i> 
-                Здесь обсуждаются общие научные вопросы, методология и стратегические цели этого раздела.
+                Здесь обсуждаются общие научные вопросы, методология и стратегические цели этого проекта.
             </p>
 
             <!-- Форма отправки (для проекта) -->
@@ -2284,11 +2284,11 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
                 <template v-else-if="currentPage === 'templates'">
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
                         <div>
-                            <h2 class="mb-1">Шаблоны разделов</h2>
+                            <h2 class="mb-1">Шаблоны проектов</h2>
                             <p class="text-muted mb-0">Выберите шаблон для быстрого старта работы команды.</p>
                         </div>
                         <button class="btn btn-outline-secondary btn-sm" type="button" @click="goBackToSections">
-                            <i class="fas fa-arrow-left me-2"></i>Назад к разделам
+                            <i class="fas fa-arrow-left me-2"></i>Назад к проектам
                         </button>
                     </div>
 
@@ -2305,7 +2305,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
                                         <span></span>
                                     </div>
                                     <div v-else class="template-lines-empty">
-                                        + Новый раздел
+                                        + Новый проект
                                     </div>
                                 </div>
                                 <h5 class="mb-1">{{ templateItem.title }}</h5>
@@ -2319,21 +2319,21 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
                 <template v-else-if="currentPage === 'kanbanSetup'">
                     <div class="d-flex align-items-center mb-3">
 <button class="btn btn-link text-decoration-none p-0" type="button" @click="goBackToSections">
-    <i class="fas fa-arrow-left me-2"></i>Назад к разделам
+    <i class="fas fa-arrow-left me-2"></i>Назад к проектам
 </button>
                     </div>
                     <div class="wizard-shell shadow-sm mx-auto">
                         <div class="wizard-layout">
                             <div class="wizard-left">
                                 <div class="wizard-step-label mb-2">Шаг {{ kanbanWizard.step }} из 2</div>
-                                <h3 class="h4 mb-3" v-if="kanbanWizard.step === 1">Дайте имя разделу</h3>
+                                <h3 class="h4 mb-3" v-if="kanbanWizard.step === 1">Дайте имя проекту</h3>
                                 <h3 class="h4 mb-3" v-else>Пригласите команду</h3>
 
                                 <template v-if="kanbanWizard.step === 1">
                                     <p class="text-muted small mb-4">Обязательные поля отмечены звездочкой *</p>
                                     <div class="mb-3">
                                         <label class="form-label">Название *</label>
-                                        <input class="form-control" type="text" v-model="kanbanWizard.name" @input="updateKanbanKey" placeholder="Введите название раздела">
+                                        <input class="form-control" type="text" v-model="kanbanWizard.name" @input="updateKanbanKey" placeholder="Введите название проекта">
                                     </div>
                                     
                                         <!-- ГИПОТЕЗА (Важнейшее поле) -->
@@ -2484,7 +2484,7 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <div>
                             <h2 class="mb-1">{{ createdKanban.name }}</h2>
-                            <div class="text-muted small">Kanban-доска раздела</div>
+                            <div class="text-muted small">Kanban-доска проекта</div>
                         </div>
                         <!--<button class="btn btn-outline-secondary btn-sm" type="button" @click="openTemplatesPage">
                             <i class="fas fa-th-large me-2"></i>Шаблоны
@@ -2626,16 +2626,16 @@ body.dark-theme .kanban-column.done { background-color: #1e331f; }
                     <p class="mb-0"><small>Обязательные поля отмечены звездочкой <span class="text-danger">*</span></small></p>
                 </div>
                 <form id="createTaskForm" class="needs-validation" novalidate>
-                    <!-- Раздел -->
+                    <!-- Проект -->
                     <div class="mb-3">
-                        <label for="taskProject" class="form-label">Раздел <span class="text-danger">*</span></label>
+                        <label for="taskProject" class="form-label">Проект <span class="text-danger">*</span></label>
                         <select class="form-select" id="taskProject" v-model="newTask.projectId" required>
-                            <option value="">Выберите раздел...</option>
+                            <option value="">Выберите проект...</option>
                             <option v-for="project in projects" :key="project.id" :value="project.id">
                                 {{ project.name }}
                             </option>
                         </select>
-                        <div class="invalid-feedback">Выберите раздел</div>
+                        <div class="invalid-feedback">Выберите проект</div>
                     </div>
 
                     <!-- Тип задачи -->
@@ -3558,7 +3558,7 @@ startSprintModal: null,
                     filterMyTasks: false,      // Флаг "Только мои задачи"
                     filterPriority: 'all',
                     filterSubPage: 'list', // 'list' — список фильтров, 'search' — поиск задач
-allTasks: [],          // Сюда загрузим задачи изо всех разделов
+allTasks: [],          // Сюда загрузим задачи изо всех проектов
 navFilters: {
     query: '',
     project: 'all',
@@ -3640,7 +3640,7 @@ flaggedItems: [],
                         },
                         {
                             id: "empty",
-                            title: "Пустой раздел",
+                            title: "Пустой проект",
                             description: "Начните с чистого листа и настройте всё под себя.",
                             previewClass: "template-preview-empty"
                         }
@@ -3770,7 +3770,7 @@ flaggedItems: [],
         return !alreadyIn && (user.email.toLowerCase().includes(search) || user.full_name.toLowerCase().includes(search));
     }).slice(0, 5);
 },
-    // Поиск по разделам (проектам)
+    // Поиск по проектам
     filteredSearchProjects() {
         if (!this.searchQuery || this.searchQuery.length < 1) return [];
         
@@ -3854,7 +3854,7 @@ async deleteTask(taskId) {
 },
 
 async deleteProject(projectId) {
-    if (!confirm("ВНИМАНИЕ! Вы удаляете весь раздел со всеми задачами, файлами и обсуждениями. Продолжить?")) return;
+    if (!confirm("ВНИМАНИЕ! Вы удаляете весь проект со всеми задачами, файлами и обсуждениями. Продолжить?")) return;
     try {
         const response = await fetch(`/projects/${projectId}`, { method: 'DELETE' });
         if (response.ok) {
@@ -3862,7 +3862,7 @@ async deleteProject(projectId) {
             this.loadProjects();        // Обновляем список на главной
             this.activeSidebarTab = 'sections';
         } else {
-            alert("Ошибка при удалении раздела");
+            alert("Ошибка при удалении проекта");
         }
     } catch (e) { console.error(e); }
 },
@@ -4031,9 +4031,9 @@ addMemberRow() {
     });
 },
 getProjectHypothesis(projectId) {
-    if (!projectId) return "Выберите раздел";
+    if (!projectId) return "Выберите проект";
     const p = this.projects.find(proj => proj.id === Number(projectId));
-    return p && p.main_hypothesis ? p.main_hypothesis : "Гипотеза исследования не задана для этого раздела";
+    return p && p.main_hypothesis ? p.main_hypothesis : "Гипотеза исследования не задана для этого проекта";
 },
 async openTaskFromNavigator(task) {
     // 1. Находим объект проекта, к которому относится задача
@@ -4062,7 +4062,7 @@ async openTaskFromNavigator(task) {
         }, 600); 
 
     } else {
-        alert("Раздел, к которому относится задача, не найден или недоступен.");
+        alert("Проект, к которому относится задача, не найден или недоступен.");
     }
 },
 // 1. Загрузка фильтров из памяти браузера
@@ -4179,7 +4179,7 @@ openProjectById(id) {
     if (project) {
         this.openProject(project);
     } else {
-        alert("Загрузка раздела...");
+        alert("Загрузка проекта...");
     }
 },
 
@@ -4937,7 +4937,7 @@ updateKanbanKey() {
 nextKanbanStep() {
     const name = this.kanbanWizard.name ? this.kanbanWizard.name.trim() : "";
     if (!name || name.length < 2) {
-        alert("Пожалуйста, введите название раздела (минимум 2 символа).");
+        alert("Пожалуйста, введите название проекта (минимум 2 символа).");
         return;
     }
     
@@ -5000,8 +5000,8 @@ async finishKanbanSetup() {
         name: this.kanbanWizard.name.trim(),
         key: this.kanbanWizard.key.toUpperCase(),
         description: this.kanbanWizard.main_hypothesis
-            ? `Научный раздел. Основная гипотеза: ${this.kanbanWizard.main_hypothesis}`
-            : "Научный раздел",
+            ? `Научный проект. Основная гипотеза: ${this.kanbanWizard.main_hypothesis}`
+            : "Научный проект",
         status: "active",
         start_date: new Date().toISOString(),
         created_by: currentUserId,
@@ -5024,7 +5024,7 @@ async finishKanbanSetup() {
 
         if (!response.ok) {
             const errorMsg = await response.text();
-            throw new Error(errorMsg || 'Ошибка при создании раздела');
+            throw new Error(errorMsg || 'Ошибка при создании проекта');
         }
 
         const newProject = await response.json();

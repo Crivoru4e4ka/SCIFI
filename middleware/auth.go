@@ -6,9 +6,9 @@ import (
 	"strconv"
 )
 
-type contextKey string
+type ContextKey string
 
-const userIDKey contextKey = "userID"
+const userIDKey ContextKey = "userID"
 
 // AuthMiddleware извлекает user_id из session-cookie и помещает его в контекст запроса.
 // Не прерывает цепочку — позволяет публичным endpoint'ам работать без авторизации.

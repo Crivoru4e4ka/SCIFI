@@ -218,6 +218,9 @@ func InitRolePermissions() {
 
 // refreshProjectRoleCache перечитывает проектные роли из БД в кэш
 func refreshProjectRoleCache() {
+	if db.DB == nil {
+		return
+	}
 	rows, err := db.DB.Query(`SELECT name FROM roles WHERE is_system = false`)
 	if err != nil {
 		log.Printf("refreshProjectRoleCache: ошибка чтения ролей: %v", err)

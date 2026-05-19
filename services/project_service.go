@@ -10,17 +10,19 @@ import (
 	"project-MVP/models"
 )
 
-func CreateProject(project models.Project) (models.Project, error) {
+// ValidateAndNormalizeProject проверяет и нормализует поля проекта.
+// Вынесена в отдельную функцию для unit-тестирования без обращения к БД.
+func ValidateAndNormalizeProject(project *models.Project) error {
 	project.Name = strings.TrimSpace(project.Name)
 	project.Description = strings.TrimSpace(project.Description)
 	project.Status = strings.ToLower(strings.TrimSpace(project.Status))
 	project.ExecutionType = strings.ToLower(strings.TrimSpace(project.ExecutionType))
 
 	if project.Name == "" {
-		return models.Project{}, errors.New("project name is required")
+		return errors.New("project name is required")
 	}
 	if project.CreatedBy <= 0 {
-		return models.Project{}, errors.New("created_by is required")
+		return errors.New("created_by is required")
 	}
 	if project.StartDate.IsZero() {
 		project.StartDate = time.Now()
@@ -36,11 +38,19 @@ func CreateProject(project models.Project) (models.Project, error) {
 	}
 
 	if project.ExecutionType != "manual" && project.ExecutionType != "team" {
-		return models.Project{}, errors.New("invalid execution type")
+		return errors.New("invalid execution type")
 	}
 
 	if project.ExecutionType == "team" && (project.TeamId == nil || *project.TeamId <= 0) {
-		return models.Project{}, errors.New("team_id is required for team execution type")
+		return errors.New("team_id is required for team execution type")
+	}
+
+	return nil
+}
+
+func CreateProject(project models.Project) (models.Project, error) {
+	if err := ValidateAndNormalizeProject(&project); err != nil {
+		return models.Project{}, err
 	}
 
 	if _, err := GetUserByID(project.CreatedBy); err != nil {

@@ -51,35 +51,44 @@ func GetCommentsByEntity(entityType string, entityId int) ([]models.Comment, err
 		allComments = append(allComments, c)
 	}
 
-	// 2. Делаем карту (Map) для быстрого поиска родителей
-	commentMap := make(map[int]*models.Comment)
-	for _, c := range allComments {
-		commentMap[c.Id] = c
-	}
+	return BuildCommentTree(allComments), nil
+}
 
-	// 3. Строим дерево
-	finalRoots := []models.Comment{}
-	for _, c := range allComments {
+// BuildCommentTree строит дерево комментариев из плоского списка.
+// Корневые комментарии (ParentId == nil) возвращаются на верхнем уровне,
+// а ответы (replies) рекурсивно вложены в своих родителей.
+func BuildCommentTree(comments []*models.Comment) []models.Comment {
+	childrenMap := make(map[int][]models.Comment)
+	var roots []models.Comment
+
+	for _, c := range comments {
 		if c.ParentId == nil {
-			// Если нет родителя — это корень. Мы добавим его в результат позже.
-			continue
+			roots = append(roots, *c)
 		} else {
-			// Если есть родитель — ищем его в карте и добавляем ответ К НЕМУ
-			if parent, ok := commentMap[*c.ParentId]; ok {
-				parent.Replies = append(parent.Replies, *c)
-			}
+			childrenMap[*c.ParentId] = append(childrenMap[*c.ParentId], *c)
 		}
 	}
 
-	// 4. Собираем только корневые комментарии в финальный список
-	// (теперь у них внутри уже лежат ответы, добавленные на шаге 3)
-	for _, c := range allComments {
-		if c.ParentId == nil {
-			finalRoots = append(finalRoots, *c)
-		}
+	for i := range roots {
+		attachChildren(&roots[i], childrenMap)
 	}
 
-	return finalRoots, nil
+	if roots == nil {
+		return []models.Comment{}
+	}
+	return roots
+}
+
+// attachChildren рекурсивно прикрепляет дочерние комментарии к родителю.
+func attachChildren(parent *models.Comment, childrenMap map[int][]models.Comment) {
+	children, ok := childrenMap[parent.Id]
+	if !ok {
+		return
+	}
+	parent.Replies = children
+	for i := range parent.Replies {
+		attachChildren(&parent.Replies[i], childrenMap)
+	}
 }
 
 func SoftDeleteComment(id int) error {

@@ -5,53 +5,32 @@ import (
 	"project-MVP/models"
 )
 
-func AddComment(c *models.Comment) (int, error) {
-	var id int
-	query := `
-		INSERT INTO comments (entity_id, entity_type, user_id, parent_id, content)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id`
+// DefaultCommentStore — глобальный инстанс CommentStore для обратной совместимости.
+var DefaultCommentStore = NewCommentStore(db.DB)
 
-	err := db.DB.QueryRow(query, c.EntityId, c.EntityType, c.UserId, c.ParentId, c.Content).Scan(&id)
-	return id, err
+// AddComment обёртка над DefaultCommentStore.
+func AddComment(c *models.Comment) (int, error) {
+	return DefaultCommentStore.AddComment(c)
 }
 
+// GetCommentsByEntity обёртка над DefaultCommentStore.
 func GetCommentsByEntity(entityType string, entityId int) ([]models.Comment, error) {
-	query := `
-		SELECT c.id, c.entity_type, c.entity_id, c.user_id, u.full_name, 
-		       c.parent_id, COALESCE(c.content, '') as content, 
-               c.created_at, c.updated_at, c.deleted_at
-		FROM comments c
-		JOIN users u ON c.user_id = u.id
-		WHERE c.entity_type = $1 AND c.entity_id = $2
-		ORDER BY c.created_at ASC`
+	return DefaultCommentStore.GetCommentsByEntity(entityType, entityId)
+}
 
-	rows, err := db.DB.Query(query, entityType, entityId)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+// SoftDeleteComment обёртка над DefaultCommentStore.
+func SoftDeleteComment(id int) error {
+	return DefaultCommentStore.SoftDeleteComment(id)
+}
 
-	// 1. Создаем список указателей. Это важно, чтобы работать с конкретными объектами в памяти.
-	allComments := []*models.Comment{}
-	for rows.Next() {
-		c := &models.Comment{} // Создаем указатель
-		err := rows.Scan(&c.Id, &c.EntityType, &c.EntityId, &c.UserId, &c.UserName,
-			&c.ParentId, &c.Content, &c.CreatedAt, &c.UpdatedAt, &c.DeletedAt)
-		if err != nil {
-			return nil, err
-		}
+// GetCommentRaw обёртка над DefaultCommentStore.
+func GetCommentRaw(id int) (*models.Comment, error) {
+	return DefaultCommentStore.GetCommentRaw(id)
+}
 
-		if c.DeletedAt != nil {
-			c.Content = "Комментарий удален"
-		}
-
-		// Инициализируем пустой слайс, чтобы фронтенд получил [] вместо null
-		c.Replies = []models.Comment{}
-		allComments = append(allComments, c)
-	}
-
-	return BuildCommentTree(allComments), nil
+// UpdateComment обёртка над DefaultCommentStore.
+func UpdateComment(id int, content string) error {
+	return DefaultCommentStore.UpdateComment(id, content)
 }
 
 // BuildCommentTree строит дерево комментариев из плоского списка.
@@ -89,22 +68,4 @@ func attachChildren(parent *models.Comment, childrenMap map[int][]models.Comment
 	for i := range parent.Replies {
 		attachChildren(&parent.Replies[i], childrenMap)
 	}
-}
-
-func SoftDeleteComment(id int) error {
-	query := `UPDATE comments SET deleted_at = NOW(), content = NULL WHERE id = $1`
-	_, err := db.DB.Exec(query, id)
-	return err
-}
-
-func GetCommentRaw(id int) (*models.Comment, error) {
-	var c models.Comment
-	err := db.DB.QueryRow("SELECT id, user_id, entity_id, entity_type FROM comments WHERE id = $1", id).
-		Scan(&c.Id, &c.UserId, &c.EntityId, &c.EntityType)
-	return &c, err
-}
-
-func UpdateComment(id int, content string) error {
-	_, err := db.DB.Exec("UPDATE comments SET content = $1, updated_at = NOW() WHERE id = $2", content, id)
-	return err
 }

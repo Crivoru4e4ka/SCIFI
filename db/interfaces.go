@@ -14,7 +14,7 @@ type DBTX interface {
 }
 
 // DBPool расширяет DBTX операциями Begin для транзакций.
-// Реализуется *sql.DB.
+// Реализуется *sql.DB, что позволяет использовать sqlmock в тестах.
 type DBPool interface {
 	DBTX
 	Begin() (*sql.Tx, error)

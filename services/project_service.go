@@ -10,9 +10,6 @@ import (
 	"project-MVP/models"
 )
 
-// DefaultProjectStore — глобальный инстанс ProjectStore для обратной совместимости.
-// Использует db.DB в качестве источника данных.
-var DefaultProjectStore = NewProjectStore(db.DB)
 
 // ValidateAndNormalizeProject проверяет и нормализует поля проекта.
 // Вынесена в отдельную функцию для unit-тестирования без обращения к БД.

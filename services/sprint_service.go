@@ -1,12 +1,9 @@
 package services
 
 import (
-	"project-MVP/db"
 	"project-MVP/models"
 )
 
-// DefaultSprintStore — глобальный инстанс SprintStore для обратной совместимости.
-var DefaultSprintStore = NewSprintStore(db.DB)
 
 // GetProjectSprints обёртка над DefaultSprintStore.
 func GetProjectSprints(projectId int) ([]models.Sprint, error) {

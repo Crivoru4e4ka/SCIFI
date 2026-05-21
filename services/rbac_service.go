@@ -12,8 +12,6 @@ var (
 	ErrNoPermission = fmt.Errorf("insufficient permissions")
 )
 
-// DefaultRBACStore — глобальный инстанс RBACStore для обратной совместимости.
-var DefaultRBACStore = NewRBACStore(db.DB)
 
 // GetUserSystemRole обёртка над DefaultRBACStore.
 func GetUserSystemRole(userID int) (string, error) {

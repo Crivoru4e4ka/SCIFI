@@ -1,12 +1,9 @@
 package services
 
 import (
-	"project-MVP/db"
 	"project-MVP/models"
 )
 
-// DefaultCommentStore — глобальный инстанс CommentStore для обратной совместимости.
-var DefaultCommentStore = NewCommentStore(db.DB)
 
 // AddComment обёртка над DefaultCommentStore.
 func AddComment(c *models.Comment) (int, error) {

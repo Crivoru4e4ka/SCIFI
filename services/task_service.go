@@ -24,8 +24,6 @@ func taskStatusIsValid(status string) bool {
 	return allowedTaskStatuses[strings.ToLower(strings.TrimSpace(status))]
 }
 
-// DefaultTaskStore — глобальный инстанс TaskStore для обратной совместимости.
-var DefaultTaskStore = NewTaskStore(db.DB)
 
 // GetTasksByProject обёртка над DefaultTaskStore.
 func GetTasksByProject(projectId int) ([]models.Task, error) {

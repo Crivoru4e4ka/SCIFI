@@ -1,12 +1,9 @@
 package services
 
 import (
-	"project-MVP/db"
 	"project-MVP/models"
 )
 
-// DefaultTeamStore — глобальный инстанс TeamStore для обратной совместимости.
-var DefaultTeamStore = NewTeamStore(db.DB)
 
 // GetTeamByID обёртка над DefaultTeamStore.
 func GetTeamByID(teamID int) (models.Team, error) {

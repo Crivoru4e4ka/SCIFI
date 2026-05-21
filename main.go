@@ -26,6 +26,8 @@ func main() {
 
 	db.Connect()
 
+	services.InitDefaultStores()
+
 	services.InitRoles()
 	services.InitPermissions()
 	services.InitRolePermissions()

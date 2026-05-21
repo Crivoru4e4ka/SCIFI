@@ -1,12 +1,9 @@
 package services
 
 import (
-	"project-MVP/db"
 	"project-MVP/models"
 )
 
-// DefaultDatasetStore — глобальный инстанс DatasetStore для обратной совместимости.
-var DefaultDatasetStore = NewDatasetStore(db.DB)
 
 // GetAllDatasets обёртка над DefaultDatasetStore.
 func GetAllDatasets() ([]models.Dataset, error) {

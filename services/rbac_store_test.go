@@ -212,33 +212,6 @@ func TestRBACStore_GetProjectMembersWithRoles_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// TestRBACStore_GetAuditLog_Success проверяет получение аудит-лога.
-func TestRBACStore_GetAuditLog_Success(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
-	defer db.Close()
-
-	store := NewRBACStore(db)
-	createdAt := time.Now()
-
-	rows := sqlmock.NewRows([]string{
-		"al.id", "al.user_id", "al.project_id", "al.action", "al.entity_type",
-		"al.entity_id", "al.details", "al.created_at", "u.full_name",
-	}).AddRow(1, 1, 1, "created", "task", 1, "Created task", createdAt, "Alice")
-
-	mock.ExpectQuery(`SELECT al.id, al.user_id, al.project_id, al.action, al.entity_type, al.entity_id, al.details, al.created_at, u.full_name FROM audit_log al LEFT JOIN users u ON u.id = al.user_id WHERE al.project_id = \$1 ORDER BY al.created_at DESC LIMIT \$2`).
-		WithArgs(1, 50).
-		WillReturnRows(rows)
-
-	logs, err := store.GetAuditLog(1, 0)
-
-	require.NoError(t, err)
-	assert.Len(t, logs, 1)
-	assert.Equal(t, "created", logs[0].Action)
-	assert.Contains(t, logs[0].Details, "Alice")
-	assert.NoError(t, mock.ExpectationsWereMet())
-}
-
 // TestRBACStore_AssignProjectRole_TeamManaged проверяет блокировку
 // ручного назначения ролей для team-managed проектов.
 func TestRBACStore_AssignProjectRole_TeamManaged(t *testing.T) {

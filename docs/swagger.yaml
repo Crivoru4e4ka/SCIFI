@@ -58,25 +58,6 @@ definitions:
       user_id:
         type: integer
     type: object
-  models.AuditLog:
-    properties:
-      action:
-        type: string
-      created_at:
-        type: string
-      details:
-        type: string
-      entity_id:
-        type: integer
-      entity_type:
-        type: string
-      id:
-        type: integer
-      project_id:
-        type: integer
-      user_id:
-        type: integer
-    type: object
   models.Comment:
     properties:
       content:
@@ -353,8 +334,6 @@ definitions:
       research_method:
         description: Метод
         type: string
-      resource_id:
-        type: integer
       sprint_id:
         type: integer
       status:
@@ -1016,36 +995,6 @@ paths:
       summary: Получить все вложения проекта
       tags:
       - attachments
-  /projects/{id}/audit-log:
-    get:
-      description: Возвращает ленту всех важных событий внутри проекта (изменения
-        статусов, ролей, удаление данных)
-      parameters:
-      - description: Project ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Количество записей (по умолчанию 50)
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Список записей лога
-          schema:
-            items:
-              $ref: '#/definitions/models.AuditLog'
-            type: array
-        "403":
-          description: Insufficient permissions
-          schema:
-            type: string
-      summary: История действий проекта (Аудит)
-      tags:
-      - projects
   /projects/{id}/export/excel:
     get:
       description: Генерирует XLSX файл, содержащий подробный список всех задач проекта

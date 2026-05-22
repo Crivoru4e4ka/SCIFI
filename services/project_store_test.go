@@ -299,7 +299,6 @@ func TestProjectStore_DeleteProject_Success(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec(`DELETE FROM tasks WHERE project_id = \$1`).WithArgs(1).WillReturnResult(sqlmock.NewResult(0, 5))
 	mock.ExpectExec(`DELETE FROM project_members WHERE project_id = \$1`).WithArgs(1).WillReturnResult(sqlmock.NewResult(0, 3))
-	mock.ExpectExec(`DELETE FROM audit_log WHERE project_id = \$1`).WithArgs(1).WillReturnResult(sqlmock.NewResult(0, 2))
 	mock.ExpectExec(`DELETE FROM projects WHERE id = \$1`).WithArgs(1).WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 

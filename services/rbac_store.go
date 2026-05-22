@@ -273,61 +273,6 @@ func (s *RBACStore) GetAllPermissions() ([]models.Permission, error) {
 	return perms, nil
 }
 
-// LogAudit записывает событие в аудит-лог.
-func (s *RBACStore) LogAudit(userID, projectID int, action, entityType string, entityID int, details string) {
-	query := `INSERT INTO audit_log (user_id, project_id, action, entity_type, entity_id, details) VALUES ($1,$2,$3,$4,$5,$6)`
-	_, err := s.DB.Exec(query, nullInt(userID), nullInt(projectID), action, entityType, nullInt(entityID), details)
-	if err != nil {
-		log.Printf("Audit log error: %v", err)
-	}
-}
-
-// GetAuditLog возвращает аудит-лог проекта.
-func (s *RBACStore) GetAuditLog(projectID int, limit int) ([]models.AuditLog, error) {
-	if limit <= 0 {
-		limit = 50
-	}
-	query := `
-		SELECT al.id, al.user_id, al.project_id, al.action, al.entity_type, al.entity_id, al.details, al.created_at,
-			u.full_name
-		FROM audit_log al
-		LEFT JOIN users u ON u.id = al.user_id
-		WHERE al.project_id = $1
-		ORDER BY al.created_at DESC
-		LIMIT $2`
-
-	rows, err := s.DB.Query(query, projectID, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var logs []models.AuditLog
-	for rows.Next() {
-		var l models.AuditLog
-		var userID sql.NullInt64
-		var entityID sql.NullInt64
-		var userName sql.NullString
-		err := rows.Scan(&l.Id, &userID, &l.ProjectId, &l.Action, &l.EntityType, &entityID, &l.Details, &l.CreatedAt, &userName)
-		if err != nil {
-			continue
-		}
-		if userID.Valid {
-			v := int(userID.Int64)
-			l.UserId = &v
-		}
-		if entityID.Valid {
-			v := int(entityID.Int64)
-			l.EntityId = &v
-		}
-		if userName.Valid && userName.String != "" {
-			l.Details = fmt.Sprintf("%s (%s)", l.Details, userName.String)
-		}
-		logs = append(logs, l)
-	}
-	return logs, nil
-}
-
 // IsAdmin проверяет, является ли пользователь системным администратором.
 func (s *RBACStore) IsAdmin(userID int) bool {
 	role, err := s.GetUserSystemRole(userID)

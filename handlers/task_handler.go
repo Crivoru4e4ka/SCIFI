@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"project-MVP/models"
 	"project-MVP/services"
@@ -22,7 +21,7 @@ import (
 // @Failure 400 {string} string "Bad request"
 // @Router /tasks [post]
 func CreateTask(w http.ResponseWriter, r *http.Request) {
-	userID, ok := RequireAuth(w, r)
+	_, ok := RequireAuth(w, r)
 	if !ok {
 		return
 	}
@@ -52,7 +51,6 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services.LogAudit(userID, t.ProjectId, "task_created", "task", created.Id, "Создана задача")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(created)
 }
@@ -70,7 +68,7 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {string} string "forbidden"
 // @Router /projects/{id}/tasks [post]
 func CreateTaskInProject(w http.ResponseWriter, r *http.Request) {
-	userID, ok := RequireAuth(w, r)
+	_, ok := RequireAuth(w, r)
 	if !ok {
 		return
 	}
@@ -103,7 +101,6 @@ func CreateTaskInProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services.LogAudit(userID, projectID, "task_created", "task", created.Id, "Создана задача")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(created)
 }
@@ -161,8 +158,6 @@ func UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services.LogAudit(currentUserID, task.ProjectId, "task_status_changed", "task", id,
-		fmt.Sprintf("Статус изменен на %s", data.Status))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -312,7 +307,7 @@ func GetProjectHypothesesHandler(w http.ResponseWriter, r *http.Request) {
 func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
-	userID, ok := RequireAuth(w, r)
+	_, ok := RequireAuth(w, r)
 	if !ok {
 		return
 	}
@@ -335,7 +330,6 @@ func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services.LogAudit(userID, oldTask.ProjectId, "task_updated", "task", id, "Обновлена информация о задаче")
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -373,6 +367,5 @@ func DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services.LogAudit(userID, task.ProjectId, "task_deleted", "task", id, "Задача удалена")
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -94,6 +94,7 @@ func InitRoutes() *mux.Router {
 
 	// --- Активности ---
 	r.HandleFunc("/activities", handlers.GetActivitiesHandler).Methods("GET")
+	r.HandleFunc("/projects/{id}/activities", handlers.GetProjectActivitiesHandler).Methods("GET")
 
 	// --- Комментарии ---
 	r.HandleFunc("/comments", handlers.CreateCommentHandler).Methods("POST")
@@ -118,8 +119,6 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/permissions", handlers.GetPermissions).Methods("GET")
 	r.HandleFunc("/projects/{id}/members/{userID}/role", handlers.AssignProjectRoleHandler).Methods("POST")
 	r.HandleFunc("/projects/{id}/my-permissions", handlers.GetMyProjectPermissions).Methods("GET")
-	r.HandleFunc("/projects/{id}/audit-log", handlers.GetProjectAuditLog).Methods("GET")
-
 	// --- Отчеты ---
 	r.HandleFunc("/projects/{id}/report", handlers.GenerateGostReport).Methods("GET")
 	r.HandleFunc("/projects/{id}/export/excel", handlers.ExportProjectExcelHandler).Methods("GET")

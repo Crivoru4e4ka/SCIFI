@@ -63,16 +63,6 @@ func GetAllPermissions() ([]models.Permission, error) {
 	return DefaultRBACStore.GetAllPermissions()
 }
 
-// LogAudit обёртка над DefaultRBACStore.
-func LogAudit(userID, projectID int, action, entityType string, entityID int, details string) {
-	DefaultRBACStore.LogAudit(userID, projectID, action, entityType, entityID, details)
-}
-
-// GetAuditLog обёртка над DefaultRBACStore.
-func GetAuditLog(projectID int, limit int) ([]models.AuditLog, error) {
-	return DefaultRBACStore.GetAuditLog(projectID, limit)
-}
-
 // IsAdmin обёртка над DefaultRBACStore.
 func IsAdmin(userID int) bool {
 	return DefaultRBACStore.IsAdmin(userID)

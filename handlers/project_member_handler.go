@@ -12,7 +12,7 @@ import (
 
 // POST /project-members
 func CreateProjectMember(w http.ResponseWriter, r *http.Request) {
-	userID, ok := RequireAuth(w, r)
+	_, ok := RequireAuth(w, r)
 	if !ok {
 		return
 	}
@@ -37,14 +37,13 @@ func CreateProjectMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services.LogAudit(userID, pm.ProjectId, "member_added", "project_member", created.Id, "Добавлен участник")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(created)
 }
 
 // DELETE /projects/{id}/members/{userID}
 func RemoveProjectMemberHandler(w http.ResponseWriter, r *http.Request) {
-	currentUserID, ok := RequireAuth(w, r)
+	_, ok := RequireAuth(w, r)
 	if !ok {
 		return
 	}
@@ -70,13 +69,12 @@ func RemoveProjectMemberHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services.LogAudit(currentUserID, projectID, "member_removed", "project_member", memberUserID, "Удален участник")
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // PATCH /projects/{id}/members/{userID}/role
 func UpdateProjectMemberRoleHandler(w http.ResponseWriter, r *http.Request) {
-	currentUserID, ok := RequireAuth(w, r)
+	_, ok := RequireAuth(w, r)
 	if !ok {
 		return
 	}
@@ -129,6 +127,5 @@ func UpdateProjectMemberRoleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services.LogAudit(currentUserID, projectID, "member_role_updated", "project_member", memberUserID, "Изменена роль участника")
 	w.WriteHeader(http.StatusNoContent)
 }

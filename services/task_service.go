@@ -117,15 +117,15 @@ func CreateTask(task models.Task) (models.Task, error) {
 		}
 	}
 
-	query := `INSERT INTO tasks (project_id, title, description, status, priority, assignee_id, created_by, due_date, type, hypothesis_id, resource_id, conclusion, parameters, metrics, doi, research_contribution, research_method, created_at, updated_at)
-              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,NOW(),NOW()) RETURNING id, task_num`
+	query := `INSERT INTO tasks (project_id, title, description, status, priority, assignee_id, created_by, due_date, type, hypothesis_id, conclusion, parameters, metrics, doi, research_contribution, research_method, created_at, updated_at)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,NOW(),NOW()) RETURNING id, task_num`
 
 	var newId int
 	var newTaskNum int
 	if err := db.DB.QueryRow(query,
 		task.ProjectId, task.Title, task.Description, task.Status, task.Priority,
 		task.AssigneeId, task.CreatedBy, task.DueDate, task.Type, task.HypothesisId,
-		task.ResourceId, task.Conclusion, task.Parameters, task.Metrics, task.DOI,
+		task.Conclusion, task.Parameters, task.Metrics, task.DOI,
 		task.ResearchContribution, task.ResearchMethod).Scan(&newId, &newTaskNum); err != nil {
 		return models.Task{}, err
 	}
@@ -158,7 +158,8 @@ func UpdateTaskStatus(taskId int, userId int, newStatus string) error {
 	}
 
 	var oldStatus string
-	err := db.DB.QueryRow(`SELECT status FROM tasks WHERE id=$1`, taskId).Scan(&oldStatus)
+	var projectID int
+	err := db.DB.QueryRow(`SELECT status, project_id FROM tasks WHERE id=$1`, taskId).Scan(&oldStatus, &projectID)
 	if err != nil {
 		return err
 	}
@@ -168,7 +169,7 @@ func UpdateTaskStatus(taskId int, userId int, newStatus string) error {
 		return err
 	}
 
-	LogActivity(userId, taskId, "task", taskId, "status_changed", "Сменил статус задачи на "+newStatus)
+	LogActivity(userId, projectID, "task", taskId, "status_changed", "Сменил статус задачи на "+newStatus)
 
 	queryHistory := `INSERT INTO task_history (task_id, changed_by, field_name, old_value, new_value) VALUES ($1, $2, $3, $4, $5)`
 	if _, err := db.DB.Exec(queryHistory, taskId, userId, "status", oldStatus, newStatus); err != nil {
@@ -182,14 +183,14 @@ func UpdateTaskStatus(taskId int, userId int, newStatus string) error {
 // Используется как вспомогательная функция для избежания дублирования кода.
 func scanTaskFromRows(rows *sql.Rows) (models.Task, error) {
 	var t models.Task
-	var assignee, sprint, hypothesis, resource sql.NullInt64
+	var assignee, sprint, hypothesis sql.NullInt64
 	var dueDate, updatedAt, taskType sql.NullString
 	var paramsBytes, metricsBytes []byte
 
 	err := rows.Scan(
 		&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
 		&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
-		&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
+		&taskType, &hypothesis, &t.Conclusion, &t.TaskNum, &sprint,
 		&t.ResearchContribution, &t.ResearchMethod,
 		&paramsBytes, &metricsBytes, &t.DOI,
 		&t.Tags,
@@ -209,10 +210,6 @@ func scanTaskFromRows(rows *sql.Rows) (models.Task, error) {
 	if hypothesis.Valid {
 		val := int(hypothesis.Int64)
 		t.HypothesisId = &val
-	}
-	if resource.Valid {
-		val := int(resource.Int64)
-		t.ResourceId = &val
 	}
 	if dueDate.Valid {
 		t.DueDate = &dueDate.String
@@ -236,14 +233,14 @@ func scanTaskFromRows(rows *sql.Rows) (models.Task, error) {
 // scanTaskFromRow сканирует одну строку в модель Task.
 func scanTaskFromRow(row *sql.Row) (models.Task, error) {
 	var t models.Task
-	var assignee, sprint, hypothesis, resource sql.NullInt64
+	var assignee, sprint, hypothesis sql.NullInt64
 	var dueDate, updatedAt, taskType sql.NullString
 	var paramsBytes, metricsBytes []byte
 
 	err := row.Scan(
 		&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
 		&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
-		&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
+		&taskType, &hypothesis, &t.Conclusion, &t.TaskNum, &sprint,
 		&t.ResearchContribution, &t.ResearchMethod,
 		&paramsBytes, &metricsBytes, &t.DOI,
 		&t.Tags,
@@ -263,10 +260,6 @@ func scanTaskFromRow(row *sql.Row) (models.Task, error) {
 	if hypothesis.Valid {
 		val := int(hypothesis.Int64)
 		t.HypothesisId = &val
-	}
-	if resource.Valid {
-		val := int(resource.Int64)
-		t.ResourceId = &val
 	}
 	if dueDate.Valid {
 		t.DueDate = &dueDate.String

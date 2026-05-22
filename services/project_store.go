@@ -194,7 +194,6 @@ func (s *ProjectStore) DeleteProject(id int) error {
 
 	tx.Exec("DELETE FROM tasks WHERE project_id = $1", id)
 	tx.Exec("DELETE FROM project_members WHERE project_id = $1", id)
-	tx.Exec("DELETE FROM audit_log WHERE project_id = $1", id)
 	tx.Exec("DELETE FROM projects WHERE id = $1", id)
 
 	return tx.Commit()

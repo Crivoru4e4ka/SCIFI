@@ -39,35 +39,6 @@ ALTER TABLE public.project_members
     ON UPDATE NO ACTION
     ON DELETE SET NULL;
 
--- 5. Audit log
-CREATE TABLE IF NOT EXISTS public.audit_log (
-    id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
-    user_id integer,
-    project_id integer,
-    action character varying(100) COLLATE pg_catalog."default" NOT NULL,
-    entity_type character varying(50) COLLATE pg_catalog."default",
-    entity_id integer,
-    details text COLLATE pg_catalog."default",
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT audit_log_pkey PRIMARY KEY (id)
-);
-
-ALTER TABLE public.audit_log
-    ADD CONSTRAINT fk_audit_user FOREIGN KEY (user_id)
-    REFERENCES public.users (id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE SET NULL;
-
-ALTER TABLE public.audit_log
-    ADD CONSTRAINT fk_audit_project FOREIGN KEY (project_id)
-    REFERENCES public.projects (id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE CASCADE;
-
-CREATE INDEX IF NOT EXISTS idx_audit_log_project ON public.audit_log(project_id);
-CREATE INDEX IF NOT EXISTS idx_audit_log_user ON public.audit_log(user_id);
-CREATE INDEX IF NOT EXISTS idx_audit_log_created ON public.audit_log(created_at);
-
 -- 6. Seed: системные роли
 INSERT INTO public.roles (name, description, is_system) VALUES
     ('admin', 'Системный администратор', true),

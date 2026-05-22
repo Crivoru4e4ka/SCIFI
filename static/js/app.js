@@ -252,7 +252,7 @@ flaggedItems: [],
                     projectGrants: [],
                     projectPermissions: [],
                     projectRoles: [],
-                    auditLog: [],
+                    projectActivities: [],
                     manageMembersModal: null,
                     currentProjectMembers: [],
                     wizardTeamMembers: [],
@@ -463,11 +463,11 @@ prepareEditTask(task) {
 
 openProjectActivity() {
     this.currentProjectView = 'audit';
-    this.auditLog = []; // Очищаем старое
+    this.projectActivities = []; // Очищаем старое
     if (this.currentProject) {
         // Загружаем задачи, чтобы метод getTaskFormattedKey мог найти Ключи
         this.loadProjectTasks(this.currentProject.id);
-        this.loadAuditLog(this.currentProject.id); 
+        this.loadProjectActivities(this.currentProject.id);
     }
 },
 
@@ -509,7 +509,7 @@ async postComment(entityId, entityType, parentId = null) {
             this.loadComments(entityId, entityType);
             // Обновляем ленту активности проекта
             if (this.currentProject) {
-                this.loadAuditLog(this.currentProject.id);
+                this.loadProjectActivities(this.currentProject.id);
             }
         }
     } catch (e) { alert("Ошибка отправки"); }
@@ -532,7 +532,7 @@ async deleteComment(commentId) {
             this.loadComments(this.expandedTaskId, 'task');
             // Обновляем ленту активности
             if (this.currentProject) {
-                this.loadAuditLog(this.currentProject.id);
+                this.loadProjectActivities(this.currentProject.id);
             }
         }
     } catch (e) {
@@ -1065,7 +1065,7 @@ async openProject(project) {
     this.loadProjectAssignableUsers(project.id);
     this.loadProjectGrants(project.id);
     this.loadProjectPermissions(project.id);
-    this.loadAuditLog(project.id);
+    this.loadProjectActivities(project.id);
 },
 async approveResearchTask(task) {
     if (!confirm("Вы подтверждаете научную достоверность результатов этого этапа?")) return;
@@ -2254,14 +2254,14 @@ async loadProjectRoles() {
         console.error('Failed to load roles:', err);
     }
 },
-async loadAuditLog(projectId) {
+async loadProjectActivities(projectId) {
     try {
-        const response = await fetch(`/projects/${projectId}/audit-log`, { credentials: 'include' });
+        const response = await fetch(`/projects/${projectId}/activities`, { credentials: 'include' });
         if (response.ok) {
-            this.auditLog = await response.json();
+            this.projectActivities = await response.json();
         }
     } catch (err) {
-        console.error('Failed to load audit log:', err);
+        console.error('Failed to load project activities:', err);
     }
 },
 filterUsersForMember() {

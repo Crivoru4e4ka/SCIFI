@@ -90,7 +90,7 @@ func GetProjectMembersWithRolesHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {string} string "Forbidden"
 // @Router /projects/{id}/members/{userID}/role [post]
 func AssignProjectRoleHandler(w http.ResponseWriter, r *http.Request) {
-	currentUserID, ok := RequireAuth(w, r)
+	_, ok := RequireAuth(w, r)
 	if !ok {
 		return
 	}
@@ -124,9 +124,6 @@ func AssignProjectRoleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	// Аудит
-	services.LogAudit(currentUserID, projectID, "role_assigned", "project_member", userID, "Изменение роли участника")
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -164,41 +161,4 @@ func GetMyProjectPermissions(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetProjectAuditLog godoc
-// @Summary История действий проекта (Аудит)
-// @Description Возвращает ленту всех важных событий внутри проекта (изменения статусов, ролей, удаление данных)
-// @Tags projects
-// @Param id path int true "Project ID"
-// @Param limit query int false "Количество записей (по умолчанию 50)"
-// @Produce json
-// @Success 200 {array} models.AuditLog "Список записей лога"
-// @Failure 403 {string} string "Insufficient permissions"
-// @Router /projects/{id}/audit-log [get]
-func GetProjectAuditLog(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	projectID, err := strconv.Atoi(vars["id"])
-	if err != nil || projectID <= 0 {
-		http.Error(w, "invalid project id", http.StatusBadRequest)
-		return
-	}
 
-	if !RequirePermission(w, r, projectID, "audit.view") {
-		return
-	}
-
-	limitStr := r.URL.Query().Get("limit")
-	limit := 50
-	if limitStr != "" {
-		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 {
-			limit = v
-		}
-	}
-
-	logs, err := services.GetAuditLog(projectID, limit)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(logs)
-}

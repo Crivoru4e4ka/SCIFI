@@ -24,16 +24,16 @@ func TestTaskStore_GetTaskByID_Success(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "project_id", "title", "description", "status", "priority",
 		"assignee_id", "created_by", "due_date", "created_at", "updated_at",
-		"type", "hypothesis_id", "resource_id", "conclusion", "task_num", "sprint_id",
+		"type", "hypothesis_id", "conclusion", "task_num", "sprint_id",
 		"research_contribution", "research_method",
 		"parameters", "metrics", "doi", "tags",
 	}).AddRow(1, 1, "Task 1", "Desc", "todo", "high",
 		nil, 1, nil, createdAt, nil,
-		nil, nil, nil, "", 1, nil,
+		nil, nil, "", 1, nil,
 		"contrib", "method",
 		nil, nil, "", "")
 
-	mock.ExpectQuery(`SELECT t.id, t.project_id, t.title, t.description, t.status, t.priority, t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id, t.research_contribution, t.research_method, t.parameters, t.metrics, COALESCE\(t.doi, ''\) AS doi, COALESCE\(\(SELECT STRING_AGG\(tg.name, ', '\) FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id\), ''\) as tags FROM tasks t WHERE t.id=\$1`).
+	mock.ExpectQuery(`SELECT t.id, t.project_id, t.title, t.description, t.status, t.priority, t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, t.type, t.hypothesis_id, t.conclusion, t.task_num, t.sprint_id, t.research_contribution, t.research_method, t.parameters, t.metrics, COALESCE\(t.doi, ''\) AS doi, COALESCE\(\(SELECT STRING_AGG\(tg.name, ', '\) FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id\), ''\) as tags FROM tasks t WHERE t.id=\$1`).
 		WithArgs(1).
 		WillReturnRows(rows)
 
@@ -55,7 +55,7 @@ func TestTaskStore_GetTaskByID_NotFound(t *testing.T) {
 
 	store := NewTaskStore(db)
 
-	mock.ExpectQuery(`SELECT t.id, t.project_id, t.title, t.description, t.status, t.priority, t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id, t.research_contribution, t.research_method, t.parameters, t.metrics, COALESCE\(t.doi, ''\) AS doi, COALESCE\(\(SELECT STRING_AGG\(tg.name, ', '\) FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id\), ''\) as tags FROM tasks t WHERE t.id=\$1`).
+	mock.ExpectQuery(`SELECT t.id, t.project_id, t.title, t.description, t.status, t.priority, t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, t.type, t.hypothesis_id, t.conclusion, t.task_num, t.sprint_id, t.research_contribution, t.research_method, t.parameters, t.metrics, COALESCE\(t.doi, ''\) AS doi, COALESCE\(\(SELECT STRING_AGG\(tg.name, ', '\) FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id\), ''\) as tags FROM tasks t WHERE t.id=\$1`).
 		WithArgs(999).
 		WillReturnError(sql.ErrNoRows)
 
@@ -283,16 +283,16 @@ func TestTaskStore_GetTasksByProject_Success(t *testing.T) {
 	rows := sqlmock.NewRows([]string{
 		"id", "project_id", "title", "description", "status", "priority",
 		"assignee_id", "created_by", "due_date", "created_at", "updated_at",
-		"type", "hypothesis_id", "resource_id", "conclusion", "task_num", "sprint_id",
+		"type", "hypothesis_id", "conclusion", "task_num", "sprint_id",
 		"research_contribution", "research_method",
 		"parameters", "metrics", "doi", "tags",
 	}).AddRow(1, 1, "T1", "D1", "todo", "medium",
 		nil, 1, nil, createdAt, nil,
-		nil, nil, nil, "", 1, nil,
+		nil, nil, "", 1, nil,
 		"", "",
 		nil, nil, "", "tag1, tag2")
 
-	mock.ExpectQuery(`SELECT t.id, t.project_id, t.title, t.description, t.status, t.priority, t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id, t.research_contribution, t.research_method, t.parameters, t.metrics, COALESCE\(t.doi, ''\) AS doi, COALESCE\(\(SELECT STRING_AGG\(tg.name, ', '\) FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id\), ''\) as tags FROM tasks t WHERE t.project_id = \$1 ORDER BY t.task_num ASC`).
+	mock.ExpectQuery(`SELECT t.id, t.project_id, t.title, t.description, t.status, t.priority, t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, t.type, t.hypothesis_id, t.conclusion, t.task_num, t.sprint_id, t.research_contribution, t.research_method, t.parameters, t.metrics, COALESCE\(t.doi, ''\) AS doi, COALESCE\(\(SELECT STRING_AGG\(tg.name, ', '\) FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id\), ''\) as tags FROM tasks t WHERE t.project_id = \$1 ORDER BY t.task_num ASC`).
 		WithArgs(1).
 		WillReturnRows(rows)
 
@@ -319,17 +319,17 @@ func TestTaskStore_GetAllUserTasks_Success(t *testing.T) {
 		"id", "project_id", "task_num", "sprint_id", "title",
 		"description", "status", "priority", "assignee_id",
 		"created_by", "due_date", "created_at", "updated_at",
-		"type", "hypothesis_id", "resource_id", "conclusion",
+		"type", "hypothesis_id", "conclusion",
 		"research_contribution", "research_method",
 		"parameters", "metrics", "doi", "tags",
 	}).AddRow(1, 1, 1, nil, "Task",
 		"Desc", "todo", "high", nil,
 		1, nil, createdAt, nil,
-		nil, nil, nil, "",
+		nil, nil, "",
 		"", "",
 		nil, nil, "", "")
 
-	mock.ExpectQuery(`SELECT t.id, t.project_id, COALESCE\(t.task_num, 0\), t.sprint_id, t.title, COALESCE\(t.description, ''\), t.status, t.priority, t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, t.type, t.hypothesis_id, t.resource_id, COALESCE\(t.conclusion, ''\), t.research_contribution, t.research_method, t.parameters, t.metrics, COALESCE\(t.doi, ''\) AS doi, COALESCE\(\( SELECT STRING_AGG\(tg.name, ','\) FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id \), ''\) as tags FROM tasks t JOIN project_members pm ON t.project_id = pm.project_id WHERE pm.user_id = \$1 ORDER BY t.created_at DESC`).
+	mock.ExpectQuery(`SELECT t.id, t.project_id, COALESCE\(t.task_num, 0\), t.sprint_id, t.title, COALESCE\(t.description, ''\), t.status, t.priority, t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, t.type, t.hypothesis_id, COALESCE\(t.conclusion, ''\), t.research_contribution, t.research_method, t.parameters, t.metrics, COALESCE\(t.doi, ''\) AS doi, COALESCE\(\( SELECT STRING_AGG\(tg.name, ','\) FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id \), ''\) as tags FROM tasks t JOIN project_members pm ON t.project_id = pm.project_id WHERE pm.user_id = \$1 ORDER BY t.created_at DESC`).
 		WithArgs(1).
 		WillReturnRows(rows)
 

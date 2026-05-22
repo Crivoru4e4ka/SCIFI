@@ -940,50 +940,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/projects/{id}/audit-log": {
-            "get": {
-                "description": "Возвращает ленту всех важных событий внутри проекта (изменения статусов, ролей, удаление данных)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "projects"
-                ],
-                "summary": "История действий проекта (Аудит)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Project ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Количество записей (по умолчанию 50)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Список записей лога",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.AuditLog"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Insufficient permissions",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/projects/{id}/export/excel": {
             "get": {
                 "description": "Генерирует XLSX файл, содержащий подробный список всех задач проекта со всеми научными параметрами",
@@ -2078,35 +2034,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.AuditLog": {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "details": {
-                    "type": "string"
-                },
-                "entity_id": {
-                    "type": "integer"
-                },
-                "entity_type": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "project_id": {
-                    "type": "integer"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
         "models.Comment": {
             "type": "object",
             "properties": {
@@ -2520,9 +2447,6 @@ const docTemplate = `{
                 "research_method": {
                     "description": "Метод",
                     "type": "string"
-                },
-                "resource_id": {
-                    "type": "integer"
                 },
                 "sprint_id": {
                     "type": "integer"

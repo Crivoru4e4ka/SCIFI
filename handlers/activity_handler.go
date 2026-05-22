@@ -3,6 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
+
+	"github.com/gorilla/mux"
 	"project-MVP/services"
 )
 
@@ -30,6 +33,39 @@ func GetActivitiesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. Отправляем JSON клиенту
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(list)
+}
+
+// GetProjectActivitiesHandler godoc
+// @Summary Получить ленту активности проекта
+// @Description Возвращает список последних действий внутри конкретного проекта
+// @Tags activity
+// @Param id path int true "Project ID"
+// @Produce json
+// @Success 200 {array} models.Activity "Список событий активности"
+// @Failure 400 {string} string "Invalid project ID"
+// @Failure 500 {string} string "Ошибка при получении данных из базы"
+// @Router /projects/{id}/activities [get]
+func GetProjectActivitiesHandler(w http.ResponseWriter, r *http.Request) {
+	_, ok := RequireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	vars := mux.Vars(r)
+	projectID, err := strconv.Atoi(vars["id"])
+	if err != nil || projectID <= 0 {
+		http.Error(w, "Invalid project ID", http.StatusBadRequest)
+		return
+	}
+
+	list, err := services.GetProjectActivities(projectID)
+	if err != nil {
+		http.Error(w, "Ошибка получения ленты: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
 }

@@ -28,7 +28,7 @@ func (s *TaskStore) GetTasksByProject(projectId int) ([]models.Task, error) {
 		SELECT 
 			t.id, t.project_id, t.title, t.description, t.status, t.priority, 
 			t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, 
-			t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id,
+			t.type, t.hypothesis_id, t.conclusion, t.task_num, t.sprint_id,
 			t.research_contribution, t.research_method,
 			t.parameters, t.metrics, COALESCE(t.doi, '') AS doi,
 			COALESCE((SELECT STRING_AGG(tg.name, ', ') FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id), '') as tags
@@ -45,14 +45,14 @@ func (s *TaskStore) GetTasksByProject(projectId int) ([]models.Task, error) {
 	var tasks []models.Task
 	for rows.Next() {
 		var t models.Task
-		var assignee, sprint, hypothesis, resource sql.NullInt64
+		var assignee, sprint, hypothesis sql.NullInt64
 		var dueDate, updatedAt, taskType sql.NullString
 		var paramsBytes, metricsBytes []byte
 
 		err := rows.Scan(
 			&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
 			&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
-			&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
+			&taskType, &hypothesis, &t.Conclusion, &t.TaskNum, &sprint,
 			&t.ResearchContribution, &t.ResearchMethod,
 			&paramsBytes, &metricsBytes, &t.DOI,
 			&t.Tags,
@@ -73,10 +73,6 @@ func (s *TaskStore) GetTasksByProject(projectId int) ([]models.Task, error) {
 		if hypothesis.Valid {
 			val := int(hypothesis.Int64)
 			t.HypothesisId = &val
-		}
-		if resource.Valid {
-			val := int(resource.Int64)
-			t.ResourceId = &val
 		}
 		if dueDate.Valid {
 			t.DueDate = &dueDate.String
@@ -102,14 +98,14 @@ func (s *TaskStore) GetTasksByProject(projectId int) ([]models.Task, error) {
 // GetTaskByID возвращает задачу по ID.
 func (s *TaskStore) GetTaskByID(id int) (models.Task, error) {
 	var t models.Task
-	var assignee, sprint, hypothesis, resource sql.NullInt64
+	var assignee, sprint, hypothesis sql.NullInt64
 	var dueDate, updatedAt, taskType sql.NullString
 
 	query := `
 		SELECT 
 			t.id, t.project_id, t.title, t.description, t.status, t.priority, 
 			t.assignee_id, t.created_by, t.due_date, t.created_at, t.updated_at, 
-			t.type, t.hypothesis_id, t.resource_id, t.conclusion, t.task_num, t.sprint_id,
+			t.type, t.hypothesis_id, t.conclusion, t.task_num, t.sprint_id,
 			t.research_contribution, t.research_method,
 			t.parameters, t.metrics, COALESCE(t.doi, '') AS doi,
 			COALESCE((SELECT STRING_AGG(tg.name, ', ') FROM tags tg JOIN task_tags tt ON tg.id = tt.tag_id WHERE tt.task_id = t.id), '') as tags
@@ -119,7 +115,7 @@ func (s *TaskStore) GetTaskByID(id int) (models.Task, error) {
 	err := s.DB.QueryRow(query, id).Scan(
 		&t.Id, &t.ProjectId, &t.Title, &t.Description, &t.Status, &t.Priority,
 		&assignee, &t.CreatedBy, &dueDate, &t.CreatedAt, &updatedAt,
-		&taskType, &hypothesis, &resource, &t.Conclusion, &t.TaskNum, &sprint,
+		&taskType, &hypothesis, &t.Conclusion, &t.TaskNum, &sprint,
 		&t.ResearchContribution, &t.ResearchMethod,
 		&paramsBytes, &metricsBytes, &t.DOI,
 		&t.Tags,
@@ -143,10 +139,6 @@ func (s *TaskStore) GetTaskByID(id int) (models.Task, error) {
 	if hypothesis.Valid {
 		val := int(hypothesis.Int64)
 		t.HypothesisId = &val
-	}
-	if resource.Valid {
-		val := int(resource.Int64)
-		t.ResourceId = &val
 	}
 	if dueDate.Valid {
 		t.DueDate = &dueDate.String
@@ -181,7 +173,7 @@ func (s *TaskStore) GetAllUserTasks(userID int) ([]models.Task, error) {
 			t.id, t.project_id, COALESCE(t.task_num, 0), t.sprint_id, t.title, 
 			COALESCE(t.description, ''), t.status, t.priority, t.assignee_id, 
 			t.created_by, t.due_date, t.created_at, t.updated_at, 
-			t.type, t.hypothesis_id, t.resource_id, COALESCE(t.conclusion, ''),
+			t.type, t.hypothesis_id, COALESCE(t.conclusion, ''),
 			t.research_contribution, t.research_method,
 			t.parameters, t.metrics, COALESCE(t.doi, '') AS doi,
 			COALESCE((
@@ -209,7 +201,7 @@ func (s *TaskStore) GetAllUserTasks(userID int) ([]models.Task, error) {
 			&t.Id, &t.ProjectId, &t.TaskNum, &t.SprintId, &t.Title,
 			&t.Description, &t.Status, &t.Priority, &t.AssigneeId,
 			&t.CreatedBy, &t.DueDate, &t.CreatedAt, &t.UpdatedAt,
-			&t.Type, &t.HypothesisId, &t.ResourceId, &t.Conclusion, &t.ResearchContribution, &t.ResearchMethod,
+			&t.Type, &t.HypothesisId, &t.Conclusion, &t.ResearchContribution, &t.ResearchMethod,
 			&paramsBytes, &metricsBytes, &t.DOI,
 			&t.Tags,
 		)

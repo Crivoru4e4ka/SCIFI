@@ -25,18 +25,6 @@ type RolePermission struct {
 	PermissionId int `json:"permission_id"`
 }
 
-// AuditLog запись аудита
-type AuditLog struct {
-	Id         int       `json:"id"`
-	UserId     *int      `json:"user_id,omitempty"`
-	ProjectId  *int      `json:"project_id,omitempty"`
-	Action     string    `json:"action"`
-	EntityType string    `json:"entity_type,omitempty"`
-	EntityId   *int      `json:"entity_id,omitempty"`
-	Details    string    `json:"details,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
-}
-
 // ProjectMemberWithRole расширенная информация об участнике с ролью
 type ProjectMemberWithRole struct {
 	Id       int    `json:"id"`

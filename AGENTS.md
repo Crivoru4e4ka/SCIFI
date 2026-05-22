@@ -61,7 +61,7 @@ project-MVP/
 │   ├── experimentdataset.go
 │   ├── grant.go                     # + GrantType, Status constants
 │   ├── project_grant_funding.go
-│   └── rbac.go                      # Role, Permission, RolePermission, AuditLog
+│   └── rbac.go                      # Role, Permission, RolePermission, ProjectMemberWithRole
 │
 ├── handlers/                        # HTTP-обработчики (20+ файлов)
 │   ├── auth_handler.go              # POST /auth/register, /auth/login, GET /logout
@@ -184,7 +184,7 @@ project-MVP/
 2. **Middleware**: `AuthMiddleware` извлекает `session` cookie, парсит `user_id=42`, помещает в `request.Context()`. `NoCacheMiddleware` добавляет заголовки `Cache-Control`.
 3. **Router**: Gorilla Mux направляет запрос в `handlers.UpdateTaskStatus`.
 4. **Handler**: извлекает `user_id` из контекста через `middleware.GetUserID(r)`, парсит `id` из URL через `AtoiParam`, декодирует JSON. Проверяет права через `RequirePermission(w, r, projectID, "task.change_status")`.
-5. **Service**: `services.UpdateTaskStatus` проверяет, что статус допустим, запускает транзакцию: обновляет `tasks.status`, вставляет запись в `task_history` (old_status → new_status), вызывает `LogActivity` для ленты событий.
+5. **Service**: `services.UpdateTaskStatus` проверяет, что статус допустим, запускает транзакцию: обновляет `tasks.status`, вставляет запись в `task_history` (field_name, old_value, new_value), вызывает `LogActivity` для ленты событий.
 6. **Store**: `task_store.go` выполняет параметризованные SQL-запросы (`$1`, `$2`) через `db.DB`.
 7. **Ответ**: Handler возвращает JSON с обновлённой задачей и HTTP 200.
 8. **Клиент**: Vue.js получает ответ, обновляет локальное состояние задачи в массиве `tasks`, Kanban-доска перерисовывается.
@@ -222,7 +222,6 @@ projects (1) ────< (N) hypotheses
 projects (1) ────< (N) datasets
 projects (1) ────< (N) project_members
 projects (1) ────< (N) attachments (через tasks)
-projects (1) ────< (N) audit_log
 projects (1) ────< (N) project_grant_funding
 projects (1) ────< (1) teams (team_id, optional)
 
@@ -256,7 +255,7 @@ roles (N) ───────> (N) permissions (через role_permissions)
 2. `fix_task_history.sql` — расширение аудита: `changed_by`, `field_name`, `old_value`, `new_value`.
 3. `2026-05-10_add_new_tables_and_fields.sql` — научные сущности: `datasets`, `experiment_datasets`, `hypotheses`, `tags`, `task_tags`; поля `type`, `hypothesis_id`, `conclusion`, `parameters`, `metrics` в `tasks`.
 4. `2026-05-16_add_grants_and_funding.sql` — `grants`, `project_grant_funding`.
-5. `2026-05-16_add_rbac_system.sql` — `roles`, `permissions`, `role_permissions`, `audit_log`; `role_id` в `project_members`; начальное заполнение ролей и прав.
+5. `2026-05-16_add_rbac_system.sql` — `roles`, `permissions`, `role_permissions`; `role_id` в `project_members`; начальное заполнение ролей и прав.
 6. `2026-05-16_fix_users_role_check.sql` — ограничение `users.role` на `admin`/`user`/`guest`.
 7. `2026-05-16_link_projects_to_teams.sql` — `team_id`, `execution_type` в `projects`; миграция старых ролей.
 8. `2026-05-16_unify_team_roles.sql` — унификация ролей: `admin`→`project_lead`, `member`→`researcher` и т.д.
@@ -300,7 +299,7 @@ roles (N) ───────> (N) permissions (через role_permissions)
 | Attachments | `/tasks/{id}/attachments` | Multipart upload, `./static/uploads/` |
 | Teams | `/teams`, `/teams/{id}/members` | Управление командами и ролями |
 | Project Members | `/project-members`, `/projects/{id}/members` | Роли проектных участников |
-| RBAC | `/roles`, `/permissions`, `/projects/{id}/audit-log` | Аудит, права |
+| RBAC | `/roles`, `/permissions`, `/projects/{id}/activities` | Аудит, права |
 | Grants | `/grants`, `/projects/{id}/grants` | Финансирование, бюджет |
 | Reports | `/projects/{id}/report`, `/export/excel`, `/export/pdf` | ГОСТ 7.32, Excel, PDF |
 | Activities | `/activities` | Лента событий |
@@ -460,7 +459,7 @@ Handlers проверяют конкретные ошибки и возвращ�
   1. Получает `user_id` из контекста.
   2. Запрашивает `rbac_store` — функция `CheckPermission` выполняет SQL-запрос: находит роль пользователя в проекте (через `project_members` → `roles`), затем проверяет наличие связи `role_permissions` с нужным `permission.code`.
   3. Если право есть — продолжает; если нет — 403 Forbidden.
-- **Аудит**: таблица `audit_log` фиксирует действия (кто, когда, какой проект, действие, сущность). Записи создаются при CRUD-операциях через `services.LogAudit`.
+- **Аудит**: лента активности проекта (`GET /projects/{id}/activities`) использует таблицу `activities`. Записи создаются при CRUD-операциях через `services.LogActivity`.
 
 ### Файловые вложения
 
@@ -539,7 +538,7 @@ Vue использует `v-if`/`v-show` для условного отобра�
 
 **Удаление проекта** (`DELETE /projects/{id}`):
 - Требует право `project.manage_members`.
-- Транзакция: удаляет `audit_log`, `project_members`, `tasks` (каскадно), затем сам проект.
+- Транзакция: удаляет `project_members`, `tasks` (каскадно), затем сам проект.
 
 ### 2. Задачи и жизненный цикл
 
@@ -555,7 +554,7 @@ Vue использует `v-if`/`v-show` для условного отобра�
 - `task_service.UpdateTaskStatus`:
   1. Валидирует новый статус (допустимые: `К выполнению`, `В работе`, `На проверке`, `Готово`).
   2. В транзакции обновляет `tasks.status`.
-  3. Вставляет запись в `task_history` (`task_id`, `user_id`, `old_status`, `new_status`, `changed_at`).
+  3. Вставляет запись в `task_history` (`task_id`, `changed_by`, `field_name`, `old_value`, `new_value`, `changed_at`).
   4. Вызывает `activity_service.LogActivity` для ленты событий.
 
 ### 3. Спринты
@@ -618,7 +617,7 @@ Vue использует `v-if`/`v-show` для условного отобра�
 ### 8. Аудит и активность
 
 - **`task_history`**: фиксирует изменения статусов задач (кто, когда, с какого статуса на какой).
-- **`audit_log`**: фиксирует бизнес-действия (создание/удаление проекта, изменение ролей, управление участниками). Заполняется через `services.LogAudit`.
+- **`activities`**: лента событий для проектов и пользователей. Заполняется через `services.LogActivity`. `GET /activities` возвращает последние 50 событий по проектам, в которых участвует пользователь. `GET /projects/{id}/activities` возвращает события конкретного проекта.
 - **`activities`**: лента событий для пользователя. Заполняется через `services.LogActivity`. `GET /activities` возвращает последние 50 событий по проектам, в которых участвует пользователь.
 
 ---

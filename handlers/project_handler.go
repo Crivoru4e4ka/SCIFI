@@ -227,7 +227,7 @@ func GetProjectAssignableUsers(w http.ResponseWriter, r *http.Request) {
 func UpdateProjectHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
-	userID, ok := RequireAuth(w, r)
+	_, ok := RequireAuth(w, r)
 	if !ok {
 		return
 	}
@@ -247,7 +247,6 @@ func UpdateProjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	services.LogAudit(userID, id, "project_updated", "project", id, "Изменены настройки проекта")
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -272,11 +271,12 @@ func DeleteProjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	services.LogActivity(userID, id, "project", id, "deleted", "Проект удален")
+
 	if err := services.DeleteProject(id); err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
-	services.LogActivity(userID, 0, "project", id, "deleted", "Проект удален")
 	w.WriteHeader(http.StatusNoContent)
 }

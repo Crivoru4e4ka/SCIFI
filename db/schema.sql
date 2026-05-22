@@ -27,19 +27,6 @@ CREATE TABLE IF NOT EXISTS public.attachments
     CONSTRAINT attachments_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS public.audit_log
-(
-    id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
-    user_id integer,
-    project_id integer,
-    action character varying(100) COLLATE pg_catalog."default" NOT NULL,
-    entity_type character varying(50) COLLATE pg_catalog."default",
-    entity_id integer,
-    details text COLLATE pg_catalog."default",
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT audit_log_pkey PRIMARY KEY (id)
-);
-
 CREATE TABLE IF NOT EXISTS public.comments
 (
     id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
@@ -71,6 +58,7 @@ CREATE TABLE IF NOT EXISTS public.experiment_datasets
 (
     task_id integer NOT NULL,
     dataset_id integer NOT NULL,
+    relation_type character varying(20) COLLATE pg_catalog."default" DEFAULT 'input'::character varying,
     CONSTRAINT experiment_datasets_pkey PRIMARY KEY (task_id, dataset_id)
 );
 
@@ -156,7 +144,6 @@ CREATE TABLE IF NOT EXISTS public.projects
     status character varying(20) COLLATE pg_catalog."default" DEFAULT 'active'::character varying,
     created_by integer,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    program_name text COLLATE pg_catalog."default" DEFAULT ''::text,
     key character varying(10) COLLATE pg_catalog."default",
     research_goal text COLLATE pg_catalog."default" DEFAULT ''::text,
     main_hypothesis text COLLATE pg_catalog."default" DEFAULT ''::text,
@@ -212,14 +199,11 @@ CREATE TABLE IF NOT EXISTS public.task_history
 (
     id serial NOT NULL,
     task_id integer,
-    user_id integer,
-    old_status character varying(50) COLLATE pg_catalog."default",
-    new_status character varying(50) COLLATE pg_catalog."default",
-    changed_at timestamp without time zone DEFAULT now(),
     changed_by integer,
     field_name character varying(100) COLLATE pg_catalog."default",
     old_value text COLLATE pg_catalog."default",
     new_value text COLLATE pg_catalog."default",
+    changed_at timestamp without time zone DEFAULT now(),
     CONSTRAINT task_history_pkey PRIMARY KEY (id)
 );
 
@@ -245,7 +229,6 @@ CREATE TABLE IF NOT EXISTS public.tasks
     updated_at timestamp without time zone,
     type text COLLATE pg_catalog."default",
     hypothesis_id integer,
-    resource_id integer,
     conclusion text COLLATE pg_catalog."default" DEFAULT ''::text,
     parameters jsonb,
     metrics jsonb,
@@ -316,24 +299,6 @@ ALTER TABLE IF EXISTS public.attachments
     REFERENCES public.users (id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE NO ACTION;
-
-
-ALTER TABLE IF EXISTS public.audit_log
-    ADD CONSTRAINT fk_audit_project FOREIGN KEY (project_id)
-    REFERENCES public.projects (id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE CASCADE;
-CREATE INDEX IF NOT EXISTS idx_audit_log_project
-    ON public.audit_log(project_id);
-
-
-ALTER TABLE IF EXISTS public.audit_log
-    ADD CONSTRAINT fk_audit_user FOREIGN KEY (user_id)
-    REFERENCES public.users (id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE SET NULL;
-CREATE INDEX IF NOT EXISTS idx_audit_log_user
-    ON public.audit_log(user_id);
 
 
 ALTER TABLE IF EXISTS public.comments
@@ -485,13 +450,6 @@ ALTER TABLE IF EXISTS public.task_history
     REFERENCES public.tasks (id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE CASCADE;
-
-
-ALTER TABLE IF EXISTS public.task_history
-    ADD CONSTRAINT task_history_user_id_fkey FOREIGN KEY (user_id)
-    REFERENCES public.users (id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE NO ACTION;
 
 
 ALTER TABLE IF EXISTS public.task_tags

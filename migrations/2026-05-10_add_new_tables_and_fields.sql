@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS datasets (
 CREATE TABLE IF NOT EXISTS experiment_datasets (
     task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     dataset_id INTEGER NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
+    relation_type VARCHAR(20) DEFAULT 'input',
     PRIMARY KEY (task_id, dataset_id)
 );
 
@@ -42,7 +43,6 @@ CREATE TABLE IF NOT EXISTS task_tags (
 -- Новые поля для tasks
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS type TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS hypothesis_id INTEGER REFERENCES hypotheses(id) ON DELETE SET NULL;
-ALTER TABLE tasks ADD COLUMN IF NOT EXISTS resource_id INTEGER;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS conclusion TEXT DEFAULT '';
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS parameters JSONB;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS results JSONB;

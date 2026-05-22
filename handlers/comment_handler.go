@@ -71,7 +71,6 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] Logging comment for Project: %d, Action: comment_created", projectID)
 
-	services.LogAudit(userID, projectID, "comment_created", "comment", id, details)
 	// Записываем в таблицу активности
 	services.LogActivity(userID, projectID, "comment", id, "created", details)
 
@@ -153,7 +152,6 @@ func DeleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	services.LogActivity(userID, projectID, "comment", commentID, "deleted", "Пользователь удалил свой комментарий")
-	services.LogAudit(userID, projectID, "comment_deleted", "comment", commentID, "Пользователь удалил свой комментарий")
 
 	w.WriteHeader(http.StatusNoContent)
 }

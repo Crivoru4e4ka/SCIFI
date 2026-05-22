@@ -21,7 +21,6 @@ type Task struct {
 	UpdatedAt            *string         `json:"updated_at"`
 	Type                 *string         `json:"type"`
 	HypothesisId         *int            `json:"hypothesis_id"`
-	ResourceId           *int            `json:"resource_id"`
 	Conclusion           string          `json:"conclusion"`
 	TaskNum              int             `json:"task_num"`
 	Tags                 string          `json:"tags"`

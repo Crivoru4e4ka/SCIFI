@@ -1,0 +1,24 @@
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f4f6fb;
+            color: #172b4d;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .auth-card {
+            width: 100%;
+            max-width: 520px;
+            border-radius: 1rem;
+            border: 1px solid #e4e7eb;
+            box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
+            background-color: #ffffff;
+        }
+        .auth-header {
+            border-bottom: 1px solid #e9eef4;
+        }
+        .brand-title {
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }

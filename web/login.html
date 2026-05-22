@@ -5,32 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>scifi — Вход</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #f4f6fb;
-            color: #172b4d;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .auth-card {
-            width: 100%;
-            max-width: 520px;
-            border-radius: 1rem;
-            border: 1px solid #e4e7eb;
-            box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
-            background-color: #ffffff;
-        }
-        .auth-header {
-            border-bottom: 1px solid #e9eef4;
-        }
-        .brand-title {
-            font-weight: 700;
-            letter-spacing: -0.02em;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/login.css">
 </head>
 <body>
     <div id="authApp" class="auth-card">
@@ -103,77 +78,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script>
-        // Как только страница загрузилась, проверяем, нет ли уже активной сессии
-async function checkExistingSession() {
-    try {
-        const response = await fetch('/me');
-        if (response.ok) {
-            // Если сервер ответил 200 OK, значит мы уже залогинены
-            window.location.replace('/'); // Используем replace, чтобы нельзя было нажать "назад"
-        }
-    } catch (e) {
-        // Если ошибка — значит мы не авторизованы, остаемся на странице логина
-    }
-}
-checkExistingSession();
-        const { createApp } = Vue;
-
-        createApp({
-            data() {
-                return {
-                    login: {
-                        email: "",
-                        password: ""
-                    },
-                    register: {
-                        email: "",
-                        full_name: "",
-                        role: "user",
-                        password: ""
-                    }
-                };
-            },
-            methods: {
-                async submitLogin() {
-                    try {
-                        const response = await fetch('/auth/login', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(this.login)
-                        });
-                        if (response.ok) {
-                            window.location.href = '/';
-                        } else {
-                            const error = await response.text();
-                            alert('Ошибка: ' + error);
-                        }
-                    } catch (err) {
-                        alert('Ошибка сети: ' + err.message);
-                    }
-                },
-                async submitRegister() {
-                    try {
-                        const response = await fetch('/auth/register', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(this.register)
-                        });
-                        if (response.ok) {
-                            alert('Регистрация прошла успешно. Войдите в систему.');
-                            const loginTab = new bootstrap.Tab(document.getElementById('login-tab'));
-                            loginTab.show();
-                            this.register = { email: "", full_name: "", role: "user", password: "" };
-                        } else {
-                            const error = await response.text();
-                            alert('Ошибка: ' + error);
-                        }
-                    } catch (err) {
-                        alert('Ошибка сети: ' + err.message);
-                    }
-                }
-            }
-        }).mount('#authApp');
-    </script>
+    <script src="/static/js/login.js"></script>
 </body>
 </html>

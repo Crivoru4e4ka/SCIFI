@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"project-MVP/db"
 	"project-MVP/models"
 	"project-MVP/services"
 	"strconv"
@@ -39,11 +38,12 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 	// Определяем ID проекта для логов
 	projectID := req.EntityId
 	if req.EntityType == "task" {
-		err := db.DB.QueryRow("SELECT project_id FROM tasks WHERE id = $1", req.EntityId).Scan(&projectID)
+		task, err := services.GetTaskByID(req.EntityId)
 		if err != nil {
 			http.Error(w, "task not found", http.StatusNotFound)
 			return
 		}
+		projectID = task.ProjectId
 	}
 
 	// Проверка прав (состоит ли пользователь в проекте)
@@ -132,7 +132,10 @@ func DeleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 	// Находим проект для проверки прав модератора
 	projectID := comment.EntityId
 	if comment.EntityType == "task" {
-		db.DB.QueryRow("SELECT project_id FROM tasks WHERE id = $1", comment.EntityId).Scan(&projectID)
+		task, err := services.GetTaskByID(comment.EntityId)
+		if err == nil {
+			projectID = task.ProjectId
+		}
 	}
 
 	// ПРАВА: Удалить может автор ИЛИ тот, у кого есть право project.manage_members (Lead)
@@ -174,17 +177,27 @@ func UpdateCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, _ := services.GetCommentRaw(id)
+	comment, err := services.GetCommentRaw(id)
+	if err != nil {
+		http.Error(w, "comment not found", http.StatusNotFound)
+		return
+	}
 	if comment.UserId != userID {
-		http.Error(w, "Not your comment", 403)
+		http.Error(w, "Not your comment", http.StatusForbidden)
 		return
 	}
 
 	var data struct {
 		Content string `json:"content"`
 	}
-	json.NewDecoder(r.Body).Decode(&data)
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
 
-	services.UpdateComment(id, data.Content)
-	w.WriteHeader(200)
+	if err := services.UpdateComment(id, data.Content); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }

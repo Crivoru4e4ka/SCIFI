@@ -29,18 +29,26 @@ func ExportProjectExcelHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Получение данных
-	project, _ := services.GetProjectByID(projectID)
-	tasks, _ := services.GetTasksByProject(projectID)
+	project, err := services.GetProjectByID(projectID)
+	if err != nil {
+		http.Error(w, "project not found", http.StatusNotFound)
+		return
+	}
+	tasks, err := services.GetTasksByProject(projectID)
+	if err != nil {
+		http.Error(w, "failed to load tasks", http.StatusInternalServerError)
+		return
+	}
 
 	// 3. Генерация
 	buffer, err := services.GenerateProjectExcel(project, tasks)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// 4. Отправка файла
-	fileName := fmt.Sprintf("Report_%s.xlsx", project.Key)
+	// 4. Отправка файла (с защитой от CRLF-инъекции в заголовке)
+	fileName := sanitizeContentDisposition(fmt.Sprintf("Report_%s.xlsx", project.Key))
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	w.Header().Set("Content-Disposition", "attachment; filename="+fileName)
 	w.Write(buffer.Bytes())
@@ -64,16 +72,25 @@ func ExportProjectPDFHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	project, _ := services.GetProjectByID(projectID)
-	tasks, _ := services.GetTasksByProject(projectID)
-
-	pdfBytes, err := services.GenerateProjectPDF(project, tasks)
+	project, err := services.GetProjectByID(projectID)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, "project not found", http.StatusNotFound)
+		return
+	}
+	tasks, err := services.GetTasksByProject(projectID)
+	if err != nil {
+		http.Error(w, "failed to load tasks", http.StatusInternalServerError)
 		return
 	}
 
+	pdfBytes, err := services.GenerateProjectPDF(project, tasks)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fileName := sanitizeContentDisposition(fmt.Sprintf("Report_%s.pdf", project.Key))
 	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=Report_%s.pdf", project.Key))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
 	w.Write(pdfBytes)
 }

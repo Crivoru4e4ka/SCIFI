@@ -1,17 +1,42 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"project-MVP/models"
 	"project-MVP/services"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 )
+
+// generateSafeFilename создаёт безопасное уникальное имя файла и санитизирует оригинальное имя.
+func generateSafeFilename(original string) (sanitizedOriginal string, physicalName string) {
+	// Санитизируем оригинальное имя: убираем path-разделители и traversal
+	safe := filepath.Base(original)
+	safe = strings.ReplaceAll(safe, "..", "")
+	safe = strings.ReplaceAll(safe, "/", "")
+	safe = strings.ReplaceAll(safe, "\\", "")
+	if safe == "" || safe == "." {
+		safe = "upload"
+	}
+
+	// Генерируем уникальное физическое имя
+	ext := filepath.Ext(safe)
+	b := make([]byte, 8)
+	rand.Read(b)
+	physical := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), hex.EncodeToString(b), ext)
+	return safe, physical
+}
 
 // GetProjectAttachmentsHandler godoc
 // @Summary Получить все вложения проекта
@@ -90,8 +115,18 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	uploadDir := "./static/uploads"
 	os.MkdirAll(uploadDir, os.ModePerm)
 
-	// Формируем путь и сохраняем файл
-	filePath := uploadDir + "/" + header.Filename
+	// Санитизируем имя файла и генерируем безопасное физическое имя (защита от Path Traversal)
+	safeName, physicalName := generateSafeFilename(header.Filename)
+	filePath := filepath.Join(uploadDir, physicalName)
+
+	// Гарантируем, что финальный путь остаётся внутри uploadDir
+	absUploadDir, _ := filepath.Abs(uploadDir)
+	absFilePath, _ := filepath.Abs(filePath)
+	if !strings.HasPrefix(absFilePath, absUploadDir+string(filepath.Separator)) {
+		http.Error(w, "Недопустимое имя файла", http.StatusBadRequest)
+		return
+	}
+
 	out, err := os.Create(filePath)
 	if err != nil {
 		log.Printf("Ошибка при создании файла: %v", err)
@@ -101,12 +136,12 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	defer out.Close()
 	io.Copy(out, file)
 
-	// Записываем в базу
+	// Записываем в базу (сохраняем оригинальное санитизированное имя для отображения)
 	attachment := models.Attachment{
 		TaskId:   taskID,
 		UserId:   userID,
-		FileName: header.Filename,
-		FileUrl:  "/static/uploads/" + header.Filename,
+		FileName: safeName,
+		FileUrl:  "/static/uploads/" + physicalName,
 	}
 
 	if err := services.CreateAttachment(&attachment); err != nil {

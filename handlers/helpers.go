@@ -3,10 +3,20 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"project-MVP/middleware"
 	"project-MVP/services"
 )
+
+// sanitizeContentDisposition удаляет символы перевода строки из имени файла,
+// чтобы предотвратить CRLF-инъекцию в HTTP-заголовке Content-Disposition.
+func sanitizeContentDisposition(name string) string {
+	name = strings.ReplaceAll(name, "\r", "")
+	name = strings.ReplaceAll(name, "\n", "")
+	name = strings.ReplaceAll(name, "\x00", "")
+	return name
+}
 
 // GetUserID извлекает ID текущего пользователя из контекста запроса
 func GetUserID(r *http.Request) (int, bool) {

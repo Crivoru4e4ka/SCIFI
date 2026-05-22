@@ -43,10 +43,14 @@ CREATE TABLE IF NOT EXISTS public.audit_log
 CREATE TABLE IF NOT EXISTS public.comments
 (
     id integer NOT NULL GENERATED ALWAYS AS IDENTITY ( INCREMENT 1 START 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1 ),
-    task_id integer NOT NULL,
+    entity_id integer NOT NULL,
     user_id integer NOT NULL,
-    content text COLLATE pg_catalog."default" NOT NULL,
+    content text COLLATE pg_catalog."default",
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    entity_type character varying(20) COLLATE pg_catalog."default" DEFAULT 'task'::character varying,
+    parent_id integer,
+    deleted_at timestamp without time zone,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT comments_pkey PRIMARY KEY (id)
 );
 
@@ -333,7 +337,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_user
 
 
 ALTER TABLE IF EXISTS public.comments
-    ADD CONSTRAINT fk_comment_task FOREIGN KEY (task_id)
+    ADD CONSTRAINT fk_comment_task FOREIGN KEY (entity_id)
     REFERENCES public.tasks (id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE CASCADE;

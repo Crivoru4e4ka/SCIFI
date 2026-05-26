@@ -33,6 +33,6 @@ type ProjectMemberWithRole struct {
 	RoleId   *int   `json:"role_id,omitempty"`
 	RoleName string `json:"role_name,omitempty"`
 	RoleDesc string `json:"role_description,omitempty"`
-	UserName string `json:"user_name,omitempty"`
-	UserEmail string `json:"user_email,omitempty"`
+	UserName string `json:"full_name,omitempty"`
+	UserEmail string `json:"email,omitempty"`
 }

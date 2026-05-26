@@ -631,3 +631,17 @@ body.dark-theme .kanban-column.in-progress { background-color: #3d3322; }
 body.dark-theme .kanban-column.review { background-color: #332a40; }
 body.dark-theme .kanban-column.done { background-color: #1e331f; }
 
+/* Адаптивность navbar и поиска на мобильных */
+@media (max-width: 991.98px) {
+    .nav-center-actions {
+        position: static;
+        transform: none;
+        width: 100%;
+    }
+    .nav-center-actions .search-wrap {
+        max-width: none;
+    }
+    .navbar-grid {
+        gap: 8px;
+    }
+}

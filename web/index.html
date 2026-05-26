@@ -12,10 +12,15 @@
     <div id="app">
     <nav class="navbar navbar-expand-lg px-4 py-3">
         <div class="container-fluid navbar-grid">
-            <a class="navbar-brand fw-semibold" href="#">
+            <div class="d-flex align-items-center gap-2">
+                <button class="navbar-toggler d-lg-none p-1 border-0 shadow-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+                    <span class="navbar-toggler-icon" style="width: 1.2em; height: 1.2em;"></span>
+                </button>
+                <a class="navbar-brand fw-semibold m-0" href="#">
                 <img src="/static/logo.png" alt="Scifi Logo" class="navbar-logo me-2">
                 Scifi
             </a>
+            </div>
             <div class="nav-center-actions">
 <div class="search-wrap" v-click-outside="closeSearch">
     <div class="input-group search-bar shadow-sm">
@@ -84,10 +89,10 @@
     </div>
 </div>
                 <button class="btn btn-primary" type="button" id="createProjectButton" @click="prepareCreateTask">
-                    <i class="fas fa-plus me-2"></i>Создать
+                    <i class="fas fa-plus me-2"></i><span class="d-none d-sm-inline">Создать</span>
                 </button>
             </div>
-            <div class="d-flex align-items-center gap-2 top-icons">
+            <div class="d-none d-lg-flex align-items-center gap-2 top-icons">
                 <button class="btn btn-light border" type="button" title="Уведомления">
                     <i class="fas fa-bell"></i>
                 </button>
@@ -128,9 +133,70 @@
         </div>
     </nav>
 
+    <!-- Мобильная навигация (offcanvas) -->
+    <div class="offcanvas offcanvas-start d-lg-none" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+        <div class="offcanvas-header border-bottom">
+            <h5 class="offcanvas-title" id="mobileSidebarLabel">Меню</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Закрыть"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="sidebar-section mb-4">
+                <div class="section-title">Для Вас</div>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'recent'}" @click.prevent="selectSidebarTab('recent')" data-bs-dismiss="offcanvas">
+                        <img src="/static/recentbadge.png" alt="Recent badge" class="nav-sidebar-badge">
+                        <span class="nav-link-text">Недавние</span>
+                    </a>
+                    <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'flagged'}" @click.prevent="selectSidebarTab('flagged')" data-bs-dismiss="offcanvas">
+                        <img src="/static/flaggedbadge.png" alt="Flagged badge" class="nav-sidebar-badge">
+                        <span class="nav-link-text">Отмеченные</span>
+                    </a>
+                    <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'sections'}" @click.prevent="selectSidebarTab('sections')" data-bs-dismiss="offcanvas">
+                        <img src="/static/projectsbadge.png" alt="Projects badge" class="nav-sidebar-badge">
+                        <span class="nav-link-text">Проекты</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="sidebar-section mb-4">
+                <div class="section-title">Рекомендуется</div>
+                <nav class="nav flex-column">
+                    <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'filters'}" @click.prevent="selectSidebarTab('filters')" data-bs-dismiss="offcanvas">
+                        <img src="/static/filtersbadge.png" alt="Filters badge" class="nav-sidebar-badge">
+                        <span class="nav-link-text">Фильтры</span>
+                    </a>
+                    <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'dashboards'}" @click.prevent="selectSidebarTab('dashboards')" data-bs-dismiss="offcanvas">
+                        <img src="/static/dashboardsbadge.png" alt="Dashboards badge" class="nav-sidebar-badge">
+                        <span class="nav-link-text">Дашборды</span>
+                    </a>
+                    <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'teams'}" @click.prevent="selectSidebarTab('teams')" data-bs-dismiss="offcanvas">
+                        <img src="/static/teamsbadge.png" alt="Teams badge" class="nav-sidebar-badge">
+                        <span class="nav-link-text">Команды</span>
+                    </a>
+                    <a class="nav-link" href="#" :class="{active: activeSidebarTab === 'grants'}" @click.prevent="selectSidebarTab('grants')" data-bs-dismiss="offcanvas">
+                        <i class="fas fa-hand-holding-dollar nav-sidebar-badge text-success" style="font-size: 18px; width: 24px; text-align: center;"></i>
+                        <span class="nav-link-text">Гранты</span>
+                    </a>
+                </nav>
+            </div>
+            <hr>
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="avatar-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; font-size: 0.9rem;" v-text="profile.initials"></div>
+                <div class="small fw-semibold" v-text="profile.full_name"></div>
+            </div>
+            <nav class="nav flex-column">
+                <a class="nav-link" href="#" data-bs-toggle="offcanvas" data-bs-target="#themeDrawer" aria-controls="themeDrawer">
+                    <i class="fas fa-adjust me-2"></i>Тема
+                </a>
+                <a class="nav-link text-danger" href="#" @click.prevent="logout" data-bs-dismiss="offcanvas">
+                    <i class="fas fa-sign-out-alt me-2"></i>Выйти
+                </a>
+            </nav>
+        </div>
+    </div>
+
     <div class="container-fluid px-0">
         <div class="row gx-0">
-<aside class="col-auto sidebar px-3 py-4">
+<aside class="col-auto sidebar px-3 py-4 d-none d-lg-block">
     <div class="sidebar-section mb-4">
         <div class="section-title">Для Вас</div>
         <nav class="nav flex-column">
@@ -1124,7 +1190,7 @@
     <div v-if="currentProjectView === 'board'" class="mt-4">
       <div class="row g-3">
         <!-- Колонка: К выполнению -->
-        <div class="col-12 col-lg-3">
+        <div class="col-12 col-md-6 col-lg-3">
           <div class="kanban-column todo p-3" @dragover.prevent @drop="moveTask($event, 'todo')" data-status="todo">
             <div class="small text-muted mb-2 fw-semibold">К выполнению ({{ projectBoardTasks.todo.length }})</div>
             <div 
@@ -1161,7 +1227,7 @@
         </div>
 
         <!-- Колонка: В работе -->
-        <div class="col-12 col-lg-3">
+        <div class="col-12 col-md-6 col-lg-3">
           <div class="kanban-column in-progress p-3" @dragover.prevent @drop="moveTask($event, 'in_progress')" data-status="in_progress">
             <div class="small text-muted mb-2 fw-semibold">В работе ({{ projectBoardTasks.inProgress.length }})</div>
             <div 
@@ -1239,7 +1305,7 @@
 </div>
 
         <!-- Колонка: Готово -->
-        <div class="col-12 col-lg-3">
+        <div class="col-12 col-md-6 col-lg-3">
           <div class="kanban-column done p-3" @dragover.prevent @drop="moveTask($event, 'done')" data-status="done">
             <div class="small text-muted mb-2 fw-semibold">Готово ({{ projectBoardTasks.done.length }})</div>
             <div 

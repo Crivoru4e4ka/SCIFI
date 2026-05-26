@@ -192,9 +192,30 @@ func (s *ProjectStore) DeleteProject(id int) error {
 	}
 	defer tx.Rollback()
 
-	tx.Exec("DELETE FROM tasks WHERE project_id = $1", id)
-	tx.Exec("DELETE FROM project_members WHERE project_id = $1", id)
-	tx.Exec("DELETE FROM projects WHERE id = $1", id)
+	_, err = tx.Exec("DELETE FROM activities WHERE project_id = $1", id)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM task_history WHERE task_id IN (SELECT id FROM tasks WHERE project_id = $1)", id)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM tasks WHERE project_id = $1", id)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM project_members WHERE project_id = $1", id)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM projects WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
 
 	return tx.Commit()
 }

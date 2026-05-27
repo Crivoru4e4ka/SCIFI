@@ -29,4 +29,8 @@ type Task struct {
 	DOI                  string          `json:"doi"`
 	Parameters           json.RawMessage `json:"parameters" swaggertype:"object"`
 	Metrics              json.RawMessage `json:"metrics" swaggertype:"object"`
+	InputDatasetIDs      []int           `json:"input_dataset_ids,omitempty"`
+	OutputDatasetIDs     []int           `json:"output_dataset_ids,omitempty"`
+	InputDatasets        []Dataset       `json:"input_datasets,omitempty"`
+	OutputDatasets       []Dataset       `json:"output_datasets,omitempty"`
 }

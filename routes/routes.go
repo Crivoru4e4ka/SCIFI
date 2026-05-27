@@ -119,6 +119,20 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/permissions", handlers.GetPermissions).Methods("GET")
 	r.HandleFunc("/projects/{id}/members/{userID}/role", handlers.AssignProjectRoleHandler).Methods("POST")
 	r.HandleFunc("/projects/{id}/my-permissions", handlers.GetMyProjectPermissions).Methods("GET")
+	// --- Datasets ---
+	r.HandleFunc("/projects/{id}/datasets", handlers.GetProjectDatasets).Methods("GET")
+	r.HandleFunc("/projects/{id}/datasets", handlers.CreateDataset).Methods("POST")
+	r.HandleFunc("/datasets/{id}", handlers.GetDataset).Methods("GET")
+	r.HandleFunc("/datasets/{id}", handlers.DeleteDataset).Methods("DELETE")
+
+	// --- Task <-> Dataset links ---
+	r.HandleFunc("/tasks/{id}/datasets", handlers.GetTaskDatasets).Methods("GET")
+	r.HandleFunc("/tasks/{id}/datasets", handlers.CreateExperimentDataset).Methods("POST")
+	r.HandleFunc("/tasks/{id}/datasets/{datasetId}", handlers.DeleteTaskDataset).Methods("DELETE")
+
+	// --- Lineage ---
+	r.HandleFunc("/datasets/{id}/lineage", handlers.GetDatasetLineage).Methods("GET")
+
 	// --- Отчеты ---
 	r.HandleFunc("/projects/{id}/report", handlers.GenerateGostReport).Methods("GET")
 	r.HandleFunc("/projects/{id}/export/excel", handlers.ExportProjectExcelHandler).Methods("GET")

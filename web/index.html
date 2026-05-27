@@ -899,6 +899,9 @@
         <button class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'attachments' }" @click="currentProjectView = 'attachments'">
             <i class="fas fa-paperclip me-2"></i>Файлы
         </button>
+        <button class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'datasets' }" @click="currentProjectView = 'datasets'">
+            <i class="fas fa-database me-2"></i>Датасеты
+        </button>
         <button class="btn btn-link text-decoration-none p-2 fw-semibold" :class="{ 'active text-primary': currentProjectView === 'funding' }" @click="currentProjectView = 'funding'">
             <i class="fas fa-hand-holding-dollar me-2"></i>Финансирование
         </button>
@@ -1098,6 +1101,23 @@
         <span class="text-muted">DOI:</span> 
         <a v-if="task.doi" :href="'https://doi.org/' + task.doi" target="_blank">{{ task.doi }}</a>
         <span v-else>не указан</span>
+    </div>
+</div>
+
+<!-- БЛОК ДАТАСЕТОВ ЗАДАЧИ -->
+<div v-if="task.input_datasets?.length || task.output_datasets?.length" class="mt-3 p-3 bg-white rounded border-start border-warning border-4 shadow-sm">
+    <h6 class="text-warning small fw-bold text-uppercase"><i class="fas fa-database me-2"></i>Данные</h6>
+    <div v-if="task.input_datasets?.length" class="mb-2">
+        <span class="text-muted small">Input:</span>
+        <div class="d-flex flex-wrap gap-1 mt-1">
+            <span v-for="ds in task.input_datasets" :key="ds.id" class="badge bg-light text-dark border">{{ ds.name }}</span>
+        </div>
+    </div>
+    <div v-if="task.output_datasets?.length">
+        <span class="text-muted small">Output:</span>
+        <div class="d-flex flex-wrap gap-1 mt-1">
+            <span v-for="ds in task.output_datasets" :key="ds.id" class="badge bg-success text-white">{{ ds.name }}</span>
+        </div>
     </div>
 </div>
 
@@ -1705,6 +1725,100 @@
                 </div>
                 <div v-if="activeComments.length === 0" class="text-center py-5 text-muted">
                     здесь еще нет обсуждений.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ВКЛАДКА: ДАТАСЕТЫ -->
+<div v-if="currentProjectView === 'datasets'" class="mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0"><i class="fas fa-database me-2 text-primary"></i>Датасеты проекта</h5>
+        <button class="btn btn-primary btn-sm" @click="createDatasetModal.show()" v-if="canEditProject">
+            <i class="fas fa-plus me-1"></i>Создать датасет
+        </button>
+    </div>
+    <div class="row g-3">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-3">Название</th>
+                                <th>Версия</th>
+                                <th>URL</th>
+                                <th class="text-end pe-3">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="ds in projectDatasets" :key="ds.id" @click="openDatasetDetail(ds)" style="cursor: pointer;" :class="{'table-active': selectedDataset && selectedDataset.id === ds.id}">
+                                <td class="ps-3 fw-semibold">{{ ds.name }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ ds.version || '-' }}</span></td>
+                                <td>
+                                    <a v-if="ds.data_url" :href="ds.data_url" target="_blank" class="small text-decoration-none" @click.stop>
+                                        <i class="fas fa-external-link-alt me-1"></i>Ссылка
+                                    </a>
+                                    <span v-else class="text-muted small">—</span>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <button class="btn btn-sm btn-outline-danger" @click.stop="deleteDataset(ds.id)" v-if="canEditProject">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="projectDatasets.length === 0">
+                                <td colspan="4" class="text-center text-muted py-4">В проекте пока нет датасетов</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0" v-if="selectedDataset">
+                <div class="card-body">
+                    <h6 class="fw-bold">{{ selectedDataset.name }}</h6>
+                    <p class="text-muted small">{{ selectedDataset.description || 'Описание отсутствует' }}</p>
+                    <div class="mb-2">
+                        <span class="text-muted small">Версия:</span>
+                        <span class="badge bg-light text-dark border">{{ selectedDataset.version || '-' }}</span>
+                    </div>
+                    <div class="mb-3" v-if="selectedDataset.data_url">
+                        <span class="text-muted small">URL:</span>
+                        <a :href="selectedDataset.data_url" target="_blank" class="small text-decoration-none d-block text-truncate">{{ selectedDataset.data_url }}</a>
+                    </div>
+
+                    <h6 class="fw-bold mt-4 border-top pt-3"><i class="fas fa-project-diagram me-2 text-info"></i>Lineage</h6>
+                    <div v-if="datasetLineage">
+                        <div v-if="datasetLineage.ancestors.length" class="mb-2">
+                            <span class="text-muted small">Источники (upstream):</span>
+                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                <span v-for="a in datasetLineage.ancestors" :key="a.id + '-' + a.task_id" class="badge bg-light text-dark border">
+                                    {{ a.name }}
+                                </span>
+                            </div>
+                        </div>
+                        <div v-if="datasetLineage.descendants.length" class="mb-2">
+                            <span class="text-muted small">Потомки (downstream):</span>
+                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                <span v-for="d in datasetLineage.descendants" :key="d.id + '-' + d.task_id" class="badge bg-success text-white">
+                                    {{ d.name }}
+                                </span>
+                            </div>
+                        </div>
+                        <div v-if="!datasetLineage.ancestors.length && !datasetLineage.descendants.length" class="text-muted small">
+                            Связей lineage не найдено
+                        </div>
+                    </div>
+                    <div v-else class="text-muted small">Загрузка lineage...</div>
+                </div>
+            </div>
+            <div class="card shadow-sm border-0" v-else>
+                <div class="card-body text-center text-muted py-5">
+                    <i class="fas fa-database fa-2x mb-3 opacity-25"></i>
+                    <p class="small">Выберите датасет для просмотра lineage</p>
                 </div>
             </div>
         </div>
@@ -2428,6 +2542,34 @@
                         <input type="file" class="form-control" id="taskFile" @change="handleTaskFileSelect">
                     </div>
 
+                    <!-- ДАТАСЕТЫ (только если в проекте есть датасеты) -->
+                    <div v-if="currentProject && projectDatasets.length > 0" class="p-3 mb-4 border-start border-warning border-4 rounded-end shadow-sm" style="background: #fffbf0;">
+                        <div class="fw-bold text-warning small text-uppercase mb-3">Данные</div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Input датасеты</label>
+                            <select class="form-select form-select-sm" v-model="newTask.inputDatasetIds" multiple size="3">
+                                <option v-for="ds in projectDatasets" :key="ds.id" :value="ds.id">{{ ds.name }}</option>
+                            </select>
+                            <div class="form-text small text-muted">Удерживайте Ctrl для выбора нескольких</div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold">Output датасет</label>
+                            <select class="form-select form-select-sm" v-model="newTask.outputDatasetId">
+                                <option :value="null">— Не создавать —</option>
+                                <option v-for="ds in projectDatasets" :key="ds.id" :value="ds.id">{{ ds.name }}</option>
+                                <option value="new">+ Создать новый датасет</option>
+                            </select>
+                        </div>
+                        <div v-if="newTask.outputDatasetId === 'new'" class="row g-2 mt-2">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control form-control-sm" v-model="newTask.newOutputDatasetName" placeholder="Название нового датасета">
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" class="form-control form-control-sm" v-model="newTask.newOutputDatasetUrl" placeholder="URL данных">
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Ошибка и успех -->
                     <div class="alert alert-danger mt-3" id="createTaskError" :class="{ 'd-none': !taskError }" v-text="taskError"></div>
                     <div class="alert alert-success mt-3" id="createTaskSuccess" :class="{ 'd-none': !taskSuccess }" v-text="taskSuccess"></div>
@@ -2850,6 +2992,46 @@
                 <button class="btn btn-outline-danger btn-sm px-3" @click="deleteTeam">
                     <i class="fas fa-trash-alt me-1"></i> Удалить команду
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Создание датасета -->
+<div class="modal fade" id="createDatasetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Новый датасет</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Название <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" v-model="datasetForm.name" placeholder="Например: training_data_v1">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Описание</label>
+                    <textarea class="form-control" v-model="datasetForm.description" rows="2" placeholder="Краткое описание содержимого"></textarea>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Версия</label>
+                        <input type="text" class="form-control" v-model="datasetForm.version" placeholder="1.0">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">URL данных</label>
+                        <input type="text" class="form-control" v-model="datasetForm.data_url" placeholder="https://...">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Параметры (JSON)</label>
+                    <textarea class="form-control font-monospace small" v-model="datasetForm.parameters" rows="3" placeholder='{"format": "csv", "rows": 1000}'></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" @click="createDatasetFromModal">Создать</button>
             </div>
         </div>
     </div>

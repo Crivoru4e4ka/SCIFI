@@ -47,7 +47,7 @@ project-MVP/
 ├── models/                          # DTO / структуры данных (18 файлов)
 │   ├── user.go
 │   ├── project.go                   # + ResearchGoal, MainHypothesis, Novelty, ExpectedResult
-│   ├── task.go                      # + Type, HypothesisID, ResearchMethod, ResearchContribution, DOI
+│   ├── task.go                      # + Type, HypothesisID, ResearchMethod, ResearchContribution, DOI, InputDatasetIDs, OutputDatasetIDs
 │   ├── comment.go                   # + ParentID, SoftDelete, Nested Replies
 │   ├── attachment.go
 │   ├── sprint.go
@@ -57,7 +57,8 @@ project-MVP/
 │   ├── team.go                      # + TeamMemberInfo, UpdateTeamRequest, AddMemberRequest
 │   ├── project_member.go            # + RoleId (FK к roles)
 │   ├── hypothesis.go
-│   ├── dataset.go                   # + Parameters (JSONB)
+│   ├── dataset.go                   # + Parameters (JSONB), CreatedBy
+│   ├── dataset_dependency.go        # + Lineage graph (source→target через task)
 │   ├── experimentdataset.go
 │   ├── grant.go                     # + GrantType, Status constants
 │   ├── project_grant_funding.go
@@ -75,8 +76,9 @@ project-MVP/
 │   ├── team_handler.go              # CRUD команд, управление участниками
 │   ├── tag_handler.go
 │   ├── task_tag_handler.go
-│   ├── dataset_handler.go
-│   ├── experiment_dataset_handler.go
+│   ├── dataset_handler.go           # CRUD датасетов, GET /projects/{id}/datasets
+│   ├── experiment_dataset_handler.go # Связи задач с датасетами (input/output)
+│   ├── dataset_dependency_handler.go # GET /datasets/{id}/lineage
 │   ├── grant_handler.go             # Полный CRUD грантов + финансирование проектов
 │   ├── rbac_handler.go              # Роли, права, аудит-лог
 │   ├── export_handler.go            # Excel/PDF экспорт
@@ -99,6 +101,7 @@ project-MVP/
 │   ├── task_tag_service.go
 │   ├── dataset_service.go / dataset_store.go
 │   ├── experiment_service.go / experiment_store.go
+│   ├── dataset_dependency_service.go / dataset_dependency_store.go # Lineage (рекурсивный CTE)
 │   ├── grant_service.go
 │   ├── project_grant_funding_service.go
 │   ├── export_service.go            # Генерация Excel и PDF
@@ -126,7 +129,7 @@ project-MVP/
 ├── docs/
 │   ├── docs.go, swagger.json, swagger.yaml  # Swagger-документация
 │
-└── migrations/                      # 9 SQL-миграций
+└── migrations/                      # 10 SQL-миграций
     ├── 2026-05-10_add_new_tables_and_fields.sql
     ├── 2026-05-16_add_grants_and_funding.sql
     ├── 2026-05-16_add_rbac_system.sql
@@ -260,6 +263,7 @@ roles (N) ───────> (N) permissions (через role_permissions)
 7. `2026-05-16_link_projects_to_teams.sql` — `team_id`, `execution_type` в `projects`; миграция старых ролей.
 8. `2026-05-16_unify_team_roles.sql` — унификация ролей: `admin`→`project_lead`, `member`→`researcher` и т.д.
 9. `add_task_doi_column.sql` — `doi` в `tasks`.
+10. `2026-05-27_dataset_lineage.sql` — `dataset_dependencies` (lineage-граф), `created_by` в `datasets`.
 
 ---
 
@@ -301,6 +305,9 @@ roles (N) ───────> (N) permissions (через role_permissions)
 | Project Members | `/project-members`, `/projects/{id}/members` | Роли проектных участников |
 | RBAC | `/roles`, `/permissions`, `/projects/{id}/activities` | Аудит, права |
 | Grants | `/grants`, `/projects/{id}/grants` | Финансирование, бюджет |
+| Datasets | `/projects/{id}/datasets`, `/datasets/{id}` | CRUD датасетов проекта |
+| Task Datasets | `/tasks/{id}/datasets` | Связи input/output |
+| Lineage | `/datasets/{id}/lineage` | Граф происхождения данных (upstream/downstream) |
 | Reports | `/projects/{id}/report`, `/export/excel`, `/export/pdf` | ГОСТ 7.32, Excel, PDF |
 | Activities | `/activities` | Лента событий |
 | Static | `/static/*` | `http.FileServer` |
@@ -350,12 +357,14 @@ roles (N) ───────> (N) permissions (через role_permissions)
 - **Backlog** (`backlog`): бэклог проекта.
 - **Attachments** (`attachments`): список файлов проекта.
 - **Funding** (`funding`): связанные гранты и их бюджеты.
+- **Datasets** (`datasets`): каталог датасетов проекта с lineage-графом.
 - **Audit** (`audit`): аудит-лог проекта.
 - **Discussion** (`discussion`): комментарии к проекту.
 
 **Модальные окна:**
 - Создание проекта (пошаговый мастер: шаблон → название/key → научный паспорт → участники).
-- Создание/редактирование задачи (динамическая форма в зависимости от типа: research, experiment, data_collection, analysis, dev, doc/publication).
+- Создание/редактирование задачи (динамическая форма в зависимости от типа: research, experiment, data_collection, analysis, dev, doc/publication). Включает выбор input/output датасетов и inline-создание output-датасета.
+- Создание датасета (name, description, version, data_url, parameters JSON).
 - Управление спринтом, командой, грантом, участниками проекта.
 
 ### Кастомные директивы
@@ -416,13 +425,14 @@ Services содержат всю бизнес-логику, правила ва�
 
 **Пример**: `task_service.go` / `task_store.go`
 - `task_service.go`:
-  - `CreateTask` — проверяет существование проекта и создателя через `project_service` и `user_service`, валидирует обязательные поля (`project_id`, `title`, `created_by`), проверяет что `assignee_id` является участником проекта (`project_member_service.IsUserInProject`), нормализует статус, создаёт задачу через `DefaultTaskStore`, при наличии тегов вызывает `task_tag_service.AddTagToTask`, логирует активность.
+  - `CreateTask` — проверяет существование проекта и создателя, валидирует поля, создаёт задачу через `DefaultTaskStore`. Если переданы `input_dataset_ids`/`output_dataset_ids`, автоматически создаёт связи в `experiment_datasets` (relation_type: input/output) и строит lineage через `dataset_dependency_service.BuildLineageForTask`. При наличии тегов вызывает `task_tag_service.AddTagToTask`, логирует активность.
+  - `UpdateTask` — обновляет поля задачи (включая JSONB `parameters`/`metrics` при их передаче). Пересоздаёт связи с датасетами и перестраивает lineage.
   - `UpdateTaskStatus` — проверяет валидность статуса, вызывает store для обновления `tasks.status`, вставляет запись в `task_history`, вызывает `activity_service.LogActivity`.
 - `task_store.go`:
   - `CreateTask` — `INSERT INTO tasks ... RETURNING id, task_num`.
   - `GetTaskByID` — `SELECT` с `JOIN` на `users` (assignee), `STRING_AGG` для тегов.
-  - `UpdateTask` — `UPDATE tasks SET ...`.
-  - `DeleteTask` — в транзакции удаляет `task_tags`, `task_history`, `comments`, затем `tasks`.
+  - `UpdateTask` — `UPDATE tasks SET ...` с условным обновлением JSONB `parameters`/`metrics` (только если переданы не-nil).
+  - `DeleteTask` — в транзакции удаляет `task_tags`, `task_history`, `comments`, `experiment_datasets`, `dataset_dependencies`, затем `tasks`.
   - `GetProjectReportData` — сложный `SELECT` с агрегацией данных для отчёта ГОСТ 7.32.
 
 **Транзакции:**
@@ -460,6 +470,32 @@ Handlers проверяют конкретные ошибки и возвращ�
   2. Запрашивает `rbac_store` — функция `CheckPermission` выполняет SQL-запрос: находит роль пользователя в проекте (через `project_members` → `roles`), затем проверяет наличие связи `role_permissions` с нужным `permission.code`.
   3. Если право есть — продолжает; если нет — 403 Forbidden.
 - **Аудит**: лента активности проекта (`GET /projects/{id}/activities`) использует таблицу `activities`. Записи создаются при CRUD-операциях через `services.LogActivity`.
+
+### Data Management (Датасеты и Lineage)
+
+**Датасеты** (`datasets`):
+- Проектно-уровневые данные: `name`, `description`, `version`, `data_url`, `parameters` (JSONB), `created_by`.
+- CRUD через `POST/GET/DELETE /projects/{id}/datasets` и `DELETE /datasets/{id}`.
+- Права: `dataset.upload` для создания, `project.edit` для удаления.
+
+**Связи задач с датасетами** (`experiment_datasets`):
+- Many-to-many между `tasks` и `datasets` с `relation_type` (`input` | `output`).
+- Создаются автоматически при `CreateTask`/`UpdateTask` через поля `input_dataset_ids` и `output_dataset_ids` в JSON payload.
+- Endpoint'ы: `GET/POST /tasks/{id}/datasets`, `DELETE /tasks/{id}/datasets/{datasetId}`.
+
+**Lineage (происхождение данных)** (`dataset_dependencies`):
+- Таблица связей `source_dataset_id` → `target_dataset_id` через `task_id`.
+- Автоматически строится при создании задачи: для каждого output-датасета создаются зависимости от всех input-датасетов.
+- `GET /datasets/{id}/lineage` возвращает полный граф через рекурсивный CTE:
+  - `ancestors` — все предки (upstream) с глубиной.
+  - `descendants` — все потомки (downstream) с глубиной.
+  - Защита от циклов: ограничение depth < 10.
+
+**Пример lineage:**
+```
+Dataset A + Dataset B → Experiment Task → Dataset C → Experiment Task 2 → Dataset D
+```
+Lineage D: A → C → D, B → C → D.
 
 ### Файловые вложения
 
@@ -671,7 +707,7 @@ type DBTX interface {
 
 ### Что покрыто тестами
 
-- **CRUD операции** всех основных сущностей (users, projects, tasks, teams, grants, datasets, comments).
+- **CRUD операции** всех основных сущностей (users, projects, tasks, teams, grants, datasets, dataset_dependencies, comments).
 - **Транзакции** (создание проекта с авто-добавлением lead, завершение спринта).
 - **RBAC** (проверка прав, сидинг ролей и permission mappings).
 - **Валидация бизнес-правил** (дубликаты email, невалидные роли, бюджетные ограничения грантов, форматы дат).

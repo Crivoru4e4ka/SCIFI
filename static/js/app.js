@@ -107,7 +107,13 @@ newTask: {
     docType: "article",
     journal: "",
     docStatus: "draft",
-    coAuthors: ""
+    coAuthors: "",
+
+    // --- ДАТАСЕТЫ ---
+    inputDatasetIds: [],
+    outputDatasetId: null,
+    newOutputDatasetName: '',
+    newOutputDatasetUrl: ''
 },
                     taskError: "",
                     taskSuccess: "",
@@ -267,7 +273,18 @@ flaggedItems: [],
                         funding_end_date: ''
                     },
                     addProjectToGrantModal: null,
-                    grantProjectError: ''
+                    grantProjectError: '',
+                    projectDatasets: [],
+                    datasetForm: {
+                        name: '',
+                        description: '',
+                        version: '',
+                        data_url: '',
+                        parameters: ''
+                    },
+                    createDatasetModal: null,
+                    selectedDataset: null,
+                    datasetLineage: null
                 };
             },
             computed: {
@@ -1066,6 +1083,7 @@ async openProject(project) {
     this.loadProjectGrants(project.id);
     this.loadProjectPermissions(project.id);
     this.loadProjectActivities(project.id);
+    this.loadProjectDatasets(project.id);
 },
 async approveResearchTask(task) {
     if (!confirm("Вы подтверждаете научную достоверность результатов этого этапа?")) return;
@@ -1862,7 +1880,13 @@ resetTaskForm() {
         docType: "article",
         journal: "",
         docStatus: "draft",
-        coAuthors: ""
+        coAuthors: "",
+
+        // --- ДАТАСЕТЫ ---
+        inputDatasetIds: [],
+        outputDatasetId: null,
+        newOutputDatasetName: '',
+        newOutputDatasetUrl: ''
     };
 
     // Очистка системных уведомлений
@@ -1895,8 +1919,31 @@ toggleTask(taskId) {
         const task = this.projectTasks.find(t => t.id === taskId);
         if (task) {
             this.addToRecent(task, 'task');
-            this.loadComments(taskId, 'task'); 
+            this.loadComments(taskId, 'task');
+            this.loadTaskDatasets(task);
         }
+    }
+},
+async loadTaskDatasets(task) {
+    try {
+        const response = await fetch(`/tasks/${task.id}/datasets`, { credentials: 'include' });
+        if (response.ok) {
+            const links = await response.json();
+            task.input_datasets = [];
+            task.output_datasets = [];
+            for (const link of links) {
+                const ds = this.projectDatasets.find(d => d.id === link.dataset_id);
+                if (ds) {
+                    if (link.relation_type === 'input') {
+                        task.input_datasets.push(ds);
+                    } else if (link.relation_type === 'output') {
+                        task.output_datasets.push(ds);
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load task datasets:', err);
     }
 },
 prepareCreateTask() {
@@ -1976,6 +2023,37 @@ async createTaskFromModal() {
         doc_coauthors: this.newTask.coAuthors
     };
 
+    // Подготовка output dataset: создаем новый если нужно
+    let outputDatasetIds = [];
+    if (this.newTask.outputDatasetId === 'new') {
+        if (this.newTask.newOutputDatasetName.trim()) {
+            try {
+                const dsPayload = {
+                    project_id: Number(this.newTask.projectId),
+                    name: this.newTask.newOutputDatasetName.trim(),
+                    data_url: this.newTask.newOutputDatasetUrl.trim(),
+                    version: '1.0'
+                };
+                const dsResponse = await fetch(`/projects/${this.newTask.projectId}/datasets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dsPayload),
+                    credentials: 'include'
+                });
+                if (dsResponse.ok) {
+                    const ds = await dsResponse.json();
+                    outputDatasetIds = [ds.id];
+                    // Обновляем список датасетов проекта
+                    this.loadProjectDatasets(this.newTask.projectId);
+                }
+            } catch (e) {
+                console.error('Failed to create output dataset:', e);
+            }
+        }
+    } else if (this.newTask.outputDatasetId) {
+        outputDatasetIds = [Number(this.newTask.outputDatasetId)];
+    }
+
     // 2. Формируем итоговый объект для отправки на Go-бэкенд
     const payload = {
         project_id: Number(this.newTask.projectId),
@@ -1994,7 +2072,9 @@ async createTaskFromModal() {
         conclusion: this.newTask.conclusion || "",
         // Передаем объект — Go-бэкенд сам запишет его в JSONB колонку
         parameters: researchParams, 
-        metrics: { goal: this.newTask.expMetrics }
+        metrics: { goal: this.newTask.expMetrics },
+        input_dataset_ids: this.newTask.inputDatasetIds || [],
+        output_dataset_ids: outputDatasetIds
     };
 
     this.isTaskSubmitting = true;
@@ -2436,6 +2516,75 @@ mounted() {
     this.loadAllTasks();
 
     // Существующие модалки
+async loadProjectDatasets(projectId) {
+    try {
+        const response = await fetch(`/projects/${projectId}/datasets`, { credentials: 'include' });
+        if (response.ok) {
+            this.projectDatasets = await response.json();
+        }
+    } catch (err) {
+        console.error('Failed to load project datasets:', err);
+    }
+},
+async createDatasetFromModal() {
+    if (!this.currentProject) return;
+    try {
+        const payload = {
+            project_id: this.currentProject.id,
+            name: this.datasetForm.name.trim(),
+            description: this.datasetForm.description.trim(),
+            version: this.datasetForm.version.trim(),
+            data_url: this.datasetForm.data_url.trim(),
+            parameters: this.datasetForm.parameters ? JSON.parse(this.datasetForm.parameters) : null
+        };
+        const response = await fetch(`/projects/${this.currentProject.id}/datasets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Не удалось создать датасет');
+        this.datasetForm = { name: '', description: '', version: '', data_url: '', parameters: '' };
+        this.createDatasetModal.hide();
+        this.loadProjectDatasets(this.currentProject.id);
+    } catch (err) {
+        alert(err.message);
+    }
+},
+async deleteDataset(datasetId) {
+    if (!confirm('Вы уверены, что хотите удалить этот датасет?')) return;
+    try {
+        const response = await fetch(`/datasets/${datasetId}`, { method: 'DELETE', credentials: 'include' });
+        if (response.ok) {
+            this.loadProjectDatasets(this.currentProject.id);
+            if (this.selectedDataset && this.selectedDataset.id === datasetId) {
+                this.selectedDataset = null;
+                this.datasetLineage = null;
+            }
+        }
+    } catch (err) {
+        console.error('Failed to delete dataset:', err);
+    }
+},
+async loadDatasetLineage(datasetId) {
+    try {
+        const response = await fetch(`/datasets/${datasetId}/lineage`, { credentials: 'include' });
+        if (response.ok) {
+            this.datasetLineage = await response.json();
+        }
+    } catch (err) {
+        console.error('Failed to load dataset lineage:', err);
+    }
+},
+openDatasetDetail(dataset) {
+    this.selectedDataset = dataset;
+    this.loadDatasetLineage(dataset.id);
+},
+closeDatasetDetail() {
+    this.selectedDataset = null;
+    this.datasetLineage = null;
+},
+
     const modalElement = document.getElementById('createProjectModal');
     this.createProjectModal = new bootstrap.Modal(modalElement);
 
@@ -2464,6 +2613,11 @@ mounted() {
     const manageMembersModalElement = document.getElementById('manageMembersModal');
     if (manageMembersModalElement) {
         this.manageMembersModal = new bootstrap.Modal(manageMembersModalElement);
+    }
+
+    const datasetModalElement = document.getElementById('createDatasetModal');
+    if (datasetModalElement) {
+        this.createDatasetModal = new bootstrap.Modal(datasetModalElement);
     }
 }
         });

@@ -17,7 +17,7 @@ func NewExperimentStore(database db.DBPool) *ExperimentStore {
 
 // GetAllExperimentDatasets возвращает все связи задач с датасетами.
 func (s *ExperimentStore) GetAllExperimentDatasets() ([]models.ExperimentDataset, error) {
-	rows, err := s.DB.Query(`SELECT task_id, dataset_id FROM experiment_datasets`)
+	rows, err := s.DB.Query(`SELECT task_id, dataset_id, relation_type FROM experiment_datasets`)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,26 @@ func (s *ExperimentStore) GetAllExperimentDatasets() ([]models.ExperimentDataset
 	var result []models.ExperimentDataset
 	for rows.Next() {
 		var eds models.ExperimentDataset
-		if err := rows.Scan(&eds.TaskID, &eds.DatasetID); err != nil {
+		if err := rows.Scan(&eds.TaskID, &eds.DatasetID, &eds.RelationType); err != nil {
+			return nil, err
+		}
+		result = append(result, eds)
+	}
+	return result, nil
+}
+
+// GetDatasetsByTask возвращает связи задачи с датасетами.
+func (s *ExperimentStore) GetDatasetsByTask(taskID int) ([]models.ExperimentDataset, error) {
+	rows, err := s.DB.Query(`SELECT task_id, dataset_id, relation_type FROM experiment_datasets WHERE task_id = $1`, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.ExperimentDataset
+	for rows.Next() {
+		var eds models.ExperimentDataset
+		if err := rows.Scan(&eds.TaskID, &eds.DatasetID, &eds.RelationType); err != nil {
 			return nil, err
 		}
 		result = append(result, eds)
@@ -36,10 +55,22 @@ func (s *ExperimentStore) GetAllExperimentDatasets() ([]models.ExperimentDataset
 
 // CreateExperimentDataset создает связь задачи и датасета.
 func (s *ExperimentStore) CreateExperimentDataset(eds models.ExperimentDataset) (models.ExperimentDataset, error) {
-	_, err := s.DB.Exec(`INSERT INTO experiment_datasets (task_id, dataset_id) VALUES ($1, $2)`,
-		eds.TaskID, eds.DatasetID)
+	_, err := s.DB.Exec(`INSERT INTO experiment_datasets (task_id, dataset_id, relation_type) VALUES ($1, $2, $3)`,
+		eds.TaskID, eds.DatasetID, eds.RelationType)
 	if err != nil {
 		return eds, err
 	}
 	return eds, nil
+}
+
+// DeleteExperimentDataset удаляет связь задачи и датасета.
+func (s *ExperimentStore) DeleteExperimentDataset(taskID, datasetID int) error {
+	_, err := s.DB.Exec(`DELETE FROM experiment_datasets WHERE task_id = $1 AND dataset_id = $2`, taskID, datasetID)
+	return err
+}
+
+// DeleteTaskDatasets удаляет все связи задачи с датасетами.
+func (s *ExperimentStore) DeleteTaskDatasets(taskID int) error {
+	_, err := s.DB.Exec(`DELETE FROM experiment_datasets WHERE task_id = $1`, taskID)
+	return err
 }

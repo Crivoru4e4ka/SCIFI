@@ -12,9 +12,10 @@ var (
 	DefaultCommentStore   *CommentStore
 	DefaultSprintStore    *SprintStore
 	DefaultTagStore       *TagStore
-	DefaultDatasetStore   *DatasetStore
-	DefaultExperimentStore *ExperimentStore
-	DefaultUserStore      *UserStore
+	DefaultDatasetStore           *DatasetStore
+	DefaultExperimentStore        *ExperimentStore
+	DefaultDatasetDependencyStore *DatasetDependencyStore
+	DefaultUserStore              *UserStore
 )
 
 // InitDefaultStores создаёт глобальные инстансы Store'ов с актуальным
@@ -29,5 +30,6 @@ func InitDefaultStores() {
 	DefaultTagStore = NewTagStore(db.DB)
 	DefaultDatasetStore = NewDatasetStore(db.DB)
 	DefaultExperimentStore = NewExperimentStore(db.DB)
+	DefaultDatasetDependencyStore = NewDatasetDependencyStore(db.DB)
 	DefaultUserStore = NewUserStore(db.DB)
 }

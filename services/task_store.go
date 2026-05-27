@@ -305,16 +305,34 @@ func (s *TaskStore) GetProjectHypotheses(projectID int) ([]models.Hypothesis, er
 
 // UpdateTask обновляет данные задачи.
 func (s *TaskStore) UpdateTask(taskId int, task models.Task) error {
-	query := `UPDATE tasks SET 
-		title = $1, description = $2, priority = $3, assignee_id = $4, 
-		due_date = $5, type = $6, research_contribution = $7, research_method = $8,
-		updated_at = NOW() 
-		WHERE id = $9`
-
-	_, err := s.DB.Exec(query,
+	// Обновляем parameters и metrics только если они явно переданы (не nil)
+	paramsSQL := ""
+	args := []interface{}{
 		task.Title, task.Description, strings.ToLower(task.Priority),
 		task.AssigneeId, task.DueDate, task.Type,
-		task.ResearchContribution, task.ResearchMethod, taskId)
+		task.ResearchContribution, task.ResearchMethod,
+	}
+	argIdx := 9
+
+	if task.Parameters != nil {
+		paramsSQL += fmt.Sprintf(", parameters = $%d", argIdx)
+		args = append(args, task.Parameters)
+		argIdx++
+	}
+	if task.Metrics != nil {
+		paramsSQL += fmt.Sprintf(", metrics = $%d", argIdx)
+		args = append(args, task.Metrics)
+		argIdx++
+	}
+
+	query := fmt.Sprintf(`UPDATE tasks SET 
+		title = $1, description = $2, priority = $3, assignee_id = $4, 
+		due_date = $5, type = $6, research_contribution = $7, research_method = $8%s,
+		updated_at = NOW() 
+		WHERE id = $%d`, paramsSQL, argIdx)
+
+	args = append(args, taskId)
+	_, err := s.DB.Exec(query, args...)
 	return err
 }
 
@@ -323,6 +341,8 @@ func (s *TaskStore) DeleteTask(taskId int) error {
 	_, _ = s.DB.Exec("DELETE FROM task_tags WHERE task_id = $1", taskId)
 	_, _ = s.DB.Exec("DELETE FROM task_history WHERE task_id = $1", taskId)
 	_, _ = s.DB.Exec("DELETE FROM comments WHERE entity_type = 'task' AND entity_id = $1", taskId)
+	_, _ = s.DB.Exec("DELETE FROM experiment_datasets WHERE task_id = $1", taskId)
+	_, _ = s.DB.Exec("DELETE FROM dataset_dependencies WHERE task_id = $1", taskId)
 
 	_, err := s.DB.Exec("DELETE FROM tasks WHERE id = $1", taskId)
 	return err

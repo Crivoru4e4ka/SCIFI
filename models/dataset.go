@@ -10,5 +10,6 @@ type Dataset struct {
 	Version     string      `json:"version"`
 	DataURL     string      `json:"data_url"`
 	Parameters  interface{} `json:"parameters"`
+	CreatedBy   int         `json:"created_by"`
 	CreatedAt   time.Time   `json:"created_at"`
 }

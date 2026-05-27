@@ -60,9 +60,52 @@ func GetProjectHypotheses(projectID int) ([]models.Hypothesis, error) {
 	return DefaultTaskStore.GetProjectHypotheses(projectID)
 }
 
-// UpdateTask обёртка над DefaultTaskStore.
+// UpdateTask обновляет задачу и пересоздает связи с датасетами.
 func UpdateTask(taskId int, task models.Task) error {
-	return DefaultTaskStore.UpdateTask(taskId, task)
+	if err := DefaultTaskStore.UpdateTask(taskId, task); err != nil {
+		return err
+	}
+
+	// Удаляем старые связи и lineage
+	_ = DefaultExperimentStore.DeleteTaskDatasets(taskId)
+	_ = DefaultDatasetDependencyStore.DeleteTaskDependencies(taskId)
+
+	// Пересоздаем input связи
+	for _, dsID := range task.InputDatasetIDs {
+		if dsID > 0 {
+			_, err := DefaultExperimentStore.CreateExperimentDataset(models.ExperimentDataset{
+				TaskID:       taskId,
+				DatasetID:    dsID,
+				RelationType: "input",
+			})
+			if err != nil {
+				log.Printf("Ошибка при создании input-связи задачи с датасетом %d: %v", dsID, err)
+			}
+		}
+	}
+
+	// Пересоздаем output связи
+	for _, dsID := range task.OutputDatasetIDs {
+		if dsID > 0 {
+			_, err := DefaultExperimentStore.CreateExperimentDataset(models.ExperimentDataset{
+				TaskID:       taskId,
+				DatasetID:    dsID,
+				RelationType: "output",
+			})
+			if err != nil {
+				log.Printf("Ошибка при создании output-связи задачи с датасетом %d: %v", dsID, err)
+			}
+		}
+	}
+
+	// Перестраиваем lineage
+	if len(task.InputDatasetIDs) > 0 && len(task.OutputDatasetIDs) > 0 {
+		if err := BuildLineageForTask(taskId, task.InputDatasetIDs, task.OutputDatasetIDs); err != nil {
+			log.Printf("Ошибка при построении lineage для задачи %d: %v", taskId, err)
+		}
+	}
+
+	return nil
 }
 
 // DeleteTask обёртка над DefaultTaskStore.
@@ -135,6 +178,41 @@ func CreateTask(task models.Task) (models.Task, error) {
 	task.Id = newId
 	task.TaskNum = newTaskNum
 	task.CreatedAt = time.Now()
+
+	// Создаем связи с input датасетами
+	for _, dsID := range task.InputDatasetIDs {
+		if dsID > 0 {
+			_, err := DefaultExperimentStore.CreateExperimentDataset(models.ExperimentDataset{
+				TaskID:       task.Id,
+				DatasetID:    dsID,
+				RelationType: "input",
+			})
+			if err != nil {
+				log.Printf("Ошибка при создании input-связи задачи с датасетом %d: %v", dsID, err)
+			}
+		}
+	}
+
+	// Создаем связи с output датасетами
+	for _, dsID := range task.OutputDatasetIDs {
+		if dsID > 0 {
+			_, err := DefaultExperimentStore.CreateExperimentDataset(models.ExperimentDataset{
+				TaskID:       task.Id,
+				DatasetID:    dsID,
+				RelationType: "output",
+			})
+			if err != nil {
+				log.Printf("Ошибка при создании output-связи задачи с датасетом %d: %v", dsID, err)
+			}
+		}
+	}
+
+	// Строим lineage
+	if len(task.InputDatasetIDs) > 0 && len(task.OutputDatasetIDs) > 0 {
+		if err := BuildLineageForTask(task.Id, task.InputDatasetIDs, task.OutputDatasetIDs); err != nil {
+			log.Printf("Ошибка при построении lineage для задачи %d: %v", task.Id, err)
+		}
+	}
 
 	if strings.TrimSpace(task.Tags) != "" {
 		tagNames := strings.Split(task.Tags, ",")

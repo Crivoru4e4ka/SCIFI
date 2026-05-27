@@ -9,7 +9,7 @@ type Dataset struct {
 	Description string      `json:"description"`
 	Version     string      `json:"version"`
 	DataURL     string      `json:"data_url"`
-	Parameters  interface{} `json:"parameters"`
+	Metadata    string      `json:"metadata"`
 	CreatedBy   int         `json:"created_by"`
 	CreatedAt   time.Time   `json:"created_at"`
 }

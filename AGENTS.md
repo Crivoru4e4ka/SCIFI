@@ -57,7 +57,7 @@ project-MVP/
 │   ├── team.go                      # + TeamMemberInfo, UpdateTeamRequest, AddMemberRequest
 │   ├── project_member.go            # + RoleId (FK к roles)
 │   ├── hypothesis.go
-│   ├── dataset.go                   # + Parameters (JSONB), CreatedBy
+│   ├── dataset.go                   # + Metadata (TEXT), CreatedBy
 │   ├── dataset_dependency.go        # + Lineage graph (source→target через task)
 │   ├── experimentdataset.go
 │   ├── grant.go                     # + GrantType, Status constants
@@ -474,7 +474,7 @@ Handlers проверяют конкретные ошибки и возвращ�
 ### Data Management (Датасеты и Lineage)
 
 **Датасеты** (`datasets`):
-- Проектно-уровневые данные: `name`, `description`, `version`, `data_url`, `parameters` (JSONB), `created_by`.
+- Проектно-уровневые данные: `name`, `description`, `version`, `data_url`, `metadata` (TEXT), `created_by`.
 - CRUD через `POST/GET/DELETE /projects/{id}/datasets` и `DELETE /datasets/{id}`.
 - Права: `dataset.upload` для создания, `project.edit` для удаления.
 

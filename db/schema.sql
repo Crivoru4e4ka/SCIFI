@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS public.datasets
     description text COLLATE pg_catalog."default",
     version character varying(50) COLLATE pg_catalog."default",
     data_url text COLLATE pg_catalog."default",
-    parameters jsonb,
+    metadata jsonb,
     created_by integer,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT datasets_pkey PRIMARY KEY (id)

@@ -1,19 +1,9 @@
-2026/05/27 20:10:19 Connected to PostgreSQL
-2026/05/27 20:10:20 InitRoles: роли инициализированы
-2026/05/27 20:10:20 InitPermissions: права инициализированы
-2026/05/27 20:10:20 InitRolePermissions: связи ролей и прав инициализированы
-2026/05/27 20:10:20 Server running on :8080
-2026/05/27 20:11:33 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc000bdb0a0) | Permission=dataset.upload | Granted=true
-2026/05/27 20:11:33 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc000215d40) | Permission=dataset.upload | Granted=true
-2026/05/27 20:11:43 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc000c008f0) | Permission=task.create | Granted=true
-2026/05/27 20:11:43 Ошибка при создании output-связи задачи с датасетом 3: pq: insert or update on table "experiment_datasets" violates foreign key constraint "fk_ed_dataset" (23503)
-2026/05/27 20:11:43 Ошибка при построении lineage для задачи 39: pq: insert or update on table "dataset_dependencies" violates foreign key constraint "fk_dd_target" (23503)
-2026/05/27 20:11:50 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc000c01778) | Permission=project.view | Granted=true
-2026/05/27 20:12:01 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc00016a1c0) | Permission=dataset.upload | Granted=true
-2026/05/27 20:12:07 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc000c01df8) | Permission=task.edit | Granted=true
-2026/05/27 20:12:13 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc00016a798) | Permission=task.edit | Granted=true
-2026/05/27 20:12:20 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc000e001e8) | Permission=project.view | Granted=true
-2026/05/27 20:12:20 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc000e00688) | Permission=project.view | Granted=true
-2026/05/27 20:12:28 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc000e00b70) | Permission=dataset.upload | Granted=true
-2026/05/27 20:12:35 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc00016a0f0) | Permission=task.create | Granted=true
-2026/05/27 20:12:41 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc00016a868) | Permission=project.view | Granted=true
+2026/05/27 20:37:58 Connected to PostgreSQL
+2026/05/27 20:37:58 InitRoles: роли инициализированы
+2026/05/27 20:37:58 InitPermissions: права инициализированы
+2026/05/27 20:37:58 InitRolePermissions: связи ролей и прав инициализированы
+2026/05/27 20:37:58 Server running on :8080
+2026/05/27 20:38:00 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc00066c0e0) | Permission=project.view | Granted=true
+2026/05/27 20:38:30 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc000294da0) | Permission=project.view | Granted=true
+2026/05/27 20:38:39 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc000295358) | Permission=project.view | Granted=true
+2026/05/27 20:38:39 [RBAC] User=20 | SysRole=user | ProjRole=project_lead (id=0xc0002957e8) | Permission=project.view | Granted=true

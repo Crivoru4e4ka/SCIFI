@@ -28,3 +28,8 @@ func DeleteExperimentDataset(taskID, datasetID int) error {
 func DeleteTaskDatasets(taskID int) error {
 	return DefaultExperimentStore.DeleteTaskDatasets(taskID)
 }
+
+// GetTasksByDataset обёртка над DefaultExperimentStore.
+func GetTasksByDataset(datasetID int) ([]map[string]interface{}, error) {
+	return DefaultExperimentStore.GetTasksByDataset(datasetID)
+}

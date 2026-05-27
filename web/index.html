@@ -1748,28 +1748,27 @@
                             <tr>
                                 <th class="ps-3">Название</th>
                                 <th>Версия</th>
-                                <th>URL</th>
                                 <th class="text-end pe-3">Действия</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="ds in projectDatasets" :key="ds.id" @click="openDatasetDetail(ds)" style="cursor: pointer;" :class="{'table-active': selectedDataset && selectedDataset.id === ds.id}">
-                                <td class="ps-3 fw-semibold">{{ ds.name }}</td>
-                                <td><span class="badge bg-light text-dark border">{{ ds.version || '-' }}</span></td>
-                                <td>
-                                    <a v-if="ds.data_url" :href="ds.data_url" target="_blank" class="small text-decoration-none" @click.stop>
-                                        <i class="fas fa-external-link-alt me-1"></i>Ссылка
-                                    </a>
-                                    <span v-else class="text-muted small">—</span>
+                                <td class="ps-3">
+                                    <div class="fw-semibold">{{ ds.name }}</div>
+                                    <div class="small text-muted">{{ getUserName(ds.created_by) }}</div>
                                 </td>
+                                <td><span class="badge bg-light text-dark border">{{ ds.version || '-' }}</span></td>
                                 <td class="text-end pe-3">
-                                    <button class="btn btn-sm btn-outline-danger" @click.stop="deleteDataset(ds.id)" v-if="canEditProject">
+                                    <a v-if="ds.data_url" :href="ds.data_url" target="_blank" class="btn btn-sm btn-outline-primary me-1" @click.stop title="Открыть URL">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-danger" @click.stop="deleteDataset(ds.id)" v-if="canEditProject" title="Удалить">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </td>
                             </tr>
                             <tr v-if="projectDatasets.length === 0">
-                                <td colspan="4" class="text-center text-muted py-4">В проекте пока нет датасетов</td>
+                                <td colspan="3" class="text-center text-muted py-4">В проекте пока нет датасетов</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1790,25 +1789,39 @@
                         <a :href="selectedDataset.data_url" target="_blank" class="small text-decoration-none d-block text-truncate">{{ selectedDataset.data_url }}</a>
                     </div>
 
-                    <h6 class="fw-bold mt-4 border-top pt-3"><i class="fas fa-project-diagram me-2 text-info"></i>Lineage</h6>
+                    <div class="mb-2">
+                        <span class="text-muted small">Создан:</span>
+                        <span class="small">{{ getUserName(selectedDataset.created_by) }}</span>
+                    </div>
+                    <div class="mb-2" v-if="selectedDataset.metadata">
+                        <span class="text-muted small">Метаданные:</span>
+                        <div class="small text-secondary bg-light rounded p-2 mt-1">{{ selectedDataset.metadata }}</div>
+                    </div>
+
+                    <h6 class="fw-bold mt-3 border-top pt-3"><i class="fas fa-flask me-2 text-warning"></i>Использование в задачах</h6>
+                    <div v-if="selectedDatasetTasks.length">
+                        <div v-for="t in selectedDatasetTasks" :key="t.id" class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge" :class="t.relation_type === 'output' ? 'bg-success' : 'bg-light text-dark border'">{{ t.relation_type === 'output' ? 'OUT' : 'IN' }}</span>
+                            <span class="small">{{ t.title }}</span>
+                        </div>
+                    </div>
+                    <div v-else class="text-muted small">Не используется в задачах</div>
+
+                    <h6 class="fw-bold mt-3 border-top pt-3"><i class="fas fa-project-diagram me-2 text-info"></i>Lineage</h6>
                     <div v-if="datasetLineage">
-                        <div v-if="datasetLineage.ancestors.length" class="mb-2">
-                            <span class="text-muted small">Источники (upstream):</span>
+                        <div v-if="datasetLineage.ancestors && datasetLineage.ancestors.length" class="mb-2">
+                            <span class="text-muted small">Источники:</span>
                             <div class="d-flex flex-wrap gap-1 mt-1">
-                                <span v-for="a in datasetLineage.ancestors" :key="a.id + '-' + a.task_id" class="badge bg-light text-dark border">
-                                    {{ a.name }}
-                                </span>
+                                <span v-for="a in datasetLineage.ancestors" :key="a.id + '-' + a.task_id" class="badge bg-light text-dark border">{{ a.name }}</span>
                             </div>
                         </div>
-                        <div v-if="datasetLineage.descendants.length" class="mb-2">
-                            <span class="text-muted small">Потомки (downstream):</span>
+                        <div v-if="datasetLineage.descendants && datasetLineage.descendants.length" class="mb-2">
+                            <span class="text-muted small">Потомки:</span>
                             <div class="d-flex flex-wrap gap-1 mt-1">
-                                <span v-for="d in datasetLineage.descendants" :key="d.id + '-' + d.task_id" class="badge bg-success text-white">
-                                    {{ d.name }}
-                                </span>
+                                <span v-for="d in datasetLineage.descendants" :key="d.id + '-' + d.task_id" class="badge bg-success text-white">{{ d.name }}</span>
                             </div>
                         </div>
-                        <div v-if="!datasetLineage.ancestors.length && !datasetLineage.descendants.length" class="text-muted small">
+                        <div v-if="(!datasetLineage.ancestors || !datasetLineage.ancestors.length) && (!datasetLineage.descendants || !datasetLineage.descendants.length)" class="text-muted small">
                             Связей lineage не найдено
                         </div>
                     </div>
@@ -1818,7 +1831,7 @@
             <div class="card shadow-sm border-0" v-else>
                 <div class="card-body text-center text-muted py-5">
                     <i class="fas fa-database fa-2x mb-3 opacity-25"></i>
-                    <p class="small">Выберите датасет для просмотра lineage</p>
+                    <p class="small">Выберите датасет для просмотра деталей</p>
                 </div>
             </div>
         </div>
@@ -3025,8 +3038,8 @@
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Параметры (JSON)</label>
-                    <textarea class="form-control font-monospace small" v-model="datasetForm.parameters" rows="3" placeholder='{"format": "csv", "rows": 1000}'></textarea>
+                    <label class="form-label">Технические метаданные</label>
+                    <textarea class="form-control small" v-model="datasetForm.metadata" rows="2" placeholder="Формат, размер, кодировка и т.д."></textarea>
                 </div>
             </div>
             <div class="modal-footer">

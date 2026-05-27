@@ -132,6 +132,7 @@ func InitRoutes() *mux.Router {
 
 	// --- Lineage ---
 	r.HandleFunc("/datasets/{id}/lineage", handlers.GetDatasetLineage).Methods("GET")
+	r.HandleFunc("/datasets/{id}/tasks", handlers.GetDatasetTasks).Methods("GET")
 
 	// --- Отчеты ---
 	r.HandleFunc("/projects/{id}/report", handlers.GenerateGostReport).Methods("GET")

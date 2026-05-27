@@ -280,11 +280,12 @@ flaggedItems: [],
                         description: '',
                         version: '',
                         data_url: '',
-                        parameters: ''
+                        metadata: ''
                     },
                     createDatasetModal: null,
                     selectedDataset: null,
-                    datasetLineage: null
+                    datasetLineage: null,
+                    selectedDatasetTasks: []
                 };
             },
             computed: {
@@ -498,9 +499,15 @@ async loadComments(entityId, entityType) {
     try {
         const response = await fetch(`/comments/${entityType}/${entityId}`);
         if (response.ok) {
-            this.activeComments = await response.json();
+            const data = await response.json();
+            this.activeComments = data || [];
+        } else {
+            this.activeComments = [];
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        this.activeComments = [];
+    }
 },
 
 // Универсальная отправка
@@ -705,11 +712,13 @@ async loadAllTasks() {
     try {
         const response = await fetch('/user/tasks');
         if (response.ok) {
-            this.allTasks = await response.json();
+            const data = await response.json();
+            this.allTasks = data || [];
             console.log("Глобальные задачи загружены для поиска:", this.allTasks.length);
         }
     } catch (e) {
         console.error("Ошибка загрузки задач для поиска:", e);
+        this.allTasks = [];
     }
 },
 
@@ -1223,7 +1232,8 @@ async completeSprint(sprint) {
                     try {
                     const response = await fetch(`/projects/${projectId}/sprints`);
                     if (response.ok) {
-                        this.sprints = await response.json();
+                        const data = await response.json();
+                        this.sprints = data || [];
                     } else {
                         this.sprints = []; // Если ошибка, обнуляем
                     }
@@ -1286,10 +1296,12 @@ handleTaskFileSelect(event) {
                             credentials: 'include'
                         });
                         if (response.ok) {
-                            this.projectAssignableUsers = await response.json();
+                            const data = await response.json();
+                            this.projectAssignableUsers = data || [];
                         }
                     } catch (err) {
                         console.error('Failed to load assignable users:', err);
+                        this.projectAssignableUsers = [];
                     }
                 },
                 async createNewSprint() {
@@ -2317,7 +2329,7 @@ async loadProjectPermissions(projectId) {
         const response = await fetch(`/projects/${projectId}/my-permissions`, { credentials: 'include' });
         if (response.ok) {
             const data = await response.json();
-            this.projectPermissions = data.permissions || [];
+            this.projectPermissions = (data && data.permissions) ? data.permissions : [];
         }
     } catch (err) {
         console.error('Failed to load permissions:', err);
@@ -2338,10 +2350,14 @@ async loadProjectActivities(projectId) {
     try {
         const response = await fetch(`/projects/${projectId}/activities`, { credentials: 'include' });
         if (response.ok) {
-            this.projectActivities = await response.json();
+            const data = await response.json();
+            this.projectActivities = data || [];
+        } else {
+            this.projectActivities = [];
         }
     } catch (err) {
         console.error('Failed to load project activities:', err);
+        this.projectActivities = [];
     }
 },
 filterUsersForMember() {
@@ -2502,28 +2518,16 @@ async removeProjectFromGrant(fundingId) {
         alert(err.message);
     }
 },
-            },
-mounted() {
-    this.loadRecentFromStorage();
-    this.loadFlaggedFromStorage();
-    this.loadSavedFilters();
-    const savedTheme = localStorage.getItem('appTheme') || 'light';
-    this.applyTheme(savedTheme);
-
-    this.loadCurrentUser();
-    this.loadProjects();
-    this.loadUsers();
-    this.loadAllTasks();
-
-    // Существующие модалки
 async loadProjectDatasets(projectId) {
     try {
         const response = await fetch(`/projects/${projectId}/datasets`, { credentials: 'include' });
         if (response.ok) {
-            this.projectDatasets = await response.json();
+            const data = await response.json();
+            this.projectDatasets = data || [];
         }
     } catch (err) {
         console.error('Failed to load project datasets:', err);
+        this.projectDatasets = [];
     }
 },
 async createDatasetFromModal() {
@@ -2535,7 +2539,7 @@ async createDatasetFromModal() {
             description: this.datasetForm.description.trim(),
             version: this.datasetForm.version.trim(),
             data_url: this.datasetForm.data_url.trim(),
-            parameters: this.datasetForm.parameters ? JSON.parse(this.datasetForm.parameters) : null
+            metadata: this.datasetForm.metadata ? this.datasetForm.metadata.trim() : null
         };
         const response = await fetch(`/projects/${this.currentProject.id}/datasets`, {
             method: 'POST',
@@ -2544,7 +2548,7 @@ async createDatasetFromModal() {
             credentials: 'include'
         });
         if (!response.ok) throw new Error('Не удалось создать датасет');
-        this.datasetForm = { name: '', description: '', version: '', data_url: '', parameters: '' };
+        this.datasetForm = { name: '', description: '', version: '', data_url: '', metadata: '' };
         this.createDatasetModal.hide();
         this.loadProjectDatasets(this.currentProject.id);
     } catch (err) {
@@ -2578,13 +2582,42 @@ async loadDatasetLineage(datasetId) {
 },
 openDatasetDetail(dataset) {
     this.selectedDataset = dataset;
+    this.selectedDatasetTasks = [];
     this.loadDatasetLineage(dataset.id);
+    this.loadDatasetTasks(dataset.id);
 },
 closeDatasetDetail() {
     this.selectedDataset = null;
     this.datasetLineage = null;
 },
+async loadDatasetTasks(datasetId) {
+    try {
+        const response = await fetch(`/datasets/${datasetId}/tasks`, { credentials: 'include' });
+        if (response.ok) {
+            const data = await response.json();
+            this.selectedDatasetTasks = data || [];
+        } else {
+            this.selectedDatasetTasks = [];
+        }
+    } catch (err) {
+        console.error('Failed to load dataset tasks:', err);
+        this.selectedDatasetTasks = [];
+    }
+}
+},
+mounted() {
+    this.loadRecentFromStorage();
+    this.loadFlaggedFromStorage();
+    this.loadSavedFilters();
+    const savedTheme = localStorage.getItem('appTheme') || 'light';
+    this.applyTheme(savedTheme);
 
+    this.loadCurrentUser();
+    this.loadProjects();
+    this.loadUsers();
+    this.loadAllTasks();
+
+    // Существующие модалки
     const modalElement = document.getElementById('createProjectModal');
     this.createProjectModal = new bootstrap.Modal(modalElement);
 
@@ -2619,7 +2652,7 @@ closeDatasetDetail() {
     if (datasetModalElement) {
         this.createDatasetModal = new bootstrap.Modal(datasetModalElement);
     }
-}
+},
         });
         app.directive("click-outside", clickOutside);
         app.mount('#app');
